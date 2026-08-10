@@ -1,0 +1,39 @@
+# Секреты и окружение
+.env
+.env.*
+!.env.example
+
+# Cookies / сессии
+cookies*.txt
+*.cookies
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Playwright
+playwright-report/
+test-results/
+
+# Артефакты прогонов
+runs/**/docs/
+runs/**/*.xlsx
+runs/**/*.xls
+runs/**/*.csv
+runs/**/*.json
+runs/**/*.zip
+runs/**/*.rar
+runs/**/*.7z
+!runs/.gitkeep
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+.DS_Store
