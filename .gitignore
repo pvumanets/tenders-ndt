@@ -37,3 +37,5 @@ runs/**/*.7z
 *.swp
 Thumbs.db
 .DS_Store
+
+runs/_probe/
