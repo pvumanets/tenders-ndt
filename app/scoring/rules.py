@@ -1,0 +1,106 @@
+"""Scoring rules from ndt-buisness-proc relevance-rules / fit-tiers."""
+from __future__ import annotations
+
+import re
+
+# Service / method signals
+RE_UZK = re.compile(
+    r"\b(узк|ук\b|ультразвуков\w*\s+контрол|узт|толщинометр\w*\s+ультразвуков)",
+    re.I,
+)
+RE_SERVICE_NDT = re.compile(
+    r"(неразрушающ\w*\s+контрол|\bнк\b|радиограф|цифров\w*\s+радиограф|\bрк\b|\bцр\b|"
+    r"\bвик\b|визуальн\w*\s+и\s+измерительн|капилляр|\bпвк\b|"
+    r"дефектоскоп\w*\s+(?:свар|соединен|труб|метал)|"
+    r"проведен\w*\s+неразрушающ|оказан\w*\s+услуг\w*\s+.*контрол|"
+    r"контрол\w*\s+сварн)",
+    re.I,
+)
+RE_RK = re.compile(r"(радиограф|\bрк\b|гаммаграф|рентген\w*\s+контрол|\bцр\b|цифров\w*\s+радиограф)", re.I)
+RE_VIK_PVK = re.compile(r"(\bвик\b|визуальн\w*\s+и\s+измерительн|\bпвк\b|капиллярн|проникающ\w*\s+веществ)", re.I)
+RE_OBJECT = re.compile(
+    r"(сварн\w*\s+соединен|гидрокрекинг|нефте|газ|энерг|трубопровод|резервуар|"
+    r"строитель|объект|секци|комплекс)",
+    re.I,
+)
+RE_SECTOR = re.compile(r"(нефте|газ|энерг|строитель|\bвпк\b|атом|промплощад)", re.I)
+
+# Noise / exclude
+RE_BUY_DEVICE = re.compile(
+    r"(закупк\w*|поставк\w*|приобретен\w*).{0,40}(прибор|дефектоскоп|толщиномер|"
+    r"рентген.?аппарат|панел\w*\s+цр|ультразвуков\w*\s+дефектоскоп)|"
+    r"(прибор|дефектоскоп|толщиномер).{0,40}(закупк|поставк|приобретен)",
+    re.I,
+)
+RE_DEVICE_ONLY = re.compile(
+    r"\b(дефектоскоп|толщиномер|рентген.?аппарат|кристалл\w*\s+детектор)\b",
+    re.I,
+)
+RE_VERIFY = re.compile(r"(поверк\w*|калибровк\w*|ремонт\w*\s+(прибор|средств\w*\s+измерен))", re.I)
+RE_CONSUMABLE = re.compile(r"(плёнк|пленк|химия\s+пвк|реактив|расходн)", re.I)
+RE_TRAINING = re.compile(r"(обучен\w*|аттестац\w*\s+персонал|повышен\w*\s+квалификац)", re.I)
+
+
+def score_title(title: str) -> tuple[int, list[str], bool]:
+    """Return score, reasons, uzk_service flag."""
+    t = title or ""
+    score = 0
+    reasons: list[str] = []
+    uzk_service = False
+
+    # Exclude-first adjustments
+    if RE_BUY_DEVICE.search(t):
+        score -= 3
+        reasons.append("buy_device:-3")
+    elif RE_DEVICE_ONLY.search(t) and not RE_SERVICE_NDT.search(t):
+        score -= 3
+        reasons.append("device_only:-3")
+
+    if RE_VERIFY.search(t) and not RE_SERVICE_NDT.search(t):
+        score -= 2
+        reasons.append("verify_only:-2")
+    if RE_CONSUMABLE.search(t) and not RE_SERVICE_NDT.search(t):
+        score -= 2
+        reasons.append("consumable:-2")
+    if RE_TRAINING.search(t) and not RE_SERVICE_NDT.search(t):
+        score -= 2
+        reasons.append("training:-2")
+
+    if RE_UZK.search(t) and not RE_BUY_DEVICE.search(t):
+        # UZK as work if not clearly device purchase
+        if not (RE_DEVICE_ONLY.search(t) and re.search(r"(закупк|поставк|приобретен)", t, re.I)):
+            score += 4
+            uzk_service = True
+            reasons.append("uzk_service:+4")
+
+    if RE_SERVICE_NDT.search(t) or RE_RK.search(t) or RE_VIK_PVK.search(t):
+        score += 3
+        reasons.append("ndt_service:+3")
+
+    if (RE_RK.search(t) or RE_VIK_PVK.search(t) or RE_UZK.search(t) or RE_SERVICE_NDT.search(t)) and RE_OBJECT.search(
+        t
+    ):
+        score += 2
+        reasons.append("method_object:+2")
+
+    if RE_SECTOR.search(t):
+        score += 1
+        reasons.append("sector:+1")
+
+    if re.search(r"неразрушающ", t, re.I) and score == 0:
+        score -= 1
+        reasons.append("generic_ndt:-1")
+
+    return score, reasons, uzk_service
+
+
+def is_noise(title: str, score: int, reasons: list[str]) -> bool:
+    t = title or ""
+    if RE_BUY_DEVICE.search(t):
+        return True
+    if RE_DEVICE_ONLY.search(t) and not RE_SERVICE_NDT.search(t):
+        return True
+    if any(r.startswith(("buy_device", "device_only", "verify_only", "consumable", "training")) for r in reasons):
+        if score < 2:
+            return True
+    return False
