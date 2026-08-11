@@ -2,54 +2,34 @@
 
 UI-мониторинг тендеров rostender.info для **ООО СВАРКА** (пул 1000, уровни L1–L3).
 
-**Фазы: P0 + P1 + P2 done.** Карточки / Excel / HTML / Docker one-command — P3–P6.
+**Фазы: P0–P4 done.** P5 Operator HTML · P6 Docker — дальше.
 
-## Канон продукта
+## Канон
 
-[docs/CANON.md](./docs/CANON.md) → `ndt-buisness-proc/docs/projects/tender-monitoring/delivery/`
+[docs/CANON.md](./docs/CANON.md) → `ndt-buisness-proc/.../tender-monitoring/delivery/`
 
-## Стек
-
-- **P1 транспорт:** `httpx` + BeautifulSoup (сессия cookies). Playwright против rostender из этой среды получает **WAF 403**; HTML те же страницы UI.
-- **P2:** `app/scoring` по fit-tiers / relevance-rules.
-- Далее: Playwright может пригодиться для карточек (P3), если WAF пустит; иначе HTTP.
-
-## Секреты
+## Запуск
 
 ```powershell
-copy .env.example .env
-# cookies.rostender.txt — Netscape, gitignore
-```
-
-## Запуск P1 + P2
-
-```powershell
-python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-
+# полный цикл:
 python -m app.worker run --limit 1000 --out runs/YYYY-MM-DD
-# или по шагам:
-python -m app.worker scrape --limit 1000 --out runs/YYYY-MM-DD
-python -m app.worker score --out runs/YYYY-MM-DD
+# только карточки+артефакты по готовому scored-list:
+python -m app.worker run --from-score --out runs/2026-08-11
 ```
 
-Артефакты: `raw-list.json`, `scored-list.json`, `tier-summary.json`, `card-ids.json` (L1∪L2∪L3 для P3).
+Команды: `scrape` · `score` · `cards` · `artifacts` · `run`
 
-## Последний прогон
+## Прогон 2026-08-11
 
-`runs/2026-08-11/` — 1000 строк; см. `tier-summary.json` / README прогона.
+- 1000 лотов; L1/L2/L3 = 77/67/366
+- Cards: **510/510** ok
+- Артефакты: `tenders.csv`, `tenders.md`, `priority-fit.md`
 
-## Структура
+## Транспорт
 
-```text
-app/worker/    # P1 scrape + CLI
-app/scoring/   # P2 rules/tiers
-app/api/       # P5
-app/static/    # P5
-runs/
-```
+httpx + cookies (Playwright → WAF 403 в этой среде).
 
-## Следующая фаза
+## Следующее
 
-**P3 — Cards:** открыть карточки только для id из `card-ids.json`.
+**P5** — FastAPI + HTML хода работы ([operator-ui](../ndt-buisness-proc/docs/projects/tender-monitoring/delivery/operator-ui.md) в каноне).
