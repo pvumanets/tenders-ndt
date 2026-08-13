@@ -55,7 +55,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | --- | --- | --- |
 | `GET` | `/api/health` | liveness, без секретов (можно без сессии) |
 | `GET` | `/api/status` | Фаза, прогресс, счётчики, cookies площадки, путь выгрузки — **с сессией** |
-| `POST` | `/api/run/start` | Старт (не в React; Q25) |
+| `POST` | `/api/run/start` | Старт прогона (React Tech, 022) |
 | `POST` | `/api/run/stop` | Мягкая остановка |
 | `GET` | `/api/results` | Legacy список по одному run (AS-IS HTML на деве) |
 | `GET` | `/api/results/{tender_id}` | Legacy карточка |
@@ -150,8 +150,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | --- | --- |
 | Экран входа | `/api/auth/*` |
 | Вкладка «Лоты» | `/api/inbox*` |
-| Вкладка «Прогон» (read-only) | `GET /api/status` |
-| Start/Stop в UI | **не** в React |
+| Вкладка «Прогон» | `GET /api/status`, `POST /api/run/start`, `POST /api/run/stop` |
 | Bitrix | **не** в приёмке |
 
 **Клиент (lock, без смены FastAPI):**

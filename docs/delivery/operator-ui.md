@@ -75,6 +75,6 @@ API: [`sales-inbox-api.md`](./sales-inbox-api.md).
 | --- | --- |
 | Вход | `/api/auth/*` |
 | **Лоты** (default) | тот же UI → `/api/inbox*` |
-| **Прогон** | read-only `GET /api/status` — **без** Start/Stop |
+| **Прогон** | `GET /api/status` + `POST /api/run/start` / `stop` (022) |
 
 Пресеты дат остаются в UI; на API уходят `deadline_*` / `ingested_*`. Viewed / приоритет — `PUT`. Документы в drawer — `GET /api/inbox/{id}` + same-origin download.

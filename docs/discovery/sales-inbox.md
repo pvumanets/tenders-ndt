@@ -44,7 +44,7 @@
 | Cron / роли / Excel-вкладка | NEXT+ | fact |
 | Порядок кода | [`../delivery/platform-phases.md`](../delivery/platform-phases.md) P5.1→P7 | fact |
 | Фильтры дат | must: **срок подачи** + **`ingested_at`** (пресеты в UI) | fact |
-| Tech вкладка | **Только статус** (без Start/Stop в React) | fact |
+| Tech вкладка | Статус + Старт/Стоп в React (022) | fact |
 
 ## Facts / Hypotheses / Gaps
 
@@ -86,7 +86,7 @@
 ### Вкладка «Прогон» (Tech)
 
 - Фаза, прогресс, cookies площадки OK/expired, счётчики L1–L3, идентификатор/путь выгрузки.  
-- Без Start/Stop в React UI (Q25).
+- Старт / Стоп (022); limit/query в UI нет (дефолты API).
 
 ## Mapping engine → UI
 
@@ -110,7 +110,7 @@
 
 ### In ship (демо директору на VPS)
 
-- Sales Inbox + Tech (read-only) по принятому visual  
+- Sales Inbox + Tech (статус + Старт/Стоп) по принятому visual  
 - Логин двух учёток (без ролей)  
 - Просмотренность + ручная смена приоритета (Postgres)  
 - Date filters (deadline + ingested_at)  
@@ -124,7 +124,6 @@
 - Роли  
 - Excel как вкладка / daily UX  
 - ЭЦП  
-- Start/Stop в React UI  
 - GPT / LLM API для скрейпа (не нужен)
 
 ## Acceptance (product — демо директору)
@@ -134,9 +133,9 @@
 - [ ] Карточки / Таблица; **документы с файлами**; ручная смена приоритета.  
 - [ ] Просмотренность и приоритет переживают перезапуск браузера и контейнера (БД жива).  
 - [ ] Фильтры/сорт по сроку подачи и «попало к нам».  
-- [ ] Вкладка «Прогон» отдельно (статус).  
+- [ ] Вкладка «Прогон» отдельно (статус + Старт/Стоп).  
 - [ ] Вход по логину; на P7 — HTTPS с другого компьютера.  
-- [ ] **Не** требуется: Bitrix, Start/Stop в UI, роли.
+- [ ] **Не** требуется: Bitrix, роли.
 
 ## Acceptance (design package)
 

@@ -22,6 +22,7 @@ import { copy } from "./copy";
 import { deadlineQuery, ingestedQuery, mskTodayIso } from "./lib/date-filters";
 import { effectiveTier } from "./lib/format";
 import {
+  RunControlError,
   UnauthorizedError,
   apiTierParam,
   fetchInbox,
@@ -29,6 +30,9 @@ import {
   fetchStatus,
   putPriority,
   putViewed,
+  runControlMessage,
+  startRun,
+  stopRun,
 } from "./lib/inbox";
 import { stripe } from "./theme/palette";
 import ThemeRegistry from "./theme/ThemeRegistry";
@@ -108,6 +112,8 @@ function AppInner() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [tech, setTech] = useState<TechStatus>(idleTech);
+  const [techBusy, setTechBusy] = useState(false);
+  const [techError, setTechError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -219,6 +225,46 @@ function AppInner() {
       if (timer !== undefined) window.clearTimeout(timer);
     };
   }, [gate, tab]);
+
+  async function onStartRun() {
+    setTechBusy(true);
+    setTechError(null);
+    try {
+      await startRun();
+      const status = await fetchStatus();
+      setTech(status);
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
+      setTechError(
+        err instanceof RunControlError ? runControlMessage(err.code) : copy.run_error_failed,
+      );
+    } finally {
+      setTechBusy(false);
+    }
+  }
+
+  async function onStopRun() {
+    setTechBusy(true);
+    setTechError(null);
+    try {
+      await stopRun();
+      const status = await fetchStatus();
+      setTech(status);
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
+      setTechError(
+        err instanceof RunControlError ? runControlMessage(err.code) : copy.run_error_failed,
+      );
+    } finally {
+      setTechBusy(false);
+    }
+  }
 
   const filtered = useMemo(() => {
     if (priority.length < 2) return lots;
@@ -346,7 +392,13 @@ function AppInner() {
             ) : null}
           </>
         ) : (
-          <TechRunPanel status={tech} />
+          <TechRunPanel
+            status={tech}
+            busy={techBusy}
+            error={techError}
+            onStart={onStartRun}
+            onStop={onStopRun}
+          />
         )}
       </Box>
 

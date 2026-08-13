@@ -31,7 +31,7 @@
 | Q22 | VPS + доступ директора | **closed** — VPS **в ship** (P7); две учётки без ролей; HTTPS; роли/multi-tenant = NEXT+ |
 | Q23 | Фильтры дат | **closed** — must: срок подачи + `ingested_at`; пресеты в UI |
 | Q24 | GPT / LLM для скрейпа | **closed** — **не нужен**; worker = httpx + cookies |
-| Q25 | Tech Start/Stop в React | **closed** — только статус; управление прогоном later |
+| Q25 | Tech Start/Stop в React | **closed** — кнопки в Tech (022); обе учётки; later был P6 |
 | Q26 | Экран входа | **closed** — must P5.2; Scout login ≠ rostender cookies |
 
 Закрытые ответы отражены в [`../delivery/`](../delivery/) (tech-architecture, sales-inbox-api, platform-phases, acceptance).

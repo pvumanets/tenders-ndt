@@ -66,7 +66,7 @@ cookies.rostender.txt          # auth площадки (worker)
         → выгрузка P4 на том (tenders.md, priority-fit.md)
     ← FastAPI (session Scout)
         /api/auth/*             (логин двух учёток)
-        /api/status, /api/run/* (Tech / digital; Start/Stop не в React)
+        /api/status, /api/run/* (Tech: Старт/Стоп в React, 022)
         /api/results*           (legacy HTML на деве)
         /api/inbox*             (Sales Inbox ← Postgres)
 
