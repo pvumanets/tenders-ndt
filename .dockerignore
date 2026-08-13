@@ -1,0 +1,17 @@
+.git
+.cursor
+.venv
+venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.mypy_cache
+node_modules
+app/web/node_modules
+app/web/dist
+runs
+.env
+.env.*
+!.env.example
+cookies*.txt
+docs

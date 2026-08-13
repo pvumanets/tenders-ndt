@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ndt-tender-scout — оператор</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a222c;
+      --text: #e7ecf1;
+      --muted: #8b9aab;
+      --accent: #3d8bfd;
+      --ok: #3ecf8e;
+      --warn: #e6a23c;
+      --err: #f07178;
+      --border: #2a3542;
+      --L1: #3ecf8e;
+      --L2: #3d8bfd;
+      --L3: #e6a23c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    h1 { font-size: 1.15rem; margin: 0; font-weight: 600; }
+    .meta { color: var(--muted); font-size: 0.85rem; }
+    .btns { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    button {
+      border: 0;
+      border-radius: 6px;
+      padding: 0.55rem 1rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    #btnStart { background: var(--accent); color: #fff; }
+    #btnStop { background: #3a2a2a; color: var(--err); border: 1px solid var(--err); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    main {
+      display: grid;
+      gap: 1rem;
+      padding: 1.25rem;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+    }
+    .card h2 {
+      margin: 0 0 0.35rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .card .val { font-size: 1.35rem; font-weight: 650; }
+    .phase { font-size: 1.5rem; }
+    .bar {
+      height: 8px;
+      background: #0c1015;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+    .bar > span {
+      display: block;
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    #log {
+      font-family: ui-monospace, Consolas, monospace;
+      font-size: 0.8rem;
+      max-height: 200px;
+      overflow: auto;
+      background: #0c1015;
+      border-radius: 6px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+    }
+    #log .error { color: var(--err); }
+    #log .warn { color: var(--warn); }
+    #log .info { color: var(--muted); }
+    a { color: var(--accent); }
+    .session-ok { color: var(--ok); }
+    .session-bad { color: var(--err); }
+    label { font-size: 0.8rem; color: var(--muted); margin-right: 0.35rem; }
+    input[type="number"] {
+      background: #0c1015;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 4px;
+      padding: 0.35rem 0.5rem;
+      width: 5rem;
+    }
+    #resultsSearch {
+      background: #0c1015;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 4px;
+      padding: 0.45rem 0.65rem;
+      width: min(280px, 100%);
+      flex: 1;
+    }
+    .results-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    .tabs { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .tabs button {
+      padding: 0.4rem 0.75rem;
+      background: #0c1015;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      font-weight: 600;
+    }
+    .tabs button.active {
+      color: var(--text);
+      border-color: var(--accent);
+      background: #152033;
+    }
+    .results-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+    }
+    @media (min-width: 960px) {
+      .results-layout.has-detail {
+        grid-template-columns: 1.4fr 1fr;
+      }
+    }
+    .table-wrap {
+      overflow: auto;
+      max-height: 420px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #0c1015;
+    }
+    table.results {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    table.results th, table.results td {
+      padding: 0.45rem 0.55rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+    table.results th {
+      position: sticky;
+      top: 0;
+      background: #152033;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      z-index: 1;
+    }
+    table.results tbody tr {
+      cursor: pointer;
+    }
+    table.results tbody tr:hover { background: #152033; }
+    table.results tbody tr.selected { background: #1a2a40; }
+    .tier-badge {
+      display: inline-block;
+      font-weight: 700;
+      font-size: 0.75rem;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      background: #0f1419;
+    }
+    .tier-L1 { color: var(--L1); }
+    .tier-L2 { color: var(--L2); }
+    .tier-L3 { color: var(--L3); }
+    .title-cell { max-width: 280px; }
+    .title-cell a { text-decoration: none; }
+    .title-cell a:hover { text-decoration: underline; }
+    #detailPanel {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #0c1015;
+      padding: 0.9rem 1rem;
+      min-height: 120px;
+    }
+    #detailPanel.empty { color: var(--muted); font-size: 0.9rem; }
+    #detailPanel h3 {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+      font-weight: 650;
+    }
+    #detailPanel dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: 7.5rem 1fr;
+      gap: 0.35rem 0.75rem;
+      font-size: 0.85rem;
+    }
+    #detailPanel dt { color: var(--muted); }
+    #detailPanel dd { margin: 0; word-break: break-word; }
+    #resultsMeta { color: var(--muted); font-size: 0.8rem; margin-left: auto; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>ndt-tender-scout</h1>
+      <div class="meta">Операторский экран · localhost · rostender P1–P4</div>
+    </div>
+    <div class="btns">
+      <label>limit <input id="limit" type="number" min="1" max="1000" value="20" /></label>
+      <button id="btnStart" type="button">Start</button>
+      <button id="btnStop" type="button" disabled>Stop</button>
+    </div>
+  </header>
+  <main>
+    <div class="grid">
+      <div class="card">
+        <h2>Фаза</h2>
+        <div class="val phase" id="phase">idle</div>
+      </div>
+      <div class="card">
+        <h2>Сессия cookies</h2>
+        <div class="val" id="session">—</div>
+      </div>
+      <div class="card">
+        <h2>Список</h2>
+        <div class="val" id="listProg">0 / 0</div>
+        <div class="bar"><span id="listBar"></span></div>
+      </div>
+      <div class="card">
+        <h2>Карточки</h2>
+        <div class="val" id="cardsProg">0 / 0</div>
+        <div class="bar"><span id="cardsBar"></span></div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card"><h2>L1</h2><div class="val" id="cL1">0</div></div>
+      <div class="card"><h2>L2</h2><div class="val" id="cL2">0</div></div>
+      <div class="card"><h2>L3</h2><div class="val" id="cL3">0</div></div>
+      <div class="card"><h2>noise</h2><div class="val" id="cNoise">0</div></div>
+      <div class="card"><h2>pool</h2><div class="val" id="cPool">0</div></div>
+    </div>
+    <div class="card">
+      <h2>Артефакты</h2>
+      <div id="artifacts" class="meta">—</div>
+      <div id="lastError" class="error" style="margin-top:0.5rem;color:var(--err)"></div>
+    </div>
+    <div class="card">
+      <h2>Результаты</h2>
+      <div class="results-toolbar">
+        <div class="tabs" id="tierTabs">
+          <button type="button" data-tier="fit" class="active">Все fit</button>
+          <button type="button" data-tier="L1">L1</button>
+          <button type="button" data-tier="L2">L2</button>
+          <button type="button" data-tier="L3">L3</button>
+          <button type="button" data-tier="all">Все</button>
+        </div>
+        <input id="resultsSearch" type="search" placeholder="поиск: название, заказчик, регион…" />
+        <button id="btnRefreshResults" type="button" class="btn-ghost">Обновить</button>
+        <span id="resultsMeta">—</span>
+      </div>
+      <div class="results-layout" id="resultsLayout">
+        <div class="table-wrap">
+          <table class="results">
+            <thead>
+              <tr>
+                <th>Tier</th>
+                <th>Score</th>
+                <th>Название</th>
+                <th>Цена</th>
+                <th>Регион</th>
+                <th>Срок</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+        <div id="detailPanel" class="empty">Кликните строку — детали лота</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Лог</h2>
+      <div id="log"></div>
+    </div>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const resultsState = {
+      tier: "fit",
+      q: "",
+      selectedId: null,
+      lastPhase: null,
+      loadedForRun: null,
+    };
+
+    function pct(n, d) {
+      if (!d) return 0;
+      return Math.min(100, Math.round((100 * n) / d));
+    }
+
+    function esc(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function render(s) {
+      $("phase").textContent = s.phase;
+      const sess = s.session || "unknown";
+      $("session").textContent = sess;
+      $("session").className = "val " + (sess === "ok" ? "session-ok" : "session-bad");
+      $("listProg").textContent = `${s.list_n} / ${s.list_limit}`;
+      $("listBar").style.width = pct(s.list_n, s.list_limit) + "%";
+      $("cardsProg").textContent = `${s.cards_done} / ${s.cards_total}`;
+      $("cardsBar").style.width = pct(s.cards_done, s.cards_total) + "%";
+      const c = s.counters || {};
+      $("cL1").textContent = c.L1 || 0;
+      $("cL2").textContent = c.L2 || 0;
+      $("cL3").textContent = c.L3 || 0;
+      $("cNoise").textContent = c.noise || 0;
+      $("cPool").textContent = c.pool || 0;
+      if (s.run_dir) {
+        $("artifacts").innerHTML =
+          `<code>${esc(s.run_dir)}</code><br/>` +
+          `ожидаются: tenders.csv · tenders.md · priority-fit.md`;
+      } else {
+        $("artifacts").textContent = "—";
+      }
+      $("lastError").textContent = s.last_error || "";
+      const log = $("log");
+      log.innerHTML = (s.log || [])
+        .slice()
+        .reverse()
+        .map((e) => `<div class="${esc(e.level || "info")}">[${esc(e.t)}] ${esc(e.msg)}</div>`)
+        .join("");
+      $("btnStart").disabled = !!s.running;
+      $("btnStop").disabled = !s.running;
+
+      const finished = ["done", "stopped", "error"].includes(s.phase);
+      const justFinished =
+        finished && resultsState.lastPhase && !["done", "stopped", "error"].includes(resultsState.lastPhase);
+      const runChanged = s.run_dir && s.run_dir !== resultsState.loadedForRun;
+      if ((justFinished || (finished && runChanged) || (!s.running && resultsState.loadedForRun === null)) && !s.running) {
+        loadResults();
+      }
+      resultsState.lastPhase = s.phase;
+    }
+
+    async function poll() {
+      try {
+        const r = await fetch("/api/status");
+        render(await r.json());
+      } catch (e) {
+        $("lastError").textContent = "status poll failed: " + e;
+      }
+    }
+
+    async function loadResults() {
+      const params = new URLSearchParams({
+        tier: resultsState.tier,
+        q: resultsState.q || "",
+      });
+      try {
+        const r = await fetch("/api/results?" + params.toString());
+        if (!r.ok) throw new Error(await r.text());
+        const data = await r.json();
+        resultsState.loadedForRun = data.run_dir || resultsState.loadedForRun;
+        $("resultsMeta").textContent = data.run_dir
+          ? `${data.total} лотов · ${data.run_dir.split(/[/\\\\]/).pop()}`
+          : "нет scored-list.json";
+        const body = $("resultsBody");
+        if (!data.items || !data.items.length) {
+          body.innerHTML = `<tr><td colspan="6" class="meta">Пусто для фильтра ${esc(resultsState.tier)}</td></tr>`;
+        } else {
+          body.innerHTML = data.items
+            .map((it) => {
+              const id = esc(it.tender_id);
+              const sel = id === esc(resultsState.selectedId) ? " selected" : "";
+              const title = esc(it.title || "—");
+              const url = it.url ? esc(it.url) : "";
+              const titleHtml = url
+                ? `<a href="${url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${title}</a>`
+                : title;
+              return `<tr data-id="${id}" class="${sel}">
+                <td><span class="tier-badge tier-${esc(it.tier)}">${esc(it.tier)}</span></td>
+                <td>${esc(it.score ?? "")}</td>
+                <td class="title-cell">${titleHtml}</td>
+                <td>${esc(it.price_rub || "—")}</td>
+                <td>${esc(it.location || "—")}</td>
+                <td>${esc(it.deadline_msk || "—")}</td>
+              </tr>`;
+            })
+            .join("");
+        }
+        if (resultsState.selectedId) {
+          openDetail(resultsState.selectedId);
+        }
+      } catch (e) {
+        $("resultsMeta").textContent = "ошибка загрузки";
+        $("lastError").textContent = "results failed: " + e;
+      }
+    }
+
+    async function openDetail(tenderId) {
+      resultsState.selectedId = tenderId;
+      $("resultsLayout").classList.add("has-detail");
+      document.querySelectorAll("#resultsBody tr").forEach((tr) => {
+        tr.classList.toggle("selected", tr.dataset.id === String(tenderId));
+      });
+      const panel = $("detailPanel");
+      panel.classList.remove("empty");
+      panel.innerHTML = "<div class='meta'>загрузка…</div>";
+      try {
+        const r = await fetch("/api/results/" + encodeURIComponent(tenderId));
+        if (!r.ok) throw new Error(await r.text());
+        const { item } = await r.json();
+        const rows = [
+          ["tier / score", `${item.tier || "—"} · ${item.score ?? "—"}`],
+          ["почему", item.fit_reason || "—"],
+          ["методы", item.methods || "—"],
+          ["заказчик", item.customer_name || "—"],
+          ["ИНН / КПП", `${item.customer_inn || "—"} / ${item.customer_kpp || "—"}`],
+          ["статус", item.status || "—"],
+          ["срок МСК", item.deadline_msk || "—"],
+          ["цена", item.price_rub || "—"],
+          ["регион", item.location || "—"],
+          ["контакт", [item.contact_name, item.contact_phone, item.contact_email].filter(Boolean).join("; ") || "—"],
+          ["id", item.tender_id || "—"],
+        ];
+        const link = item.url
+          ? `<p style="margin:0 0 0.75rem"><a href="${esc(item.url)}" target="_blank" rel="noopener">Открыть на rostender →</a></p>`
+          : "";
+        panel.innerHTML =
+          `<h3>${esc(item.title || "Лот")}</h3>${link}<dl>` +
+          rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("") +
+          "</dl>";
+      } catch (e) {
+        panel.innerHTML = `<div class="error">не удалось загрузить: ${esc(e)}</div>`;
+      }
+    }
+
+    $("resultsBody").addEventListener("click", (ev) => {
+      const tr = ev.target.closest("tr[data-id]");
+      if (!tr) return;
+      openDetail(tr.dataset.id);
+    });
+
+    document.querySelectorAll("#tierTabs button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#tierTabs button").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        resultsState.tier = btn.dataset.tier;
+        loadResults();
+      });
+    });
+
+    let searchTimer = null;
+    $("resultsSearch").addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        resultsState.q = $("resultsSearch").value.trim();
+        loadResults();
+      }, 250);
+    });
+
+    $("btnRefreshResults").onclick = () => loadResults();
+
+    $("btnStart").onclick = async () => {
+      const limit = Number($("limit").value) || 20;
+      resultsState.selectedId = null;
+      resultsState.loadedForRun = null;
+      $("detailPanel").className = "empty";
+      $("detailPanel").textContent = "Кликните строку — детали лота";
+      $("resultsLayout").classList.remove("has-detail");
+      const r = await fetch("/api/run/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit, query: "неразрушающий" }),
+      });
+      if (!r.ok) {
+        const t = await r.text();
+        $("lastError").textContent = "start failed: " + t;
+      }
+      poll();
+    };
+
+    $("btnStop").onclick = async () => {
+      await fetch("/api/run/stop", { method: "POST" });
+      poll();
+    };
+
+    poll();
+    loadResults();
+    setInterval(poll, 1000);
+  </script>
+</body>
+</html>

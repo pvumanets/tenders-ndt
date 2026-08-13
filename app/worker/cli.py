@@ -1,4 +1,4 @@
-"""CLI: P1 list scrape + P2 scoring + P3 cards + P4 artifacts."""
+"""CLI: P1 list scrape + P2 scoring + P3 cards + P4 artifacts + P5.3 ingest."""
 from __future__ import annotations
 
 import argparse
@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 from app.scoring.pipeline import score_rows
 from app.worker.artifacts import write_artifacts
 from app.worker.card_scrape import enrich_cards
+from app.worker.docs import download_docs_enabled, download_inbox_docs
+from app.worker.ingest import ingest_run, redact_db_error
 from app.worker.list_scrape import AuthError, scrape_list
 
 
@@ -25,7 +27,9 @@ def _default_out() -> Path:
 
 def _cookies_path(args: argparse.Namespace) -> Path:
     load_dotenv(_repo_root() / ".env")
-    cookies = Path(args.cookies or os.getenv("ROSTENDER_COOKIES_FILE", "./cookies.rostender.txt"))
+    cookies = Path(
+        getattr(args, "cookies", None) or os.getenv("ROSTENDER_COOKIES_FILE", "./cookies.rostender.txt")
+    )
     if not cookies.is_absolute():
         cookies = _repo_root() / cookies
     return cookies
@@ -162,6 +166,29 @@ def cmd_artifacts(args: argparse.Namespace) -> int:
         f"**files:** `tenders.csv`, `tenders.md`, `priority-fit.md`\n",
     )
     print(f"Artifacts → {out_dir}")
+    query = getattr(args, "query", None) or "неразрушающий"
+    limit_n = getattr(args, "limit", None) or 1000
+    try:
+        result = ingest_run(query=query, limit_n=int(limit_n), status="done", rows=rows)
+    except Exception as exc:  # noqa: BLE001
+        print(f"INGEST ERROR: {redact_db_error(exc)}")
+        return 1
+    if result is None:
+        print("Ingest skipped (database unconfigured)")
+    else:
+        print(f"Ingest: {result.lot_count} lots (score≥4)")
+    if download_docs_enabled():
+        try:
+            docs = download_inbox_docs(rows, cookies_path=_cookies_path(args), delay_s=0.2)
+        except AuthError as exc:
+            print(f"DOCS AUTH ERROR: {exc}")
+            return 2
+        except Exception as exc:  # noqa: BLE001
+            print(f"DOCS ERROR: {redact_db_error(exc)}")
+            return 1
+        print(f"Docs: saved={docs.saved} skipped={docs.skipped} errors={docs.errors}")
+    else:
+        print("Docs: skip (DOWNLOAD_DOCS=0)")
     return 0
 
 
@@ -191,6 +218,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p4 = sub.add_parser("artifacts", help="P4: CSV/MD/priority-fit")
     p4.add_argument("--out", default=None)
+    p4.add_argument("--cookies", default=None)
     p4.set_defaults(func=cmd_artifacts)
 
     both = sub.add_parser("run", help="P1→P2→P3→P4 (or --from-score skips P1)")

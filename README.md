@@ -1,35 +1,66 @@
 # ndt-tender-scout
 
-UI-мониторинг тендеров rostender.info для **ООО СВАРКА** (пул 1000, уровни L1–L3).
+UI-мониторинг тендеров [rostender.info](https://rostender.info) для **ООО СВАРКА**.
 
-**Фазы: P0–P4 done.** P5 Operator HTML · P6 Docker — дальше.
+**GitHub:** [pvumanets/tenders-ndt](https://github.com/pvumanets/tenders-ndt) · ветка `main` · [git workflow](./docs/delivery/git-workflow.md)
 
-## Канон
+**Phases:** P0–P6 done · **P7** VPS + TLS next.
 
-[docs/CANON.md](./docs/CANON.md) → `ndt-buisness-proc/.../tender-monitoring/delivery/`
+## Canon (this repo)
 
-## Запуск
+| | |
+| --- | --- |
+| Map | [docs/README.md](./docs/README.md) |
+| Index | [docs/CANON.md](./docs/CANON.md) |
+| Dev stand | [docs/delivery/dev-stand.md](./docs/delivery/dev-stand.md) |
+| Agents | [AGENTS.md](./AGENTS.md) |
+| Entry skill | **`scout-orchestrator`** (always multi-routes `scout-*`) |
+
+Business-proc keeps only an epic stub — do not edit product rules there.
+
+## Dev stand (P5.1, Docker)
+
+Тот же compose, что потом на VPS (без Caddy). Канон: [docs/delivery/dev-stand.md](./docs/delivery/dev-stand.md).
+
+1. Скопируйте `.env.example` → `.env` (или допишите новые переменные, если `.env` уже есть) и заполните `POSTGRES_PASSWORD` и две пары Scout (значения не в git и не в чат). Если пароль Postgres содержит `@` или `:`, URL-кодируйте его в `DATABASE_URL` на хосте; в compose для api пароль подставляется отдельно.
+2. Поднять стенд (создаст пустой `cookies.rostender.txt`, если файла нет):
+
+```powershell
+.\scripts\dev-up.ps1
+```
+
+Эквивалент вручную: `docker compose up --build` (скрипт ещё ждёт health).
+
+- React (живой API, P6): [http://localhost:8765/](http://localhost:8765/)
+- AS-IS техпанель: [http://localhost:8765/legacy](http://localhost:8765/legacy)
+- Health: [http://localhost:8765/api/health](http://localhost:8765/api/health)
+
+Агент перед `pytest -m smoke` сам гоняет `dev-up.ps1`, если health не 200. Пароль из `.env` не выдумывает.
+
+## Operator UI без Docker (venv)
+
+Нужен тот же Postgres (`db` на :5433). Стенд `db` всё равно поднимайте скриптом. API с хоста:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
-# полный цикл:
+python -m app.api
+# → http://127.0.0.1:8765/  (React dist, если собран; иначе AS-IS HTML)
+```
+
+Start / Stop · phases · L1–L3 — на `/legacy`.  
+**TO-BE:** React SPA за Scout-логином (P5.2 / P6) — `docs/delivery/operator-ui.md`.
+
+## CLI
+
+```powershell
 python -m app.worker run --limit 1000 --out runs/YYYY-MM-DD
-# только карточки+артефакты по готовому scored-list:
 python -m app.worker run --from-score --out runs/2026-08-11
 ```
 
-Команды: `scrape` · `score` · `cards` · `artifacts` · `run`
+## Secrets
 
-## Прогон 2026-08-11
+`cookies.rostender.txt` + `.env` — gitignore. Rules: `docs/delivery/auth-cookies.md`.
 
-- 1000 лотов; L1/L2/L3 = 77/67/366
-- Cards: **510/510** ok
-- Артефакты: `tenders.csv`, `tenders.md`, `priority-fit.md`
+## Transport
 
-## Транспорт
-
-httpx + cookies (Playwright → WAF 403 в этой среде).
-
-## Следующее
-
-**P5** — FastAPI + HTML хода работы ([operator-ui](../ndt-buisness-proc/docs/projects/tender-monitoring/delivery/operator-ui.md) в каноне).
+httpx + cookies (Playwright → WAF 403 in current env).

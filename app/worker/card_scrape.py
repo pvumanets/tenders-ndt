@@ -5,12 +5,22 @@ import re
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
 
 from app.worker.cookies import parse_netscape_cookies
+from app.worker.docs import sanitize_filename
 from app.worker.list_scrape import AuthError, UA
+
+_FILE_EXT = re.compile(
+    r"\.(pdf|docx?|xlsx?|pptx?|zip|rar|7z|rtf|odt|ods|csv|txt|sig|xml)(\?|$)",
+    re.I,
+)
+_HREF_DOWNLOAD = re.compile(r"download|getfile|get-file|/file/|/files/|/docs?/", re.I)
+_ARCHIVE_TEXT = re.compile(r"скачать одним архивом", re.I)
+_SKIP_HREF = re.compile(r"^(javascript:|mailto:|#)", re.I)
 
 METHOD_PATTERNS = [
     ("УЗК", re.compile(r"ультразвуков|узк|\bук\b|узт", re.I)),
@@ -137,12 +147,50 @@ def parse_card_html(html: str, title_hint: str = "") -> dict[str, Any]:
     }
 
 
+def _looks_like_file_href(href: str) -> bool:
+    path = urlparse(href).path or href
+    return bool(_HREF_DOWNLOAD.search(href) or _FILE_EXT.search(path))
+
+
+def parse_document_links(html: str, page_url: str) -> list[dict[str, str]]:
+    """Collect per-file download links; fall back to «Скачать одним архивом»."""
+    soup = BeautifulSoup(html, "lxml")
+    files: list[dict[str, str]] = []
+    archive: dict[str, str] | None = None
+    seen: set[str] = set()
+    for anchor in soup.find_all("a", href=True):
+        href = str(anchor.get("href") or "").strip()
+        if not href or _SKIP_HREF.search(href):
+            continue
+        absolute = urljoin(page_url, href)
+        if absolute in seen or absolute.rstrip("/") == page_url.rstrip("/"):
+            continue
+        text = " ".join(anchor.get_text(" ", strip=True).split())
+        if _ARCHIVE_TEXT.search(text) or _ARCHIVE_TEXT.search(href):
+            seen.add(absolute)
+            archive = {"name": "docs.zip", "url": absolute}
+            continue
+        if not _looks_like_file_href(href) and not _FILE_EXT.search(text):
+            continue
+        seen.add(absolute)
+        name = sanitize_filename(text) or sanitize_filename(urlparse(absolute).path) or "document"
+        if not _FILE_EXT.search(name) and _FILE_EXT.search(urlparse(absolute).path):
+            ext = Path(urlparse(absolute).path).suffix
+            name = f"{name}{ext}"
+        files.append({"name": name, "url": absolute})
+    if files:
+        return files
+    return [archive] if archive else []
+
+
 def enrich_cards(
     rows: list[dict],
     card_ids: list[str],
     *,
     cookies_path: Path,
     delay_s: float = 0.25,
+    should_stop=None,
+    on_progress=None,
 ) -> tuple[list[dict], list[dict]]:
     """Return (enriched_rows, errors). Mutates copies of L1–L3 rows."""
     id_set = set(card_ids)
@@ -161,6 +209,8 @@ def enrich_cards(
         timeout=60.0,
     ) as client:
         for i, tid in enumerate(card_ids, start=1):
+            if should_stop and should_stop():
+                break
             row = by_id.get(tid)
             if not row:
                 errors.append({"tender_id": tid, "error": "missing_in_scored"})
@@ -183,6 +233,9 @@ def enrich_cards(
                 else:
                     r.raise_for_status()
                     fields = parse_card_html(r.text, title_hint=row.get("title") or "")
+                    links = parse_document_links(r.text, url)
+                    if links:
+                        row["doc_links"] = links
                     for k, v in fields.items():
                         if v:
                             # don't overwrite list location/customer with worse empty; only fill/upgrade
@@ -206,6 +259,8 @@ def enrich_cards(
             except Exception as e:  # noqa: BLE001
                 row["card_error"] = f"{type(e).__name__}: {e}"
                 errors.append({"tender_id": tid, "error": row["card_error"]})
+            if on_progress:
+                on_progress(i, len(card_ids))
             if i % 50 == 0:
                 print(f"cards {i}/{len(card_ids)}…")
             time.sleep(delay_s)

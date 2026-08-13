@@ -1,0 +1,18 @@
+{
+  "phase": "done",
+  "phase_label": "Прогон завершён",
+  "running": false,
+  "list_done": 1000,
+  "list_total": 1000,
+  "cards_done": 18,
+  "cards_total": 18,
+  "counters": { "L1": 5, "L2": 7, "L3": 6, "noise": 120 },
+  "session": "ok",
+  "run_dir": "C:\\\\Users\\\\NDT\\\\Documents\\\\ndt-tender-scout\\\\runs\\\\2026-08-12",
+  "log": [
+    { "t": "12:01", "msg": "P1 list scrape done: 1000", "level": "info" },
+    { "t": "12:02", "msg": "P2 score: L1=5 L2=7 L3=6", "level": "info" },
+    { "t": "12:08", "msg": "P3 cards done: 18", "level": "info" },
+    { "t": "12:09", "msg": "P4 artifacts written", "level": "info" }
+  ]
+}

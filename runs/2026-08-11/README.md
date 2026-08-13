@@ -2,32 +2,12 @@
 
 **status:** ok
 
-**phase:** P1
+**via:** operator UI
 
 **query:** неразрушающий
 
-**count:** 1000
+**limit:** 200
 
-**files:** `raw-list.json`
+**tiers:** {'L1': 18, 'L2': 14, 'L3': 61, 'pool': 80, 'noise': 27}
 
-## P2 scoring
-
-**tiers:** {'L1': 77, 'L2': 67, 'L3': 366, 'noise': 137, 'pool': 353}
-
-**card candidates (L1∪L2∪L3):** 510
-
-**files:** `scored-list.json`, `tier-summary.json`, `card-ids.json`
-
-## P3 cards
-
-**fetched ok:** 510/510
-
-**errors:** 0
-
-**files:** `scored-list.json` (enriched), `cards-errors.json`
-
-## P4 artifacts
-
-**tiers:** {'L1': 77, 'L2': 67, 'L3': 366, 'noise': 137, 'pool': 353}
-
-**files:** `tenders.csv`, `tenders.md`, `priority-fit.md`
+**files:** raw-list, scored-list, tenders.csv, tenders.md, priority-fit.md
