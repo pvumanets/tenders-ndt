@@ -99,4 +99,4 @@ P0 → … → P5 → P5.0 accepted
 
 ## После P7 (NEXT+)
 
-- Cron, роли, Bitrix, Excel-вкладка, Start/Stop в Tech
+- Cron, роли, Bitrix, Excel-вкладка

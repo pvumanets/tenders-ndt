@@ -15,7 +15,7 @@
 | GitHub | `https://github.com/pvumanets/tenders-ndt.git` |
 | Default branch | **`main`** |
 | Локальный путь | `C:\Users\NDT\Documents\ndt-tender-scout` |
-| P7 | VPS **клонирует / `git pull` с GitHub** (`/opt/tenders-ndt`); доступ агента — [`vps.md`](./vps.md) |
+| P7 | VPS **клонирует / `git pull` с GitHub** (`/opt/tenders-ndt`); деплой = [`vps.md`](./vps.md) `python scripts/vps-bootstrap.py --deploy`. На сервере код не правят. |
 
 Первый пуш на пустой origin — исключение (один коммит на `main`). После него агент в `main` не коммитит.
 
@@ -51,6 +51,7 @@
 - Пуш без явной просьбы владельца
 - Коммит `.env`, `cookies*.txt`, паролей, cookie-значений, `_probe_*`
 - Менять `git config`
+- Править tracked-файлы на VPS; `reset --hard` / `clean -fd` при грязном `git status --porcelain` (rescue-ветка или тот же diff на `feat/<id>`). Деплой — `--deploy`, не `scp`.
 
 Коммит — только если владелец попросил (этот репо: user rule). Сообщение: 1–2 предложения, **зачем**, в стиле существующих коммитов.
 

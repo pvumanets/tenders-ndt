@@ -7,6 +7,8 @@ import {
   documentDownloadUrl,
   fetchInbox,
   mapRunStatus,
+  startRun,
+  stopRun,
 } from "./inbox";
 
 afterEach(() => {
@@ -113,5 +115,49 @@ describe("fetchInbox", () => {
     expect(items[0].customer_name).toBe("");
     expect(items[0].documents).toEqual([]);
     expect(items[0].source_platform_id).toBe("rostender");
+  });
+});
+
+describe("startRun / stopRun", () => {
+  it("posts empty json to start", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ ok: true }) });
+    vi.stubGlobal("fetch", fetchMock);
+    await startRun();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/run/start",
+      expect.objectContaining({ method: "POST", credentials: "include" }),
+    );
+  });
+
+  it("maps already_running and missing_cookies", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        status: 409,
+        ok: false,
+        json: async () => ({ detail: "already_running" }),
+      }),
+    );
+    await expect(startRun()).rejects.toMatchObject({ code: "already_running" });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        status: 400,
+        ok: false,
+        json: async () => ({ detail: "missing_cookies" }),
+      }),
+    );
+    await expect(startRun()).rejects.toMatchObject({ code: "missing_cookies" });
+  });
+
+  it("posts stop", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ status: 200, ok: true, json: async () => ({ ok: true }) });
+    vi.stubGlobal("fetch", fetchMock);
+    await stopRun();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/run/stop",
+      expect.objectContaining({ method: "POST", credentials: "include" }),
+    );
   });
 });

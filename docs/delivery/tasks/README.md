@@ -40,8 +40,9 @@
 | 019 | P1: только приём заявок, срок с сегодня | task | done | P1 | | [019-open-upcoming-only.md](./019-open-upcoming-only.md) |
 | 020 | Дев-стенд: скрипт подъёма + агенты не скикают БД | task | done | P5.1 | | [020-dev-stand.md](./020-dev-stand.md) |
 | 021 | GitHub origin + git workflow | task | done | P6 | | [021-github-origin.md](./021-github-origin.md) |
+| 022 | Tech: Старт/Стоп прогона в React | task | doing | NEXT+ | Q25 | [022-tech-start-stop.md](./022-tech-start-stop.md) |
 
 ### Очередь
 
 - **001–011** — done в mock; P5.0 **accepted** (2026-08-13).
-- **012** — done (P5.1). **013** — done (P5.2). **014** — done (P5.3). **015** — done (P5.4). **016** — done (P5.5). **017** — done (P6). **019** — done (P1 hotfix: только открытые). **020** — done (P5.1 DX: `dev-up.ps1`). **021** — done (GitHub origin). **018** — doing (HTTPS https://tenders.ndtexam.ru; Owner OK — логин с другого ПК).
+- **012** — done (P5.1). **013** — done (P5.2). **014** — done (P5.3). **015** — done (P5.4). **016** — done (P5.5). **017** — done (P6). **019** — done (P1 hotfix: только открытые). **020** — done (P5.1 DX: `dev-up.ps1`). **021** — done (GitHub origin). **018** — doing (HTTPS https://tenders.ndtexam.ru; Owner OK — логин с другого ПК). **022** — doing (Start/Stop в React; Q25).

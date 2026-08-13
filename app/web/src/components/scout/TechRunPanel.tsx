@@ -1,10 +1,22 @@
 import { useState } from "react";
-import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 import type { TechStatus } from "../../types";
 import { copy } from "../../copy";
 import { stripe } from "../../theme/palette";
 
-export default function TechRunPanel({ status }: { status: TechStatus }) {
+export default function TechRunPanel({
+  status,
+  busy = false,
+  error = null,
+  onStart,
+  onStop,
+}: {
+  status: TechStatus;
+  busy?: boolean;
+  error?: string | null;
+  onStart: () => void;
+  onStop: () => void;
+}) {
   const [copied, setCopied] = useState(false);
   const sessionLabel =
     status.session === "ok"
@@ -12,6 +24,8 @@ export default function TechRunPanel({ status }: { status: TechStatus }) {
       : status.session === "expired"
         ? copy.session_expired
         : copy.session_missing;
+  const canStart = !busy && !status.running && status.session === "ok";
+  const canStop = !busy && status.running;
 
   return (
     <Paper
@@ -24,9 +38,17 @@ export default function TechRunPanel({ status }: { status: TechStatus }) {
       }}
     >
       <Stack spacing={2}>
-        <Typography variant="body2" color="text.secondary">
-          {copy.tech_readonly_note}
-        </Typography>
+        <Stack direction="row" spacing={1}>
+          <Button variant="contained" disabled={!canStart} onClick={onStart}>
+            {busy && !status.running ? copy.run_start_busy : copy.run_start}
+          </Button>
+          <Button variant="outlined" disabled={!canStop} onClick={onStop}>
+            {copy.run_stop}
+          </Button>
+        </Stack>
+        {error ? (
+          <Alert severity="error">{error}</Alert>
+        ) : null}
         <Typography variant="body2" color="primary" sx={{ fontWeight: 500 }}>
           {sessionLabel}
         </Typography>

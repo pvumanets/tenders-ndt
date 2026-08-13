@@ -14,6 +14,7 @@
 - Rotating owner-given VPS credentials without being asked
 - Working on `main` / `master` for a task (use `feat/<id>-<slug>` from [`git-workflow.md`](../../../docs/delivery/git-workflow.md))
 - Force-pushing `main` or pushing without the owner asking
+- Editing product files on the VPS / `scp` of a feature onto `/opt/tenders-ndt` / `git reset --hard` while porcelain is dirty (tracked or untracked sources). Deploy = `--deploy` after merge to `main`; rescue branch first if dirty
 - Filter menus as wrapping Chip rows, or Chip as «Непросмотренные» — personal is FilterTriggerButton + vertical list; owner rejected the chip picker (2026-08-13)
 
 ## Example

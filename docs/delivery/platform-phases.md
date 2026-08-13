@@ -176,7 +176,7 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 **Вход:** две учётки в `users`; personal kit  
 **Выход:** `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/me`; все прочие `/api/*` (кроме login и health) — только с сессией; React-экран входа.
 
-**Контур:** сессия = строка `sessions` (не JWT, не RAM). Cookie `scout_session` (HttpOnly, SameSite Lax, Path `/`, TTL 7 суток с логина, без sliding). `Secure` только при `SCOUT_COOKIE_SECURE=1` (дев HTTP = 0; P7 = 1). `GET /api/me` → `{ username, display_name }`. 401 login: `invalid_credentials` без утечки «логин существует». Middleware: любой `/api/*` кроме `GET /api/health`, `POST /api/auth/login`, `POST /api/auth/logout` — только с живой сессией (несуществующий `/api/inbox` без cookie → 401). Ротация пароля: при старте сверка env с хешем по username; смена хеша гасит сессии пользователя. Смена username в env — не авто-rename. Нет ролей. Start/Stop в React нет (Q25).
+**Контур:** сессия = строка `sessions` (не JWT, не RAM). Cookie `scout_session` (HttpOnly, SameSite Lax, Path `/`, TTL 7 суток с логина, без sliding). `Secure` только при `SCOUT_COOKIE_SECURE=1` (дев HTTP = 0; P7 = 1). `GET /api/me` → `{ username, display_name }`. 401 login: `invalid_credentials` без утечки «логин существует». Middleware: любой `/api/*` кроме `GET /api/health`, `POST /api/auth/login`, `POST /api/auth/logout` — только с живой сессией (несуществующий `/api/inbox` без cookie → 401). Ротация пароля: при старте сверка env с хешем по username; смена хеша гасит сессии пользователя. Смена username в env — не авто-rename. Нет ролей. Start/Stop в React — таск [022](./tasks/022-tech-start-stop.md) (после P6).
 
 **Не делать:** Bitrix SSO; JWT в localStorage; роли; публичный inbox без логина; TLS (P7).
 
@@ -275,18 +275,18 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 **Зависит от:** P5.4 и P5.5 (**done** — документы must на демо директору)  
 **Таск:** [017](./tasks/017-react-wire.md)  
 **Вход:** UI P5.0 + реальный `/api/inbox*` + `/api/auth*` + `/api/status`  
-**Выход:** моки сняты; тот же inbox; экран входа; вкладка Прогон read-only.
+**Выход:** моки сняты; тот же inbox; экран входа; вкладка Прогон (статус; Start/Stop — 022).
 
 **Контур:** после логина — текущие Лоты. Local state viewed/priority заменяется API. Пресеты дат считают `from/to` на клиенте.
 
-**Не делать:** новая доска; Start/Stop в React; Bitrix; перерисовка под 520px vs personal 400px (остаётся personal shell ~400px, как accepted mock).
+**Не делать (тогда):** новая доска; Start/Stop в React (снято в 022); Bitrix; перерисовка под 520px vs personal 400px (остаётся personal shell ~400px, как accepted mock).
 
 **Done:**
 
 - [x] без мока inbox.json как источника списка
 - [x] непросмотренные / приоритет / поиск / даты ходят в API
 - [x] 401 → логин
-- [x] Tech read-only status
+- [x] Tech status (Start/Stop — 022)
 
 **Owner OK:** digital на дев-стенде проходит сценарий директора (логин → непросмотренные → drawer; файлы, если был прогон с `DOWNLOAD_DOCS=1`).
 
@@ -325,8 +325,9 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 - Роли (если digital ≠ директор по правам)
 - Bitrix leads
 - Excel-вкладка
-- Start/Stop в Tech UI
-- Другие ЭТП (реестр [`../discovery/platforms.md`](../discovery/platforms.md); зонды: [`../discovery/sibur-srm-probe.md`](../discovery/sibur-srm-probe.md), [`../discovery/onlinecontract-probe.md`](../discovery/onlinecontract-probe.md), [`../discovery/tender-pro-probe.md`](../discovery/tender-pro-probe.md))
+- Другие ЭТП (реестр [`../discovery/platforms.md`](../discovery/platforms.md); зонды: [`../discovery/sibur-srm-probe.md`](../discovery/sibur-srm-probe.md), [`../discovery/onlinecontract-probe.md`](../discovery/onlinecontract-probe.md), [`../discovery/tender-pro-probe.md`](../discovery/tender-pro-probe.md)
+
+Start/Stop в Tech — [022](./tasks/022-tech-start-stop.md) (owner 2026-08-13).
 
 ---
 

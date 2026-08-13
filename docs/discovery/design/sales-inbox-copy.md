@@ -192,9 +192,12 @@
 | run_path_copied | Скопировано |
 | log_title | Лог |
 | log_empty | Записей пока нет |
-| tech_readonly_note | Старт и стоп прогона в этом экране отключены |
+| run_error_already | Прогон уже идёт |
+| run_error_cookies | Нет файла cookies — положите cookies по инструкции |
+| run_error_failed | Не удалось запустить прогон. Обновите страницу и повторите. |
+| run_start_busy | Запуск… |
 
-Tech может показывать `L1` / `L2` / `L3` в счётчиках — это норма. `run_start` / `run_stop` в каноне остаются; в React P6 кнопки не показываем.
+Tech показывает `L1` / `L2` / `L3` в счётчиках — это норма. Старт/Стоп в React — таск [022](../../delivery/tasks/022-tech-start-stop.md). Limit и query в UI нет.
 
 ---
 

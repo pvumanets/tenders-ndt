@@ -16,7 +16,7 @@ description: >-
 3. [`docs/delivery/code-phases.md`](../../../docs/delivery/code-phases.md)
 4. [`docs/delivery/acceptance.md`](../../../docs/delivery/acceptance.md)
 5. Git: [`docs/delivery/git-workflow.md`](../../../docs/delivery/git-workflow.md) — origin is GitHub; P7 clones that repo, not a PC folder. Docs-only edits: `docs/<id>-<slug>` from `main`.
-6. VPS: [`docs/delivery/vps.md`](../../../docs/delivery/vps.md) — `/opt/tenders-ndt`, `docker-compose.prod.yml` on loopback until domain.
+6. VPS: [`docs/delivery/vps.md`](../../../docs/delivery/vps.md) — `/opt/tenders-ndt`, `docker-compose.prod.yml` on loopback until domain. Deploy = `--deploy` after `main`; never reset a dirty VPS tree.
 
 ## Mission
 

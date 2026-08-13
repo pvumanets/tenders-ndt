@@ -51,14 +51,22 @@ def test_me_and_status_and_inbox_unauthorized_without_cookie() -> None:
         status = client.get("/api/status")
         inbox = client.get("/api/inbox")
         results = client.get("/api/results")
+        start = client.post("/api/run/start", json={})
+        stop = client.post("/api/run/stop")
     assert me.status_code == 401
     assert status.status_code == 401
     assert inbox.status_code == 401
     assert results.status_code == 401
+    assert start.status_code == 401
+    assert stop.status_code == 401
     assert me.json() == {"detail": "unauthorized"}
+    assert start.json() == {"detail": "unauthorized"}
+    assert stop.json() == {"detail": "unauthorized"}
     _assert_no_secrets(me.json())
     _assert_no_secrets(status.json())
     _assert_no_secrets(inbox.json())
+    _assert_no_secrets(start.json())
+    _assert_no_secrets(stop.json())
 
 
 @pytest.mark.unit
