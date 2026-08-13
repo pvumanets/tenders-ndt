@@ -1,0 +1,28 @@
+import type { InboxLot, SalesTier } from "../types";
+import { copy } from "../copy";
+
+export function effectiveTier(lot: InboxLot): SalesTier {
+  return lot.manual_tier ?? lot.tier;
+}
+
+export function tierLabel(tier: SalesTier): string {
+  if (tier === "L1") return copy.chip_hot;
+  if (tier === "L2") return copy.chip_strong;
+  return copy.chip_watch;
+}
+
+export function formatPrice(n: number | null): string {
+  if (n == null) return copy.field_empty;
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "RUB",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+export function formatDate(iso: string): string {
+  if (!iso) return copy.field_empty;
+  const [y, m, d] = iso.split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}.${m}.${y}`;
+}

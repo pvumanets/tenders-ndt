@@ -1,0 +1,139 @@
+[
+  {
+    "tender_id": "45289101",
+    "title": "Оказание услуг по ультразвуковому контролю сварных соединений трубопроводов",
+    "customer_name": "АО «Севернефтегаз»",
+    "score": 8,
+    "tier": "L1",
+    "manual_tier": null,
+    "viewed": false,
+    "deadline_msk": "2026-08-20",
+    "ingested_at": "2026-08-12",
+    "price_rub": 1850000,
+    "location": "ХМАО — Югра",
+    "status": "Приём заявок",
+    "fit_reason": "Явная услуга УЗК на объекте нефтегаза, приём заявок открыт.",
+    "contact_name": "Иванов П.С.",
+    "contact_phone": "+7 (3467) 12-34-56",
+    "contact_email": "tenders@severneftegaz.example",
+    "url": "https://rostender.info/tender/45289101",
+    "documents": [
+      {
+        "name": "ТЗ_УЗК.pdf",
+        "size_kb": 420
+      },
+      {
+        "name": "Проект_договора.docx",
+        "size_kb": 88
+      }
+    ],
+    "source_platform_id": "rostender"
+  },
+  {
+    "tender_id": "45289044",
+    "title": "Проведение неразрушающего контроля металлоконструкций эстакады",
+    "customer_name": "ООО «ПромСтройМонтаж»",
+    "score": 6,
+    "tier": "L1",
+    "manual_tier": null,
+    "viewed": false,
+    "deadline_msk": "2026-08-18",
+    "ingested_at": "2026-08-12",
+    "price_rub": 940000,
+    "location": "Свердловская обл.",
+    "status": "Приём заявок",
+    "fit_reason": "НК металлоконструкций как работы; объект — промышленная эстакада.",
+    "contact_name": null,
+    "contact_phone": "+7 (343) 200-00-11",
+    "contact_email": null,
+    "url": "https://rostender.info/tender/45289044",
+    "documents": [
+      {
+        "name": "Извещение.pdf",
+        "size_kb": 210
+      }
+    ],
+    "source_platform_id": "rostender"
+  },
+  {
+    "tender_id": "45288712",
+    "title": "Услуги визуального и измерительного контроля (ВИК) при монтаже",
+    "customer_name": "ПАО «ЭнергоСеть»",
+    "score": 5,
+    "tier": "L2",
+    "manual_tier": null,
+    "viewed": true,
+    "deadline_msk": "2026-08-25",
+    "ingested_at": "2026-08-11",
+    "price_rub": 560000,
+    "location": "Москва",
+    "status": "Приём заявок",
+    "fit_reason": "ВИК как услуга; сигнал чуть слабее без связки метод+объект+срок.",
+    "contact_name": "Отдел закупок",
+    "contact_phone": null,
+    "contact_email": "zakupki@energoset.example",
+    "url": "https://rostender.info/tender/45288712",
+    "documents": [],
+    "source_platform_id": "rostender"
+  },
+  {
+    "tender_id": "45288190",
+    "title": "Неразрушающий контроль сварных швов резервуаров РВС",
+    "customer_name": "АО «Транснефть-Урал»",
+    "score": 7,
+    "tier": "L1",
+    "manual_tier": "L2",
+    "viewed": false,
+    "deadline_msk": "2026-08-15",
+    "ingested_at": "2026-08-10",
+    "price_rub": 2100000,
+    "location": "Башкортостан",
+    "status": "Приём заявок",
+    "fit_reason": "НК швов РВС — услуга; владелец вручную снизил приоритет для очереди.",
+    "contact_name": "Сидорова А.В.",
+    "contact_phone": "+7 (347) 555-01-02",
+    "contact_email": "ndt@tn-ural.example",
+    "url": "https://rostender.info/tender/45288190",
+    "documents": [
+      {
+        "name": "ТЗ.pdf",
+        "size_kb": 1024
+      },
+      {
+        "name": "Ведомость_объёмов.xlsx",
+        "size_kb": 64
+      },
+      {
+        "name": "Схема_РВС.png",
+        "size_kb": 320
+      }
+    ],
+    "source_platform_id": "rostender"
+  },
+  {
+    "tender_id": "45287003",
+    "title": "Дефектоскопия трубопроводов пара и горячей воды",
+    "customer_name": "МУП «Теплосеть»",
+    "score": 4,
+    "tier": "L2",
+    "manual_tier": null,
+    "viewed": false,
+    "deadline_msk": "2026-09-01",
+    "ingested_at": "2026-08-09",
+    "price_rub": 310000,
+    "location": "Челябинская обл.",
+    "status": "Приём заявок",
+    "fit_reason": "Дефектоскопия как работы на теплосети; НМЦ скромная.",
+    "contact_name": null,
+    "contact_phone": null,
+    "contact_email": null,
+    "url": "https://rostender.info/tender/45287003",
+    "documents": [
+      {
+        "name": "Описание_закупки.pdf",
+        "size_kb": 150
+      }
+    ],
+    "source_platform_id": "rostender"
+  }
+]
