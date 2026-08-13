@@ -6,12 +6,11 @@ PasswordAuthentication stays yes. Does not expose :8765/:5433 on 0.0.0.0.
 
 from __future__ import annotations
 
+import fnmatch
 import os
-import sys
 import time
 from pathlib import Path
-
-import paramiko
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV_VPS = ROOT / ".env.vps"
@@ -45,6 +44,10 @@ SKIP_ENV_PREFIXES = ("SCOUT_VPS_",)
 COOKIE_GLOBS = ("cookies*.txt",)
 HOST_PUBLIC = "tenders.ndtexam.ru"
 HOST_IP = "77.91.94.111"
+# Untracked on VPS that reset/clean must not treat as product edits.
+_ALLOW_UNTRACKED_NAMES = (".env", ".env.vps")
+_ALLOW_UNTRACKED_GLOBS = ("cookies*.txt",)
+_ALLOW_UNTRACKED_PREFIXES = ("runs/",)
 
 
 def _load_dotenv(path: Path) -> dict[str, str]:
@@ -62,7 +65,60 @@ def _expand(path: str) -> str:
     return os.path.expanduser(path.replace("/", os.sep) if os.name == "nt" else path)
 
 
-def _ssh(host: str, user: str, *, password: str | None = None, key: Path | None = None) -> paramiko.SSHClient:
+def _porcelain_path(line: str) -> str:
+    rest = line[3:] if len(line) >= 3 else line
+    if " -> " in rest:
+        rest = rest.split(" -> ", 1)[1]
+    rest = rest.strip()
+    if len(rest) >= 2 and rest[0] == '"' and rest[-1] == '"':
+        rest = rest[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+    return rest.replace("\\", "/")
+
+
+def _allowed_untracked(path: str) -> bool:
+    name = Path(path).name
+    if name in _ALLOW_UNTRACKED_NAMES:
+        return True
+    if any(fnmatch.fnmatch(name, pat) for pat in _ALLOW_UNTRACKED_GLOBS):
+        return True
+    norm = path.replace("\\", "/").lstrip("./")
+    return any(norm == p.rstrip("/") or norm.startswith(p) for p in _ALLOW_UNTRACKED_PREFIXES)
+
+
+def deploy_blocked_reason(porcelain: str) -> str | None:
+    """If VPS git tree is unsafe to reset --hard, return why; else None.
+
+    Tracked edits abort. Untracked .env / cookies*.txt / runs/ are ok.
+    Other untracked paths abort — git clean -fd would delete them.
+    """
+    blockers: list[str] = []
+    for raw in porcelain.splitlines():
+        line = raw.rstrip()
+        if not line:
+            continue
+        xy = line[:2] if len(line) >= 2 else line
+        path = _porcelain_path(line)
+        if xy == "!!":
+            continue
+        if xy == "??":
+            if _allowed_untracked(path):
+                continue
+            blockers.append(f"untracked {path}")
+            continue
+        blockers.append(f"tracked {xy} {path}")
+    if not blockers:
+        return None
+    listed = "\n".join(f"  {item}" for item in blockers)
+    return (
+        "VPS tree dirty; abort reset. Rescue branch rescue/YYYYMMDD-hhmm "
+        "or confirm the same files are on feat/<id>:\n"
+        f"{listed}"
+    )
+
+
+def _ssh(host: str, user: str, *, password: str | None = None, key: Path | None = None) -> Any:
+    import paramiko
+
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     kwargs: dict = {"hostname": host, "username": user, "timeout": 45, "allow_agent": False, "look_for_keys": False}
@@ -74,7 +130,7 @@ def _ssh(host: str, user: str, *, password: str | None = None, key: Path | None 
     return client
 
 
-def _run(client: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int, str, str]:
+def _run(client: Any, cmd: str, *, timeout: int = 120) -> tuple[int, str, str]:
     stdin, stdout, stderr = client.exec_command(cmd, timeout=timeout)
     out = stdout.read().decode("utf-8", errors="replace")
     err = stderr.read().decode("utf-8", errors="replace")
@@ -82,27 +138,27 @@ def _run(client: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[i
     return code, out, err
 
 
-def _must(client: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> str:
+def _must(client: Any, cmd: str, *, timeout: int = 120) -> str:
     code, out, err = _run(client, cmd, timeout=timeout)
     if code != 0:
         raise SystemExit(f"remote failed ({code}): {cmd}\n{err or out}")
     return out
 
 
-def _sftp_put(client: paramiko.SSHClient, local: Path, remote: str) -> None:
+def _sftp_put(client: Any, local: Path, remote: str) -> None:
     sftp = client.open_sftp()
     sftp.put(str(local), remote)
     sftp.close()
 
 
-def _sftp_write(client: paramiko.SSHClient, remote: str, data: str) -> None:
+def _sftp_write(client: Any, remote: str, data: str) -> None:
     sftp = client.open_sftp()
     with sftp.file(remote, "w") as fh:
         fh.write(data)
     sftp.close()
 
 
-def _install_pubkey(client: paramiko.SSHClient, pub: str) -> None:
+def _install_pubkey(client: Any, pub: str) -> None:
     _must(client, "mkdir -p /root/.ssh && chmod 700 /root/.ssh")
     # idempotent append
     escaped = pub.replace("'", "'\"'\"'")
@@ -141,7 +197,7 @@ def _install_pubkey(client: paramiko.SSHClient, pub: str) -> None:
     _run(client, "systemctl reload sshd || systemctl reload ssh || true")
 
 
-def _ensure_docker(client: paramiko.SSHClient) -> None:
+def _ensure_docker(client: Any) -> None:
     code, _, _ = _run(client, "docker compose version")
     if code == 0:
         print("docker: already present")
@@ -168,7 +224,7 @@ def _app_env_text(src: dict[str, str]) -> str:
     return "\n".join(lines)
 
 
-def _sync_cookies(client: paramiko.SSHClient) -> list[str]:
+def _sync_cookies(client: Any) -> list[str]:
     copied: list[str] = []
     for pattern in COOKIE_GLOBS:
         for path in sorted(ROOT.glob(pattern)):
@@ -184,7 +240,7 @@ def _sync_cookies(client: paramiko.SSHClient) -> list[str]:
     return copied
 
 
-def _ensure_ufw(client: paramiko.SSHClient) -> None:
+def _ensure_ufw(client: Any) -> None:
     code, _, _ = _run(client, "command -v ufw")
     if code != 0:
         print("ufw: not installed, skip")
@@ -195,7 +251,7 @@ def _ensure_ufw(client: paramiko.SSHClient) -> None:
     print("ufw: 22/80/443 allowed")
 
 
-def _wait_dns(client: paramiko.SSHClient) -> None:
+def _wait_dns(client: Any) -> None:
     print(f"dns: waiting {HOST_PUBLIC} -> {HOST_IP}")
     for _ in range(36):
         code, out, err = _run(
@@ -211,7 +267,7 @@ def _wait_dns(client: paramiko.SSHClient) -> None:
     raise SystemExit(f"dns: {HOST_PUBLIC} does not resolve to {HOST_IP} yet")
 
 
-def _sync_prod_files(client: paramiko.SSHClient) -> None:
+def _sync_prod_files(client: Any) -> None:
     _must(client, f"mkdir -p {REMOTE_DIR}/runs")
     _sftp_write(client, f"{REMOTE_DIR}/.env", _app_env_text(_load_dotenv(APP_ENV)))
     _sync_cookies(client)
@@ -220,7 +276,7 @@ def _sync_prod_files(client: paramiko.SSHClient) -> None:
     print("files: .env, cookies, compose, Caddyfile")
 
 
-def _wait_local_health(client: paramiko.SSHClient) -> None:
+def _wait_local_health(client: Any) -> None:
     print("health: waiting loopback")
     health = ""
     for _ in range(36):
@@ -235,7 +291,7 @@ def _wait_local_health(client: paramiko.SSHClient) -> None:
     raise SystemExit(f"health not ok: {health or '(empty)'}")
 
 
-def _wait_https(client: paramiko.SSHClient) -> None:
+def _wait_https(client: Any) -> None:
     print(f"https: waiting https://{HOST_PUBLIC}/api/health")
     last = ""
     for _ in range(36):
@@ -275,6 +331,43 @@ def sync_p7() -> None:
             client,
             f"cd {REMOTE_DIR} && docker compose -f docker-compose.prod.yml up -d",
             timeout=300,
+        )
+        _wait_local_health(client)
+        _wait_https(client)
+        listen = _run(client, "ss -lnt | grep -E ':8765|:5433|:80|:443' || true")[1]
+        print("listen:\n" + (listen.strip() or "(none)"))
+    finally:
+        client.close()
+    print(f"done: https://{HOST_PUBLIC}/")
+
+
+def deploy_from_github() -> None:
+    """Pull origin/main onto VPS if the tree is clean. Does not sync secrets."""
+    if not PRIVKEY.is_file():
+        raise SystemExit("missing ~/.ssh/id_ed25519_tenders_ndt_vps")
+    vps = _load_dotenv(ENV_VPS) if ENV_VPS.is_file() else {}
+    host = vps.get("SCOUT_VPS_HOST") or HOST_IP
+    user = vps.get("SCOUT_VPS_USER") or "root"
+    print(f"ssh: key {user}@{host}")
+    client = _ssh(host, user, key=PRIVKEY)
+    try:
+        print("remote:", _must(client, "hostname").strip())
+        porcelain = _must(client, f"git -C {REMOTE_DIR} status --porcelain")
+        blocked = deploy_blocked_reason(porcelain)
+        if blocked:
+            raise SystemExit(blocked)
+        print("git: tree clean (untracked secrets/runs ok)")
+        _must(client, f"git -C {REMOTE_DIR} fetch origin", timeout=180)
+        _must(client, f"git -C {REMOTE_DIR} checkout main")
+        _must(client, f"git -C {REMOTE_DIR} reset --hard origin/main")
+        _must(client, f"git -C {REMOTE_DIR} clean -fd")
+        head = _must(client, f"git -C {REMOTE_DIR} log -1 --oneline").strip()
+        print(f"git: {head}")
+        print("compose: up --build")
+        _must(
+            client,
+            f"cd {REMOTE_DIR} && docker compose -f docker-compose.prod.yml up -d --build",
+            timeout=900,
         )
         _wait_local_health(client)
         _wait_https(client)
@@ -348,8 +441,17 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--sync", action="store_true", help="P7: key login, secrets, Caddy, TLS")
+    parser.add_argument(
+        "--deploy",
+        action="store_true",
+        help="Pull origin/main on VPS if tree is clean; compose up --build. No secrets.",
+    )
     args = parser.parse_args()
-    if args.sync:
+    if args.sync and args.deploy:
+        raise SystemExit("use --sync or --deploy, not both")
+    if args.deploy:
+        deploy_from_github()
+    elif args.sync:
         sync_p7()
     else:
         main()
