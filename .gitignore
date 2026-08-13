@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+# `.env.vps` — root SSH (matched by .env.*)
 
 # Cookies / сессии
 cookies*.txt
