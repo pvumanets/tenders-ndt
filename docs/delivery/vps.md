@@ -19,7 +19,8 @@ Owner lock 2026-08-13: доступы **не считаем скомпромет
 | Scout/Postgres на сервере | `/opt/tenders-ndt/.env` (не в git) |
 | Cookies площадок | `/opt/tenders-ndt/cookies*.txt` (не в git) |
 
-Агент читает `.env.vps` с диска. Не выводить значения. Не копировать пароль в md/skills/правила. Sync: `python scripts/vps-bootstrap.py --sync`.
+Агент читает `.env.vps` с диска. Не выводить значения. Не копировать пароль в md/skills/правила.  
+`--sync` — **только** чтобы заново залить секреты с ПК, не каждый деплой.
 
 ---
 
@@ -55,15 +56,44 @@ Health: [https://tenders.ndtexam.ru/api/health](https://tenders.ndtexam.ru/api/h
 
 ## Деплой
 
-1. Код — `git clone` / overlay `docker-compose.prod.yml` + `Caddyfile` с ПК (`--sync`), пока нет merge в `main`.
-2. Compose prod: Caddy **80/443**; api/Postgres только `127.0.0.1`. Публичный HTTP-логин Scout = fail.
-3. `python scripts/vps-bootstrap.py --sync` — `.env`, `cookies*.txt`, Caddy, `SCOUT_COOKIE_SECURE=1`.
-4. TLS: Let's Encrypt на `tenders.ndtexam.ru`.
+Код на сервере = **GitHub `main`**. Каталог `/opt/tenders-ndt`. На VPS **не правят** продукт и **не `scp`** фичи — только merge в `main`, потом pull.
+
+Агент деплоит так (секреты не трогает):
+
+```powershell
+python scripts/vps-bootstrap.py --deploy
+```
+
+`--deploy` сначала смотрит `git status --porcelain`. Если дерево грязное — **exit ≠ 0, без reset**. Иначе: `fetch` + `reset --hard origin/main` + `git clean -fd` (без `-x`) + `compose up --build`.
+
+Перед ручным reset (если скрипт недоступен):
+
+1. `git status --porcelain` в `/opt/tenders-ndt`.
+2. Tracked правки (` M`, `M `, `A`, `D`, `R`) — **стоп**. Rescue-ветка `rescue/YYYYMMDD-hhmm` + commit, либо тот же diff уже на `feat/<id>`.
+3. Untracked `.env` / `cookies*.txt` — ок. Прочие untracked исходники (`?? app/...`) — тоже стоп: `git clean -fd` их удалит.
+4. Только если чисто:
+
+```bash
+cd /opt/tenders-ndt
+git fetch origin
+git checkout main
+git reset --hard origin/main
+git clean -fd
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Секреты в gitignore — `git reset --hard` их не удаляет. `--sync` — разово залить `.env` / `cookies*.txt` с ПК, не каждый деплой.
+
+Проверка: [https://tenders.ndtexam.ru/api/health](https://tenders.ndtexam.ru/api/health) → `"db":"ok"`. `:8765` только на `127.0.0.1`. Тома Postgres и сертификатов Caddy сохраняются.
+
+Compose prod: Caddy **80/443**; api/Postgres loopback. Публичный HTTP-логин Scout = fail. TLS: Let's Encrypt на `tenders.ndtexam.ru`.
 
 ---
 
 ## Агент: запрещено
 
+- Править продукт на VPS / `scp` файлы фичи в `/opt/tenders-ndt`
+- `git reset --hard` или `git clean -fd`, если porcelain грязный (tracked или untracked исходники)
 - Коммитить `.env`, `.env.vps`, ключи, cookie-файлы
 - Печатать пароль root / Scout / Postgres
 - Отключать `PasswordAuthentication`

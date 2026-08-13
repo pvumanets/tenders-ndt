@@ -19,6 +19,8 @@ was: "Q25"
 
 Кнопки Старт/Стоп на том же экране Tech. Обе учётки, без ролей. Limit/query в UI нет — дефолты API (1000, «неразрушающий»). На VPS `DOWNLOAD_DOCS=1`. Прогон стартует человек в браузере, не Cursor.
 
+Dress rehearsal 2026-08-13: `limit=5` на VPS, сессия rostender ok, дедлайны 18–31.08.2026 (прошлого нет); inbox/runs/docs стёрты, api перезапущен. Директор жмёт Старт на 1000.
+
 ## Acceptance
 
 - [x] на «Прогоне» кнопки Старт и Стоп; нет текста «отключены»
@@ -31,6 +33,7 @@ was: "Q25"
 
 - `app/web/src/components/scout/TechRunPanel.tsx`, `copy.ts`, `lib/inbox.ts`, `App.tsx`
 - [`../operator-ui.md`](../operator-ui.md), [`../../discovery/open-questions.md`](../../discovery/open-questions.md)
+- Деплой на VPS: [`../vps.md`](../vps.md) — `python scripts/vps-bootstrap.py --deploy` (dirty tree → abort)
 
 ## Out of scope
 
