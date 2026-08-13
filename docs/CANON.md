@@ -17,6 +17,7 @@ Code and product rules live **in this repo**. Do not duplicate scoring/scope rul
 | Acceptance | [delivery/acceptance.md](./delivery/acceptance.md) |
 | Tasks / backlog | [delivery/tasks/](./delivery/tasks/) |
 | Git / ветки (GitHub origin) | [delivery/git-workflow.md](./delivery/git-workflow.md) |
+| VPS (SSH, HTTPS) | [delivery/vps.md](./delivery/vps.md) (`https://tenders.ndtexam.ru`) |
 | Auth (Scout login + cookies площадок) | [delivery/auth-cookies.md](./delivery/auth-cookies.md) |
 | Relevance rules | [discovery/relevance-rules.md](./discovery/relevance-rules.md) |
 | Product brief | [discovery/product-brief.md](./discovery/product-brief.md) |
@@ -38,6 +39,7 @@ On rule drift: edit docs here first, then sync `app/scoring/`.
 ## Secrets
 
 - Tracked: auth **rules** in `delivery/auth-cookies.md`, `.env.example` (имена переменных)
-- Never commit: `cookies*.txt` (в т.ч. `cookies.rostender.txt`, `cookies.sibur.txt`, `cookies.onlinecontract.txt`, `cookies.tender-pro.txt`), `.env`, passwords, cookie values, `_probe_*`
+- Never commit: `cookies*.txt` (в т.ч. `cookies.rostender.txt`, `cookies.sibur.txt`, `cookies.onlinecontract.txt`, `cookies.tender-pro.txt`), `.env`, `.env.vps`, passwords, cookie values, `_probe_*`
 - Heavy run artifacts / docs volume: gitignore
 - Origin: [github.com/pvumanets/tenders-ndt](https://github.com/pvumanets/tenders-ndt) — ветки [delivery/git-workflow.md](./delivery/git-workflow.md)
+- VPS: [tenders.ndtexam.ru](https://tenders.ndtexam.ru) · root password only `.env.vps`; host/key in [delivery/vps.md](./delivery/vps.md). Do not print. Owner: do not rotate unless asked.

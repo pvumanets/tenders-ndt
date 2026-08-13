@@ -17,6 +17,8 @@ This repository is the **source of truth** for tender-monitoring product + code.
 | Phases P5.1–P7 | [delivery/platform-phases.md](./delivery/platform-phases.md) |
 | Tasks / backlog (таблица) | [delivery/tasks/](./delivery/tasks/) |
 | Git / ветки (GitHub) | [delivery/git-workflow.md](./delivery/git-workflow.md) |
+| VPS (HTTPS) | [delivery/vps.md](./delivery/vps.md) · https://tenders.ndtexam.ru |
+| VPS (SSH + loopback) | [delivery/vps.md](./delivery/vps.md) |
 | Sales Inbox API | [delivery/sales-inbox-api.md](./delivery/sales-inbox-api.md) |
 | Platforms research | [platform-api-research.md](./platform-api-research.md) |
 | СИБУР SRM зонд (NEXT+) | [discovery/sibur-srm-probe.md](./discovery/sibur-srm-probe.md) |

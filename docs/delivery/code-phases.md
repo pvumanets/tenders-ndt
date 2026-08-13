@@ -27,7 +27,7 @@
 | **P5.4** | Inbox API из БД | **done** |
 | **P5.5** | Docs на том | **done** |
 | **P6** | Wire React | **done** |
-| **P7** | VPS + TLS | planned |
+| **P7** | VPS + TLS | **doing** (HTTPS live) |
 
 ```text
 P0 → … → P5 → P5.0 accepted

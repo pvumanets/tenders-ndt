@@ -15,7 +15,7 @@
 | GitHub | `https://github.com/pvumanets/tenders-ndt.git` |
 | Default branch | **`main`** |
 | Локальный путь | `C:\Users\NDT\Documents\ndt-tender-scout` |
-| P7 | VPS **клонирует / `git pull` с GitHub**, не копирует папку с ПК |
+| P7 | VPS **клонирует / `git pull` с GitHub** (`/opt/tenders-ndt`); доступ агента — [`vps.md`](./vps.md) |
 
 Первый пуш на пустой origin — исключение (один коммит на `main`). После него агент в `main` не коммитит.
 
@@ -58,5 +58,5 @@
 
 ## Секреты
 
-Tracked: `.env.example` (имена), правила в [auth-cookies.md](./auth-cookies.md).  
-Never: `.env`, `cookies*.txt`, пароли в md/чате. Перед `git add` — `git status` / `git diff --cached`.
+Tracked: `.env.example` (имена), правила в [auth-cookies.md](./auth-cookies.md), хост VPS в [vps.md](./vps.md).  
+Never: `.env`, `.env.vps`, `cookies*.txt`, пароли в md/чате. Перед `git add` — `git status` / `git diff --cached`.

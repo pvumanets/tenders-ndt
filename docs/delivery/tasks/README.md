@@ -36,7 +36,7 @@
 | 015 | Inbox API из Postgres + поля mock | task | done | P5.4 | | [015-inbox-api.md](./015-inbox-api.md) |
 | 016 | Docs: download на том + routes | task | done | P5.5 | | [016-docs-volume.md](./016-docs-volume.md) |
 | 017 | Wire React: снять моки | task | done | P6 | | [017-react-wire.md](./017-react-wire.md) |
-| 018 | VPS: Caddy+TLS | task | backlog | P7 | | [018-vps-tls.md](./018-vps-tls.md) |
+| 018 | VPS: Caddy+TLS | task | doing | P7 | | [018-vps-tls.md](./018-vps-tls.md) |
 | 019 | P1: только приём заявок, срок с сегодня | task | done | P1 | | [019-open-upcoming-only.md](./019-open-upcoming-only.md) |
 | 020 | Дев-стенд: скрипт подъёма + агенты не скикают БД | task | done | P5.1 | | [020-dev-stand.md](./020-dev-stand.md) |
 | 021 | GitHub origin + git workflow | task | done | P6 | | [021-github-origin.md](./021-github-origin.md) |
@@ -44,4 +44,4 @@
 ### Очередь
 
 - **001–011** — done в mock; P5.0 **accepted** (2026-08-13).
-- **012** — done (P5.1). **013** — done (P5.2). **014** — done (P5.3). **015** — done (P5.4). **016** — done (P5.5). **017** — done (P6). **019** — done (P1 hotfix: только открытые). **020** — done (P5.1 DX: `dev-up.ps1`). **021** — done (GitHub origin). **018** — backlog. Следующая: **018** / P7 (нужен домен). Не перескакивать.
+- **012** — done (P5.1). **013** — done (P5.2). **014** — done (P5.3). **015** — done (P5.4). **016** — done (P5.5). **017** — done (P6). **019** — done (P1 hotfix: только открытые). **020** — done (P5.1 DX: `dev-up.ps1`). **021** — done (GitHub origin). **018** — doing (HTTPS https://tenders.ndtexam.ru; Owner OK — логин с другого ПК).

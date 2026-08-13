@@ -15,6 +15,7 @@ description: >-
 3. [`docs/discovery/output-schema.md`](../../../docs/discovery/output-schema.md)
 4. Sync scoring with [`docs/delivery/fit-tiers.md`](../../../docs/delivery/fit-tiers.md)
 5. Git: checkout `feat/<id>-<slug>` or `fix/<id>-<slug>` from `main` before edits ([`git-workflow.md`](../../../docs/delivery/git-workflow.md)). Do not commit to `main`.
+6. VPS deploy: [`docs/delivery/vps.md`](../../../docs/delivery/vps.md) + `scripts/vps-bootstrap.py`. Prod compose must not bind Scout HTTP on `0.0.0.0`. Password SSH stays on. Never log `.env.vps`.
 
 ## Own
 

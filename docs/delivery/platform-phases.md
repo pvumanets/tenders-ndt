@@ -45,7 +45,7 @@
 | **P5.4** | Inbox API из БД | **done** | [015](./tasks/015-inbox-api.md) |
 | **P5.5** | Docs download (том) | **done** | [016](./tasks/016-docs-volume.md) |
 | **P6** | Wire mock → API | **done** | [017](./tasks/017-react-wire.md) |
-| **P7** | VPS + TLS | planned | [018](./tasks/018-vps-tls.md) |
+| **P7** | VPS + TLS | **doing** (HTTPS live) | [018](./tasks/018-vps-tls.md) |
 
 ```text
 P0 … P5 → P5.0 accepted
@@ -296,26 +296,26 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 
 ## P7 — VPS + TLS
 
-**Статус:** planned  
+**Статус:** doing (HTTPS [tenders.ndtexam.ru](https://tenders.ndtexam.ru); Owner OK — логин с другого ПК)  
 **Зависит от:** P6; **домен** на A-запись VPS (owner)  
 **Таск:** [018](./tasks/018-vps-tls.md)  
 **Вход:** тот же compose, профиль `prod`  
 **Выход:** директор открывает HTTPS URL с любого ПК, логин/пароль, тот же inbox. Cookies rostender и пароли Scout — только на сервере (env/secrets).
 
-**Контур:** Caddy (или эквивалент) + Let's Encrypt. `Secure` cookie. Дев-стенд на ПК остаётся HTTP analog **без** публичного интернета. Код на VPS — `git clone` / `git pull` с [GitHub origin](https://github.com/pvumanets/tenders-ndt), не копирование папки с ПК. Канон веток: [`git-workflow.md`](./git-workflow.md).
+**Контур:** Caddy + Let's Encrypt на **https://tenders.ndtexam.ru**. `SCOUT_COOKIE_SECURE=1`. Дев-стенд на ПК остаётся HTTP analog. Код: GitHub + overlay prod compose/Caddyfile. Доступ: [`vps.md`](./vps.md). Публично только 80/443; `:8765` на loopback.
 
 **Не делать:** роли; Bitrix; cron; открытый HTTP с паролем в интернет (fail); коммит секретов.
 
 **Done:**
 
-- [ ] HTTPS без warning (валидный сертификат)
+- [x] HTTPS без warning (валидный сертификат)
 - [ ] логин директора с другой машины
-- [ ] сессия переживает перезапуск контейнера api (БД жива)
-- [ ] cookies rostender не в git и не в UI
+- [x] сессия переживает перезапуск контейнера api (БД жива)
+- [x] cookies rostender не в git и не в UI
 
-**Owner OK:** демо директору на VPS. Нужны: домен, две учётки в `.env` на сервере, актуальный cookies-файл для живого прогона.
+**Owner OK:** демо директору — открыть https://tenders.ndtexam.ru с другого ПК. Учётки и cookies rostender уже на сервере.
 
-**Файлы потом:** `docker-compose.prod.yml` или compose profile, Caddyfile, [`runbook-agent-v0.md`](./runbook-agent-v0.md) / короткий deploy runbook.
+**Файлы:** [`docker-compose.prod.yml`](../../docker-compose.prod.yml), [`Caddyfile`](../../Caddyfile), [`vps.md`](./vps.md), [`runbook-agent-v0.md`](./runbook-agent-v0.md).
 
 ---
 

@@ -14,7 +14,8 @@ description: >-
 1. [`docs/README.md`](../../../docs/README.md) + [`docs/CANON.md`](../../../docs/CANON.md)
 2. Diff / summary of what backend/frontend/PM/architect changed. If the milestone included **code**, wait until `scout-qa` finished (must-fix resolved). Nits may be listed in the owner report without blocking docs.
 3. Business-proc stub path only for status: `ndt-buisness-proc/docs/projects/tender-monitoring/README.md` and `work/tasks.md` epic
-4. Git: [`docs/delivery/git-workflow.md`](../../../docs/delivery/git-workflow.md) — `docs/<id>-<slug>` from `main`; never commit `.env`, cookies, or `_probe_*`; never push secrets.
+4. Git: [`docs/delivery/git-workflow.md`](../../../docs/delivery/git-workflow.md) — `docs/<id>-<slug>` from `main`; never commit `.env`, `.env.vps`, cookies, or `_probe_*`; never push secrets.
+5. VPS: document host/key paths only ([`docs/delivery/vps.md`](../../../docs/delivery/vps.md)). Never paste root or Scout passwords into canon.
 
 ## Always do after a milestone
 

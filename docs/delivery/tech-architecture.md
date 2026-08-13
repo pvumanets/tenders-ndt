@@ -17,7 +17,7 @@ Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**;
 | --- | --- |
 | Путь | `C:\Users\NDT\Documents\ndt-tender-scout` |
 | Git | **GitHub SoT:** [pvumanets/tenders-ndt](https://github.com/pvumanets/tenders-ndt) · ветка `main` · [git-workflow.md](./git-workflow.md) |
-| Runtime **prod** | **VPS + Docker Compose** (профиль `prod`: Caddy + TLS) |
+| Runtime **prod** | **VPS** `77.91.94.111` + Caddy TLS · [https://tenders.ndtexam.ru](https://tenders.ndtexam.ru) ([`vps.md`](./vps.md)) |
 | Runtime **dev** | тот же compose на ПК владельца (без Caddy, HTTP `:8765`) |
 | Не runtime | Cursor-агент как исполнитель прогона; GPT/LLM API для скрейпа |
 
@@ -36,7 +36,7 @@ Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**;
 | Экран оператора **AS-IS** | static HTML (`app/static/`) — не корень `/`; hotfix / legacy на деве |
 | Экран оператора **TO-BE** | **React** SPA в `app/web/` — P5.0 mock **accepted**; **P6 done** (живой `/api/*`); за Scout-логином с P5.2 |
 | Упаковка | Docker Compose: `db` + `api` (worker-поток внутри api); prod + Caddy |
-| Секреты | `.env` (учётки Scout, `DATABASE_URL`) + Netscape cookies-файл (gitignore) |
+| Секреты | `.env` / `.env.vps` (gitignore) + Netscape cookies-файл. Пароли не в git и не в skills. |
 | Выгрузка P4 | том прогона: CSV + MD + JSON (inbox их **не** читает) |
 
 Вне текущего ship: Bitrix lead sync, роли, cron, Excel-вкладка (NEXT+).
