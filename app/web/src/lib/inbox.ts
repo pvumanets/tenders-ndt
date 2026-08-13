@@ -8,6 +8,24 @@ export class UnauthorizedError extends Error {
   }
 }
 
+export type RunControlCode = "already_running" | "missing_cookies" | "failed";
+
+export class RunControlError extends Error {
+  readonly code: RunControlCode;
+
+  constructor(code: RunControlCode) {
+    super(code);
+    this.name = "RunControlError";
+    this.code = code;
+  }
+}
+
+export function runControlMessage(code: RunControlCode): string {
+  if (code === "already_running") return copy.run_error_already;
+  if (code === "missing_cookies") return copy.run_error_cookies;
+  return copy.run_error_failed;
+}
+
 export type InboxListQuery = {
   unread?: boolean;
   tier?: "fit" | SalesTier;
@@ -185,4 +203,35 @@ export async function fetchStatus(): Promise<TechStatus> {
   const res = await apiFetch("/api/status");
   if (!res.ok) throw new Error("status_load_failed");
   return mapRunStatus((await res.json()) as StatusSnapshot);
+}
+
+async function readDetail(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { detail?: unknown };
+    return typeof body.detail === "string" ? body.detail : "";
+  } catch {
+    return "";
+  }
+}
+
+function throwRunControl(detail: string): never {
+  if (detail === "already_running") throw new RunControlError("already_running");
+  if (detail === "missing_cookies") throw new RunControlError("missing_cookies");
+  throw new RunControlError("failed");
+}
+
+export async function startRun(): Promise<void> {
+  const res = await apiFetch("/api/run/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  if (res.ok) return;
+  throwRunControl(await readDetail(res));
+}
+
+export async function stopRun(): Promise<void> {
+  const res = await apiFetch("/api/run/stop", { method: "POST" });
+  if (res.ok) return;
+  throwRunControl(await readDetail(res));
 }

@@ -88,5 +88,10 @@ export const copy = {
   run_path_copied: "Скопировано",
   log_title: "Лог",
   log_empty: "Записей пока нет",
-  tech_readonly_note: "Старт и стоп прогона в этом экране отключены",
+  run_start: "Старт",
+  run_stop: "Стоп",
+  run_start_busy: "Запуск…",
+  run_error_already: "Прогон уже идёт",
+  run_error_cookies: "Нет файла cookies — положите cookies по инструкции",
+  run_error_failed: "Не удалось запустить прогон. Обновите страницу и повторите.",
 } as const;
