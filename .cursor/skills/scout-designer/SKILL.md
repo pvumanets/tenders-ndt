@@ -57,3 +57,4 @@ Chips remain OK for **status** on cards/tables (priority in table, «вручн�
 - Redesign rostender itself
 - Spec wrapping chips, jumping paddings, or a Chip for «Непросмотренные»
 - Spec a filled Chip/Button for binary viewed state — that is a Switch
+- Не править файлы на VPS (`/opt/tenders-ndt`); не `scp`

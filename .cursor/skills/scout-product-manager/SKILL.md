@@ -50,6 +50,7 @@ Layout and density are **product acceptance**, not a later polish ticket.
 - Plan Bitrix lead sync as “done” without owner answers
 - Confuse with delivery architecture (that is `scout-architect`)
 - Accept wrapping-chip filter menus or Chip toggles in the command bar as a solution
+- Не править файлы на VPS (`/opt/tenders-ndt`); не `scp`
 
 ## Reference
 

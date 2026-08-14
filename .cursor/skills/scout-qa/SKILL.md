@@ -18,6 +18,11 @@ Review the authors' diff, add/run tests for what changed, then report. Do **not*
 3. [reference.md](reference.md) for commands, markers, phase checklists
 4. **Stand:** [`docs/delivery/dev-stand.md`](../../../docs/delivery/dev-stand.md). Before `pytest -m smoke`, run [`scripts/dev-up.ps1`](../../../scripts/dev-up.ps1) if `/api/health` is not 200 `"db":"ok"`.
 5. Git: review the **task branch** (`feat/` / `fix/`), not ad-hoc commits on `main` ([`git-workflow.md`](../../../docs/delivery/git-workflow.md)).
+6. **VPS:** [`docs/delivery/vps.md`](../../../docs/delivery/vps.md). Prod smoke = HTTP health only, not edits on disk.
+   - На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере.
+   - Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`.
+   - Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`.
+   - `--sync` — только секреты, не код.
 
 ## When (orchestrator)
 
@@ -70,10 +75,14 @@ Smokes: pass | fail | blocked (no Docker / empty POSTGRES_PASSWORD)
 
 ## Do not
 
-- Scrape rostender from Cursor; use VPS/prod as a smoke target
+- Scrape rostender from Cursor; VPS/prod smoke = HTTP health (`https://tenders.ndtexam.ru/api/health`), not patches on `/opt/tenders-ndt`
 - Implement FastAPI/React features (authors do that). Edits limited to `tests/` and this skill
 - Commit `.env`, cookies, plaintext passwords
 - Leave smoke users, lots, or documents in the database
+- На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере.
+- Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`.
+- Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`.
+- `--sync` — только секреты, не код.
 
 ## Reference
 

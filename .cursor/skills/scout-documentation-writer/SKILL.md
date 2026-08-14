@@ -15,7 +15,11 @@ description: >-
 2. Diff / summary of what backend/frontend/PM/architect changed. If the milestone included **code**, wait until `scout-qa` finished (must-fix resolved). Nits may be listed in the owner report without blocking docs.
 3. Business-proc stub path only for status: `ndt-buisness-proc/docs/projects/tender-monitoring/README.md` and `work/tasks.md` epic
 4. Git: [`docs/delivery/git-workflow.md`](../../../docs/delivery/git-workflow.md) — `docs/<id>-<slug>` from `main`; never commit `.env`, `.env.vps`, cookies, or `_probe_*`; never push secrets.
-5. VPS: document host/key paths only ([`docs/delivery/vps.md`](../../../docs/delivery/vps.md)). Never paste root or Scout passwords into canon. Deploy path = `--deploy` after merge to `main`; do not document `scp` of feature files onto the server.
+5. VPS: document host/key paths only ([`docs/delivery/vps.md`](../../../docs/delivery/vps.md)). Never paste root or Scout passwords into canon.
+   - На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере.
+   - Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`.
+   - Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`.
+   - `--sync` — только секреты, не код.
 
 ## Always do after a milestone
 
@@ -36,6 +40,10 @@ description: >-
 - Duplicate full discovery/delivery back into business-proc
 - Commit secrets, cookie values, employee passwords
 - Leave AS-IS/TO-BE React notes contradictory across tech-architecture and operator-ui
+- На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере.
+- Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`.
+- Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`.
+- `--sync` — только секреты, не код.
 
 ## Quality bar
 

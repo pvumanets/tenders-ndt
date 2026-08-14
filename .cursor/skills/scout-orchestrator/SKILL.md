@@ -16,7 +16,11 @@ description: >-
 4. If coding: [`docs/delivery/code-phases.md`](../../../docs/delivery/code-phases.md)
 5. **Stand:** [`docs/delivery/dev-stand.md`](../../../docs/delivery/dev-stand.md). Before API/DB/QA: if `/api/health` is not 200 `"db":"ok"`, run [`scripts/dev-up.ps1`](../../../scripts/dev-up.ps1). Do not treat missing Postgres as “skip smokes”. Empty `POSTGRES_PASSWORD` → stop and ask owner to fill `.env` (never invent or print it).
 6. **Git:** [`docs/delivery/git-workflow.md`](../../../docs/delivery/git-workflow.md). Before code: checkout `feat/<id>-<slug>` (or `fix/` / `docs/`) from up-to-date `main`. Never commit to `main` after origin bootstrap.
-7. **VPS:** [`docs/delivery/vps.md`](../../../docs/delivery/vps.md). Connect as `tenders-ndt-vps` (key). Read password from `.env.vps` if key is missing — never print it. Keep password auth on. Do not rotate creds unless the owner asks. Deploy via `python scripts/vps-bootstrap.py --deploy` after merge to `main`. Dirty porcelain → abort, no `reset --hard`. Never edit or `scp` product files onto `/opt/tenders-ndt`.
+7. **VPS:** [`docs/delivery/vps.md`](../../../docs/delivery/vps.md). Connect as `tenders-ndt-vps` (key). Read password from `.env.vps` if key is missing — never print it. Keep password auth on. Do not rotate creds unless the owner asks.
+   - На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере.
+   - Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`.
+   - Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`.
+   - `--sync` — только секреты, не код.
 
 ## Non-negotiable routing rule
 

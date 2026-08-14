@@ -16,7 +16,11 @@ description: >-
 3. [`docs/delivery/code-phases.md`](../../../docs/delivery/code-phases.md)
 4. [`docs/delivery/acceptance.md`](../../../docs/delivery/acceptance.md)
 5. Git: [`docs/delivery/git-workflow.md`](../../../docs/delivery/git-workflow.md) — origin is GitHub; P7 clones that repo, not a PC folder. Docs-only edits: `docs/<id>-<slug>` from `main`.
-6. VPS: [`docs/delivery/vps.md`](../../../docs/delivery/vps.md) — `/opt/tenders-ndt`, `docker-compose.prod.yml` on loopback until domain. Deploy = `--deploy` after `main`; never reset a dirty VPS tree.
+6. VPS: [`docs/delivery/vps.md`](../../../docs/delivery/vps.md) — `/opt/tenders-ndt`, `docker-compose.prod.yml` on loopback until domain.
+   - На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере.
+   - Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`.
+   - Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`.
+   - `--sync` — только секреты, не код.
 
 ## Mission
 
@@ -42,6 +46,10 @@ description: >-
 - Implement large features without `scout-backend` / `scout-frontend`
 - Put secrets in docs
 - Treat the laptop folder as deploy source (P7 = `git clone` / `git pull` from GitHub)
+- На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере.
+- Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`.
+- Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`.
+- `--sync` — только секреты, не код.
 
 ## Reference
 

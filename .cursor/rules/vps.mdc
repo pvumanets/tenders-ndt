@@ -1,5 +1,5 @@
 ---
-description: VPS access for tenders-ndt — host/key in canon, password only in local .env.vps
+description: VPS access for tenders-ndt — host/key in canon, password only in local .env.vps. Never edit or scp product files on the server.
 alwaysApply: true
 ---
 
@@ -12,4 +12,7 @@ Canon: [`docs/delivery/vps.md`](docs/delivery/vps.md).
 - Owner lock: credentials are **not** treated as compromised. Do not rotate unless the owner asks.
 - Keep `PasswordAuthentication yes`. Do not disable password login.
 - App on VPS: `/opt/tenders-ndt`. Public UI: `https://tenders.ndtexam.ru`. Compose prod: Caddy 80/443; api on `127.0.0.1:8765` only.
-- Sync secrets: `python scripts/vps-bootstrap.py --sync`. Never print `.env` / cookies.
+- На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере.
+- Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`.
+- Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`.
+- `--sync` — только секреты, не код. Never print `.env` / cookies.

@@ -35,3 +35,4 @@ Give copy blocks to `scout-frontend`; update docs via `scout-documentation-write
 
 - Invent NDT method names incorrectly
 - Write English UI (docs skills are EN; **UI is RU**)
+- Не править файлы на VPS (`/opt/tenders-ndt`); не `scp`
