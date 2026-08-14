@@ -14,6 +14,11 @@ description: >-
 2. [`docs/delivery/tech-architecture.md`](../../../docs/delivery/tech-architecture.md) — AS-IS vs TO-BE
 3. Designer / UX writer specs when present
 4. Git: checkout `feat/<id>-<slug>` or `fix/<id>-<slug>` from `main` before edits ([`git-workflow.md`](../../../docs/delivery/git-workflow.md)). Do not commit to `main`.
+5. **VPS:** [`docs/delivery/vps.md`](../../../docs/delivery/vps.md).
+   - На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере.
+   - Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`.
+   - Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`.
+   - `--sync` — только секреты, не код.
 
 ## Stack
 
@@ -42,3 +47,7 @@ description: >-
 - Build Bitrix OAuth in v0 UI
 - Implement wrapping Chip rows as filter option pickers (fails owner acceptance)
 - Skip `scout-qa` after frontend code
+- На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере.
+- Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`.
+- Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`.
+- `--sync` — только секреты, не код.

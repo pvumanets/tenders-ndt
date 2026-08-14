@@ -104,3 +104,7 @@ Covered by `tests/test_list_filter_unit.py`:
 Flag when all are true: introduced by this change; actionable; correctness / secrets / phase boundary / leftover smoke data; author would fix it.
 
 Do not flag pre-existing issues, speculative nits as must-fix, or intentional phase deferrals.
+
+## VPS
+
+Prod smoke = HTTP health (`https://tenders.ndtexam.ru/api/health`). На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере. Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`. Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`. `--sync` — только секреты, не код.

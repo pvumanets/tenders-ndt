@@ -15,7 +15,11 @@ description: >-
 3. [`docs/discovery/output-schema.md`](../../../docs/discovery/output-schema.md)
 4. Sync scoring with [`docs/delivery/fit-tiers.md`](../../../docs/delivery/fit-tiers.md)
 5. Git: checkout `feat/<id>-<slug>` or `fix/<id>-<slug>` from `main` before edits ([`git-workflow.md`](../../../docs/delivery/git-workflow.md)). Do not commit to `main`.
-6. VPS deploy: [`docs/delivery/vps.md`](../../../docs/delivery/vps.md) + `python scripts/vps-bootstrap.py --deploy` (after `main`). Do not `scp` or edit product files on the VPS. Dirty porcelain → abort, no `reset --hard`. Prod compose must not bind Scout HTTP on `0.0.0.0`. Password SSH stays on. Never log `.env.vps`.
+6. VPS: [`docs/delivery/vps.md`](../../../docs/delivery/vps.md). Prod compose must not bind Scout HTTP on `0.0.0.0`. Password SSH stays on. Never log `.env.vps`.
+   - На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере.
+   - Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`.
+   - Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`.
+   - `--sync` — только секреты, не код.
 
 ## Own
 
@@ -38,4 +42,7 @@ description: >-
 - Implement Bitrix CRM without accepted delivery doc
 - Skip architect when changing public API contracts
 - Skip `scout-qa` after code (docs are not a substitute for review + tests)
-- `git reset --hard` on VPS when `git status --porcelain` is dirty
+- На VPS **не правят** продукт (`/opt/tenders-ndt`). Не `scp` / не править `App.tsx` и любой tracked-файл на сервере.
+- Деплой **только** после merge в `main`: `python scripts/vps-bootstrap.py --deploy`.
+- Грязный `git status --porcelain` → **exit, без** `reset --hard` и без `git clean -fd` по исходникам. Rescue-ветка `rescue/YYYYMMDD-hhmm` или тот же diff на `feat/<id>`.
+- `--sync` — только секреты, не код.
