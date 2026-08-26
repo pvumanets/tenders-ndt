@@ -115,6 +115,8 @@ export const copy = {
   searches_edit: "Править",
   searches_delete_confirm: "Удалить этот поиск?",
   searches_tender_pro_docs: "Файлы score≥4 — только с живым cookies.tender-pro.txt",
+  searches_drawer_title: "Настройки поиска",
+  searches_drawer_close_aria: "Закрыть настройки поиска",
   platform_rostender: "РосТендер",
   platform_tender_pro: "Tender.Pro",
   queue_position: "Очередь: {current} из {total}",

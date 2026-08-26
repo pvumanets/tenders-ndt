@@ -83,7 +83,18 @@ export default function LotTable({
                     {lot.title}
                   </Typography>
                 </TableCell>
-                <TableCell>{lot.customer_name}</TableCell>
+                <TableCell>
+                  <Typography
+                    noWrap
+                    sx={{
+                      maxWidth: 240,
+                      color: lot.customer_name ? stripe.navy : stripe.textMuted,
+                    }}
+                    title={lot.customer_name || undefined}
+                  >
+                    {lot.customer_name || copy.field_empty}
+                  </Typography>
+                </TableCell>
                 <TableCell>{lot.location || copy.field_empty}</TableCell>
                 <TableCell>{formatDate(lot.deadline_msk)}</TableCell>
                 <TableCell>{formatPrice(lot.price_rub)}</TableCell>

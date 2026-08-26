@@ -14,6 +14,7 @@ from app.db.config import database_url
 from app.db.models import Lot, Run
 from app.db.session import session_factory
 from app.worker.artifacts import _clean_loc
+from app.worker.customer_name import clean_customer_name
 
 INBOX_MIN_SCORE = 4
 SOURCE_PLATFORM_ID = "rostender"
@@ -141,7 +142,7 @@ def lot_values(
         "score": score,
         "tier": str(row.get("tier") or "").strip() or "pool",
         "location": location,
-        "customer_name": _optional_text(row.get("customer_name")),
+        "customer_name": clean_customer_name(row.get("customer_name")),
         "customer_inn": _optional_text(row.get("customer_inn")),
         "deadline_msk": _optional_text(row.get("deadline_msk")),
         "status": _optional_text(row.get("status")),

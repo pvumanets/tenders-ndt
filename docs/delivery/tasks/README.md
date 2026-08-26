@@ -43,8 +43,10 @@
 | 022 | Tech: Старт/Стоп прогона в React | task | done | NEXT+ | Q25 | [022-tech-start-stop.md](./022-tech-start-stop.md) |
 | 023 | Именованные поиски + очередь прогонов | task | done | NEXT+ | Q16/Q25 | [023-named-searches.md](./023-named-searches.md) |
 | 024 | Адаптер Tender.Pro | task | done | NEXT+ | Q16 | [024-tender-pro-adapter.md](./024-tender-pro-adapter.md) |
+| 025 | Чистый customer_name на карточке | task | done | NEXT+ | | [025-customer-name.md](./025-customer-name.md) |
+| 026 | Drawer настроек поиска (Править) | task | done | NEXT+ | | [026-search-settings-drawer.md](./026-search-settings-drawer.md) |
 
 ### Очередь
 
 - **001–011** — done в mock; P5.0 **accepted** (2026-08-13).
-- **012** — done (P5.1). **013** — done (P5.2). **014** — done (P5.3). **015** — done (P5.4). **016** — done (P5.5). **017** — done (P6). **019** — done (P1 hotfix: только открытые). **020** — done (P5.1 DX: `dev-up.ps1`). **021** — done (GitHub origin). **018** — done (P7 HTTPS). **022** — done (Start/Stop в React). **023** — done (именованные поиски + очередь). **024** — done (Tender.Pro adapter + prefix `tender_id`).
+- **012** — done (P5.1). **013** — done (P5.2). **014** — done (P5.3). **015** — done (P5.4). **016** — done (P5.5). **017** — done (P6). **019** — done (P1 hotfix: только открытые). **020** — done (P5.1 DX: `dev-up.ps1`). **021** — done (GitHub origin). **018** — done (P7 HTTPS). **022** — done (Start/Stop в React). **023** — done (именованные поиски + очередь). **024** — done (Tender.Pro adapter + prefix `tender_id`). **025** — done (clean customer_name). **026** — done (search settings drawer).

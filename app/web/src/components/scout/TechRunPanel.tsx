@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   FormControlLabel,
-  MenuItem,
   Paper,
   Stack,
   Switch,
@@ -21,46 +20,12 @@ import {
   type SearchWrite,
 } from "../../lib/inbox";
 import { stripe } from "../../theme/palette";
-
-type SearchDraft = {
-  id?: string;
-  name: string;
-  platform_id: string;
-  queriesText: string;
-  limit_n: number;
-  in_queue: boolean;
-  sort_order: number;
-};
-
-function emptyDraft(sortOrder: number): SearchDraft {
-  return {
-    name: "",
-    platform_id: "rostender",
-    queriesText: "",
-    limit_n: 1000,
-    in_queue: false,
-    sort_order: sortOrder,
-  };
-}
-
-function draftFromSearch(search: NamedSearch): SearchDraft {
-  return {
-    id: search.id,
-    name: search.name,
-    platform_id: search.platform_id,
-    queriesText: search.queries.join("\n"),
-    limit_n: search.limit_n,
-    in_queue: search.in_queue,
-    sort_order: search.sort_order,
-  };
-}
-
-function parseQueries(text: string): string[] {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
+import SearchSettingsDrawer, {
+  draftFromNamedSearch,
+  emptySearchDraft,
+  parseSearchQueries,
+  type SearchDraft,
+} from "./SearchSettingsDrawer";
 
 export default function TechRunPanel({
   status,
@@ -98,7 +63,7 @@ export default function TechRunPanel({
 
   async function submitDraft() {
     if (!draft) return;
-    const queries = parseQueries(draft.queriesText);
+    const queries = parseSearchQueries(draft.queriesText);
     if (!draft.name.trim() || queries.length === 0) return;
     setSaving(true);
     try {
@@ -200,13 +165,13 @@ export default function TechRunPanel({
               size="small"
               variant="outlined"
               disabled={!canEdit || draft !== null}
-              onClick={() => setDraft(emptyDraft(nextSort))}
+              onClick={() => setDraft(emptySearchDraft(nextSort))}
             >
               {copy.searches_add}
             </Button>
           </Stack>
           {searchError ? <Alert severity="error" sx={{ mb: 1 }}>{searchError}</Alert> : null}
-          {searches.length === 0 && !draft ? (
+          {searches.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
               {copy.searches_empty}
             </Typography>
@@ -244,7 +209,7 @@ export default function TechRunPanel({
                     <Button
                       size="small"
                       disabled={!canEdit}
-                      onClick={() => setDraft(draftFromSearch(search))}
+                      onClick={() => setDraft(draftFromNamedSearch(search))}
                     >
                       {copy.searches_edit}
                     </Button>
@@ -272,67 +237,13 @@ export default function TechRunPanel({
             </Stack>
           )}
           {draft ? (
-            <Stack spacing={1.5} sx={{ mt: 1.5 }}>
-              <TextField
-                size="small"
-                label={copy.searches_name}
-                value={draft.name}
-                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-              />
-              <TextField
-                size="small"
-                select
-                label={copy.searches_platform}
-                value={draft.platform_id}
-                onChange={(e) => setDraft({ ...draft, platform_id: e.target.value })}
-              >
-                <MenuItem value="rostender">{copy.platform_rostender}</MenuItem>
-                <MenuItem value="tender-pro">{copy.platform_tender_pro}</MenuItem>
-              </TextField>
-              <TextField
-                size="small"
-                label={copy.searches_queries}
-                value={draft.queriesText}
-                onChange={(e) => setDraft({ ...draft, queriesText: e.target.value })}
-                multiline
-                minRows={3}
-              />
-              {draft.platform_id === "tender-pro" ? (
-                <Typography variant="caption" color="text.secondary">
-                  {copy.searches_tender_pro_docs}
-                </Typography>
-              ) : null}
-              <TextField
-                size="small"
-                type="number"
-                label={copy.searches_limit}
-                value={draft.limit_n}
-                onChange={(e) => setDraft({ ...draft, limit_n: Number(e.target.value) })}
-                slotProps={{ htmlInput: { min: 1, max: 1000 } }}
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={draft.in_queue}
-                    onChange={(_, checked) => setDraft({ ...draft, in_queue: checked })}
-                  />
-                }
-                label={copy.searches_queue}
-              />
-              <Stack direction="row" spacing={1}>
-                <Button
-                  variant="contained"
-                  size="small"
-                  disabled={saving || !draft.name.trim() || parseQueries(draft.queriesText).length === 0}
-                  onClick={() => void submitDraft()}
-                >
-                  {copy.searches_save}
-                </Button>
-                <Button size="small" disabled={saving} onClick={() => setDraft(null)}>
-                  {copy.searches_cancel}
-                </Button>
-              </Stack>
-            </Stack>
+            <SearchSettingsDrawer
+              draft={draft}
+              saving={saving}
+              onChange={setDraft}
+              onSave={() => void submitDraft()}
+              onClose={() => setDraft(null)}
+            />
           ) : null}
         </Box>
 
