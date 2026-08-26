@@ -45,6 +45,9 @@ def docs_dir() -> Path:
     return _REPO_ROOT / "data" / "docs"
 
 
+from app.worker.platform_ids import volume_dir_name
+
+
 def sanitize_filename(name: str | None) -> str | None:
     if not name:
         return None
@@ -56,18 +59,21 @@ def sanitize_filename(name: str | None) -> str | None:
 
 
 def volume_relpath(tender_id: str, filename: str) -> str:
-    return f"{tender_id}/{filename}"
+    folder = volume_dir_name(tender_id)
+    if folder is None:
+        raise ValueError("invalid_tender_id")
+    return f"{folder}/{filename}"
 
 
 def resolve_volume_file(tender_id: str, filename: str, *, root: Path | None = None) -> Path | None:
-    safe_id = sanitize_filename(tender_id)
+    folder = volume_dir_name(tender_id)
     safe_name = sanitize_filename(filename)
-    if safe_id is None or safe_name is None:
+    if folder is None or safe_name is None:
         return None
-    if safe_id != tender_id or safe_name != filename:
+    if safe_name != filename:
         return None
     base = (root or docs_dir()).resolve()
-    target = (base / safe_id / safe_name).resolve()
+    target = (base / folder / safe_name).resolve()
     try:
         target.relative_to(base)
     except ValueError:
@@ -198,8 +204,8 @@ def download_inbox_docs(
             if should_stop and should_stop():
                 break
             tender_id = str(row["tender_id"]).strip()
-            safe_id = sanitize_filename(tender_id)
-            if safe_id is None or safe_id != tender_id:
+            folder = volume_dir_name(tender_id)
+            if folder is None:
                 errors += 1
                 continue
             links = _links_for_row(row)
@@ -213,7 +219,7 @@ def download_inbox_docs(
                 if fallback in used_names:
                     fallback = f"{Path(fallback).stem}-{index}{Path(fallback).suffix}"
                 dest_name = fallback
-                dest = root / tender_id / dest_name
+                dest = root / folder / dest_name
                 if dest.is_file():
                     skipped += 1
                     used_names.add(dest_name)
@@ -240,7 +246,7 @@ def download_inbox_docs(
                         )
                         if dest_name in used_names:
                             dest_name = f"{Path(dest_name).stem}-{index}{Path(dest_name).suffix}"
-                        dest = root / tender_id / dest_name
+                        dest = root / folder / dest_name
                         if dest.is_file():
                             skipped += 1
                             used_names.add(dest_name)

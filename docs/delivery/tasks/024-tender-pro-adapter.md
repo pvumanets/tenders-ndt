@@ -1,7 +1,7 @@
 ---
 id: "024"
 type: task
-status: ready
+status: done
 phase: NEXT+
 title: "Адаптер Tender.Pro"
 was: "Q16"
@@ -27,11 +27,11 @@ was: "Q16"
 
 ## Acceptance
 
-- [ ] поиск с `platform_id=tender-pro` собирает список по каждой строке `queries` (union + дедуп + `limit_n`)
-- [ ] карточки `/api/tender/{id}/view_public`; скоринг L1–L3 тот же
-- [ ] без cookies список идёт; docs без ЛК не качаем
-- [ ] ingest `source_platform_id=tender-pro`; inbox score≥4
-- [ ] существующие rostender `tender_id` переезжают на префикс без потери `lot_state`
+- [x] поиск с `platform_id=tender-pro` собирает список по каждой строке `queries` (union + дедуп + `limit_n`)
+- [x] карточки `/api/tender/{id}/view_public`; скоринг L1–L3 тот же
+- [x] без cookies список идёт; docs без ЛК не качаем
+- [x] ingest `source_platform_id=tender-pro`; inbox score≥4
+- [x] существующие rostender `tender_id` переезжают на префикс без потери `lot_state`
 
 ## Файлы
 

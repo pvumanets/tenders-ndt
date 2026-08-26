@@ -58,13 +58,15 @@ def test_documents_list_and_download_require_session(
 ) -> None:
     suffix = uuid4().hex[:12]
     username = f"{SMOKE_PREFIX}docs_{suffix}"
-    hot_id = f"{SMOKE_PREFIX}hot_{suffix}"
-    low_id = f"{SMOKE_PREFIX}low_{suffix}"
+    hot_id = f"rostender:{SMOKE_PREFIX}hot_{suffix}"
+    low_id = f"rostender:{SMOKE_PREFIX}low_{suffix}"
     query = f"{SMOKE_PREFIX}docs_run_{suffix}"
     filename = "qa_smoke_tz.pdf"
     payload = b"%PDF-qa-smoke"
     monkeypatch.setenv("SCOUT_DOCS_DIR", str(tmp_path))
-    dest = tmp_path / hot_id
+    from app.worker.platform_ids import volume_dir_name
+
+    dest = tmp_path / volume_dir_name(hot_id)
     dest.mkdir(parents=True)
     (dest / filename).write_bytes(payload)
     lot_ids = [hot_id, low_id]
@@ -111,7 +113,7 @@ def test_documents_list_and_download_require_session(
                     tender_id=hot_id,
                     filename=filename,
                     size_bytes=len(payload),
-                    volume_path=f"{hot_id}/{filename}",
+                    volume_path=f"{volume_dir_name(hot_id)}/{filename}",
                 )
             )
             session.commit()

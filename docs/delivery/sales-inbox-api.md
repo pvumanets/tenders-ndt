@@ -5,7 +5,7 @@
 **продукт:** [`../discovery/sales-inbox.md`](../discovery/sales-inbox.md)  
 **поиски / очередь:** [`../discovery/named-searches.md`](../discovery/named-searches.md)  
 **архитектура:** [`tech-architecture.md`](./tech-architecture.md)  
-**фазы:** [`platform-phases.md`](./platform-phases.md) — P5.2–P7 **done**; поиски [023](./tasks/023-named-searches.md) **done**; Tender.Pro [024](./tasks/024-tender-pro-adapter.md)
+**фазы:** [`platform-phases.md`](./platform-phases.md) — P5.2–P7 **done**; поиски [023](./tasks/023-named-searches.md) **done**; Tender.Pro [024](./tasks/024-tender-pro-adapter.md) **done**
 
 Термины для владельца: **просмотренность**, **ручная смена приоритета**. Ключи JSON/API — на английском.
 
@@ -37,7 +37,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 
 **Ingest (P5.3):** конец **одного** поиска-шага очереди вызывает `ingest_run`. В `lots` попадают только строки **score ≥ 4**. Повтор того же `tender_id` — `INSERT … ON CONFLICT` (карточка обновляется). `lot_state` ingest не создаёт и не обновляет. Без `DATABASE_URL` — skip.
 
-После 024 `tender_id` = `{source_platform_id}:{native_id}` (миграция существующих rostender-рядов — в 024, не as-is). До 024 rostender пишет голый native id.
+После 024 `tender_id` = `{source_platform_id}:{native_id}`. Числовые rostender-ряды мигрируют на `rostender:{id}`; том docs на диске — `rostender__{id}/` (двоеточие в имени папки нельзя).
 
 Поля `lot_state`: `viewed`, `viewed_at`, `manual_tier` (`L1` \| `L2` \| `L3` \| null = оценка движка), `manual_tier_at` (ISO-8601).
 
@@ -162,8 +162,8 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 
 ## Документы (P5.5)
 
-- Байты: `{SCOUT_DOCS_DIR}/{tender_id}/{filename}` (compose: `/data/docs/{tender_id}/`). **Не** `runs/YYYY-MM-DD/docs/` — это не SoT inbox.
-- Мета: таблица `documents`; `volume_path` = относительный `{tender_id}/{filename}`. Байты в Postgres **не** кладём.
+- Байты: `{SCOUT_DOCS_DIR}/{volume_dir}/{filename}` где `volume_dir` = `tender_id` с `:` → `__` (compose: `/data/docs/…`). **Не** `runs/YYYY-MM-DD/docs/` — это не SoT inbox.
+- Мета: таблица `documents`; `volume_path` = относительный `{volume_dir}/{filename}`. Байты в Postgres **не** кладём.
 - Worker: ссылки файлов снимает с HTML карточки (P3, `doc_links`); качает **после ingest** только score ≥ 4. Нет отдельных файлов — «Скачать одним архивом» как `{tender_id}-docs.zip`. Пул 1000 не качаем.
 - `DOWNLOAD_DOCS=1`/`true`/`yes` — качать новые. Иначе (в т.ч. `0` и unset) — новые файлы не появляются; уже лежащие на томе и в `documents` остаются.
 - Повтор: тот же `{tender_id, filename}` не качаем заново, если файл на томе есть; мета upsert. Старые файлы прогон не удаляет.

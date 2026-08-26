@@ -24,7 +24,7 @@ Code and product rules live **in this repo**. Do not duplicate scoring/scope rul
 | Sales Inbox (product) | [discovery/sales-inbox.md](./discovery/sales-inbox.md) (`accepted`) |
 | Sales Inbox design package | [discovery/design/](./discovery/design/) |
 | Open questions | [discovery/open-questions.md](./discovery/open-questions.md) |
-| Named searches + очередь (NEXT+) | [discovery/named-searches.md](./discovery/named-searches.md) (`accepted`; код 023 **done**, [024](./delivery/tasks/024-tender-pro-adapter.md) ready) |
+| Named searches + очередь (NEXT+) | [discovery/named-searches.md](./discovery/named-searches.md) (`accepted`; код 023/024 **done**) |
 | Platforms registry | [discovery/platforms.md](./discovery/platforms.md) |
 | СИБУР SRM зонд (NEXT+) | [discovery/sibur-srm-probe.md](./discovery/sibur-srm-probe.md) (`draft`; cookies = `cookies.sibur.txt`, не в md) |
 | OnlineContract зонд (NEXT+) | [discovery/onlinecontract-probe.md](./discovery/onlinecontract-probe.md) (`draft`; cookies = `cookies.onlinecontract.txt`, не в md) |

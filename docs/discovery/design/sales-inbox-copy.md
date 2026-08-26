@@ -216,7 +216,8 @@
 | searches_save_failed | Не удалось сохранить поиск |
 | searches_duplicate_name | Поиск с таким именем уже есть |
 | searches_delete_confirm | Удалить этот поиск? |
-| searches_tender_pro_skip | Адаптер Tender.Pro пока не подключён — шаг в очереди будет пропущен |
+| searches_tender_pro_docs | Файлы score≥4 — только с живым cookies.tender-pro.txt |
+| session_tender_pro | Tender.Pro: список без cookies; файлы — с cookies.tender-pro.txt |
 | platform_rostender | РосТендер |
 | platform_tender_pro | Tender.Pro |
 | queue_position | Очередь: {current} из {total} |
@@ -227,7 +228,7 @@
 | queue_status_error | ошибка |
 | queue_status_cancelled | отменён |
 
-Tech показывает `L1` / `L2` / `L3` в счётчиках — это норма. Старт/Стоп и поиски — [023](../../delivery/tasks/023-named-searches.md) **done**. Query и limit — в карточке именованного поиска, не на кнопке Старт. Сессия cookies — **по площадке**. Шаг Tender.Pro до 024 пропускается.
+Tech показывает `L1` / `L2` / `L3` в счётчиках — это норма. Старт/Стоп и поиски — [023](../../delivery/tasks/023-named-searches.md) **done**. Tender.Pro — [024](../../delivery/tasks/024-tender-pro-adapter.md) **done**. Query и limit — в карточке именованного поиска, не на кнопке Старт. Сессия cookies — **по площадке**. Список Tender.Pro без cookies; файлы — с `cookies.tender-pro.txt`.
 
 ---
 

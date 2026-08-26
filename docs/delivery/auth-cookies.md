@@ -61,7 +61,7 @@
 | OnlineContract (`onlinecontract`) | `./cookies.onlinecontract.txt` | `ONLINECONTRACT_COOKIES_FILE` | [`../discovery/onlinecontract-probe.md`](../discovery/onlinecontract-probe.md) |
 | Tender.Pro (`tender-pro`) | `./cookies.tender-pro.txt` | `TENDER_PRO_COOKIES_FILE` | [`../discovery/tender-pro-probe.md`](../discovery/tender-pro-probe.md) |
 
-Учётка OnlineContract: имена `ONLINECONTRACT_USER` / `ONLINECONTRACT_PASSWORD` только в `.env`. Worker as-is **не** читает cookie-файлы NEXT+ кроме rostender. После [024](./tasks/024-tender-pro-adapter.md) worker читает `TENDER_PRO_COOKIES_FILE` для ЛК/файлов; **список Tender.Pro идёт и без файла**. Не путать со Scout login и с `cookies.rostender.txt`. Значения cookie и пароли сюда не писать. Пароль Tender.Pro в env **не** заводим — только Netscape-файл.
+Учётка OnlineContract: имена `ONLINECONTRACT_USER` / `ONLINECONTRACT_PASSWORD` только в `.env`. Worker читает `cookies.rostender.txt` и после [024](./tasks/024-tender-pro-adapter.md) — `TENDER_PRO_COOKIES_FILE` **для скачивания файлов**; **список Tender.Pro идёт и без файла**. Не путать со Scout login. Значения cookie и пароли сюда не писать. Пароль Tender.Pro в env **не** заводим — только Netscape-файл.
 
 После утечки дампа в чат / зонда, который трогал NWBC `page_collection`: перелогин в ЛК площадки и свежий экспорт файла.
 

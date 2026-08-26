@@ -1,4 +1,4 @@
-"""Background P1–P4 runner for operator UI — queue of named searches (023)."""
+"""Background P1–P4 runner for operator UI — queue of named searches (023/024)."""
 from __future__ import annotations
 
 import json
@@ -13,11 +13,17 @@ from dotenv import load_dotenv
 from app.api import searches as searches_api
 from app.api.state import STATE
 from app.scoring.pipeline import score_rows
+from app.worker import tender_pro as tender_pro_worker
 from app.worker.artifacts import write_artifacts
 from app.worker.card_scrape import enrich_cards
 from app.worker.docs import download_docs_enabled, download_inbox_docs
 from app.worker.ingest import ingest_run, redact_db_error
 from app.worker.list_scrape import AuthError, scrape_queries
+from app.worker.platform_ids import (
+    PLATFORM_ROSTENDER,
+    PLATFORM_TENDER_PRO,
+    prefix_rows,
+)
 
 _thread: threading.Thread | None = None
 _lock = threading.Lock()
@@ -27,23 +33,27 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _cookies_path() -> Path:
+def _cookies_path(platform_id: str = PLATFORM_ROSTENDER) -> Path:
     load_dotenv(_repo_root() / ".env")
-    p = Path(os.getenv("ROSTENDER_COOKIES_FILE", "./cookies.rostender.txt"))
-    if not p.is_absolute():
-        p = _repo_root() / p
-    return p
+    if platform_id == PLATFORM_TENDER_PRO:
+        raw = os.getenv("TENDER_PRO_COOKIES_FILE", "./cookies.tender-pro.txt")
+    else:
+        raw = os.getenv("ROSTENDER_COOKIES_FILE", "./cookies.rostender.txt")
+    path = Path(raw)
+    if not path.is_absolute():
+        path = _repo_root() / path
+    return path
 
 
 def refresh_session() -> str:
-    p = _cookies_path()
-    if not p.is_file():
+    rostender = _cookies_path(PLATFORM_ROSTENDER)
+    if not rostender.is_file():
         STATE.set_session("missing_cookies")
-        STATE.set_session("ok", platform_id="tender-pro")
-        return "missing_cookies"
-    STATE.set_session("ok")
-    STATE.set_session("ok", platform_id="tender-pro")
-    return "ok"
+    else:
+        STATE.set_session("ok")
+    # List is public; file optional (docs only).
+    STATE.set_session("ok", platform_id=PLATFORM_TENDER_PRO)
+    return STATE.snapshot()["session"]
 
 
 def start_run() -> None:
@@ -117,7 +127,7 @@ def _ingest_step(
             status=status,
             rows=rows,
             started_at=started_at,
-            source_platform_id=str(item.get("platform_id") or "rostender"),
+            source_platform_id=str(item.get("platform_id") or PLATFORM_ROSTENDER),
             search_id=search_id,
         )
         if result is None:
@@ -131,17 +141,24 @@ def _ingest_step(
             STATE.log_msg(error, level="error")
 
 
-def _download_docs(rows: list[dict]) -> None:
+def _download_docs(rows: list[dict], *, platform_id: str) -> None:
     if not download_docs_enabled():
         STATE.log_msg("Docs: skip (DOWNLOAD_DOCS=0)")
         return
     if not rows:
         return
+    cookies = _cookies_path(platform_id)
+    if platform_id == PLATFORM_TENDER_PRO and not cookies.is_file():
+        STATE.log_msg("Docs: Tender.Pro cookies missing — skip files", level="warn")
+        return
+    if platform_id == PLATFORM_ROSTENDER and not cookies.is_file():
+        STATE.log_msg("Docs: rostender cookies missing — skip files", level="warn")
+        return
     STATE.log_msg("Docs: downloading score≥4…")
     try:
         result = download_inbox_docs(
             rows,
-            cookies_path=_cookies_path(),
+            cookies_path=cookies,
             delay_s=0.2,
             should_stop=STATE.should_stop,
         )
@@ -149,7 +166,10 @@ def _download_docs(rows: list[dict]) -> None:
             f"Docs: saved={result.saved} skipped={result.skipped} errors={result.errors}"
         )
     except AuthError as exc:
-        STATE.set_session("expired")
+        if platform_id == PLATFORM_ROSTENDER:
+            STATE.set_session("expired")
+        else:
+            STATE.set_session("expired", platform_id=PLATFORM_TENDER_PRO)
         STATE.log_msg(f"Docs AuthError: {exc}", level="error")
     except Exception as exc:  # noqa: BLE001
         STATE.log_msg(f"Docs error: {type(exc).__name__}: {exc}", level="error")
@@ -188,29 +208,50 @@ def _run_queue(*, items: list[dict], run_dir: Path) -> None:
 
 def _run_one_search(*, item: dict, run_dir: Path) -> str:
     platform = str(item.get("platform_id") or "")
-    if platform == "tender-pro":
-        STATE.log_msg("Tender.Pro adapter not in this ship (024) — skip", level="warn")
-        _ingest_step(
-            item=item,
-            status="skipped",
-            rows=[],
-            started_at=datetime.now(timezone.utc),
-        )
-        return "skipped"
-    if platform != "rostender":
-        STATE.log_msg(f"No adapter for {platform} — skip", level="warn")
-        _ingest_step(
-            item=item,
-            status="skipped",
-            rows=[],
-            started_at=datetime.now(timezone.utc),
-        )
-        return "skipped"
-    return _run_rostender(item=item, run_dir=run_dir)
+    if platform == PLATFORM_TENDER_PRO:
+        return _run_tender_pro(item=item, run_dir=run_dir)
+    if platform == PLATFORM_ROSTENDER:
+        return _run_rostender(item=item, run_dir=run_dir)
+    STATE.log_msg(f"No adapter for {platform} — skip", level="warn")
+    _ingest_step(
+        item=item,
+        status="skipped",
+        rows=[],
+        started_at=datetime.now(timezone.utc),
+    )
+    return "skipped"
+
+
+def _finish_artifacts(
+    *,
+    item: dict,
+    run_dir: Path,
+    enriched: list[dict],
+    summary: dict,
+    limit: int,
+    started_at: datetime,
+    platform_id: str,
+    status: str = "done",
+) -> str:
+    write_artifacts(run_dir, enriched)
+    readme = run_dir / "README.md"
+    readme.write_text(
+        f"# Run {run_dir.name}\n\n**status:** {status}\n\n**via:** operator UI\n\n"
+        f"**platform:** {platform_id}\n\n"
+        f"**search:** {item.get('name')}\n\n**query:** {_query_label(item)}\n\n"
+        f"**limit:** {limit}\n\n"
+        f"**tiers:** {summary}\n\n"
+        f"**files:** raw-list, scored-list, tenders.csv, tenders.md, priority-fit.md\n",
+        encoding="utf-8",
+    )
+    STATE.log_msg(f"P4 done → {run_dir}")
+    _ingest_step(item=item, status=status, rows=enriched, started_at=started_at)
+    _download_docs(enriched, platform_id=platform_id)
+    return "done" if status == "done" else status
 
 
 def _run_rostender(*, item: dict, run_dir: Path) -> str:
-    cookies = _cookies_path()
+    cookies = _cookies_path(PLATFORM_ROSTENDER)
     if not cookies.is_file():
         STATE.set_session("missing_cookies")
         STATE.log_msg("Rostender cookies missing — skip step", level="warn")
@@ -226,7 +267,7 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
     limit = int(item.get("limit_n") or 1000)
     started_at = datetime.now(timezone.utc)
     enriched: list[dict] = []
-    status = "done"
+    summary: dict = {}
     try:
         STATE.set_phase("P1")
         STATE.log_msg("P1: list scrape…")
@@ -238,6 +279,7 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
             should_stop=STATE.should_stop,
             on_progress=lambda n, lim: STATE.set_list_progress(n, lim),
         )
+        rows = prefix_rows(rows, PLATFORM_ROSTENDER)
         (run_dir / "raw-list.json").write_text(
             json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8"
         )
@@ -290,28 +332,22 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
             write_artifacts(run_dir, enriched)
             STATE.log_msg("Stopped during/after P3; partial artifacts written", level="warn")
             _ingest_step(item=item, status="stopped", rows=enriched, started_at=started_at)
-            _download_docs(enriched)
+            _download_docs(enriched, platform_id=PLATFORM_ROSTENDER)
             return "cancelled"
 
         STATE.set_phase("P4")
         STATE.log_msg("P4: artifacts…")
-        write_artifacts(run_dir, enriched)
-        readme = run_dir / "README.md"
-        readme.write_text(
-            f"# Run {run_dir.name}\n\n**status:** ok\n\n**via:** operator UI\n\n"
-            f"**search:** {item.get('name')}\n\n**query:** {_query_label(item)}\n\n"
-            f"**limit:** {limit}\n\n"
-            f"**tiers:** {summary}\n\n"
-            f"**files:** raw-list, scored-list, tenders.csv, tenders.md, priority-fit.md\n",
-            encoding="utf-8",
+        return _finish_artifacts(
+            item=item,
+            run_dir=run_dir,
+            enriched=enriched,
+            summary=summary,
+            limit=limit,
+            started_at=started_at,
+            platform_id=PLATFORM_ROSTENDER,
         )
-        STATE.log_msg(f"P4 done → {run_dir}")
-        _ingest_step(item=item, status="done", rows=enriched, started_at=started_at)
-        _download_docs(enriched)
-        return "done"
     except AuthError as e:
         STATE.set_session("expired")
-        status = "error"
         _ingest_step(
             item=item,
             status="error",
@@ -320,7 +356,103 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
             error=f"AuthError: {e}",
         )
         STATE.log_msg(f"AuthError: {e}", level="error")
-        return status
+        return "error"
+    except Exception as e:  # noqa: BLE001
+        _ingest_step(
+            item=item,
+            status="error",
+            rows=enriched,
+            started_at=started_at,
+            error=f"{type(e).__name__}: {e}",
+        )
+        STATE.log_msg(f"{type(e).__name__}: {e}", level="error")
+        return "error"
+
+
+def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
+    base = os.getenv("TENDER_PRO_BASE_URL", tender_pro_worker.DEFAULT_BASE)
+    queries = [str(q) for q in (item.get("queries") or []) if str(q).strip()]
+    limit = int(item.get("limit_n") or 1000)
+    started_at = datetime.now(timezone.utc)
+    enriched: list[dict] = []
+    summary: dict = {}
+    try:
+        STATE.set_phase("P1")
+        STATE.log_msg("P1: Tender.Pro list scrape…")
+        rows = tender_pro_worker.scrape_queries(
+            queries=queries,
+            limit=limit,
+            base_url=base,
+            should_stop=STATE.should_stop,
+            on_progress=lambda n, lim: STATE.set_list_progress(n, lim),
+        )
+        rows = prefix_rows(rows, PLATFORM_TENDER_PRO)
+        (run_dir / "raw-list.json").write_text(
+            json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        STATE.set_list_progress(len(rows), limit)
+        STATE.log_msg(f"P1 done: {len(rows)} rows")
+        if STATE.should_stop():
+            STATE.log_msg("Stopped after P1", level="warn")
+            _ingest_step(item=item, status="stopped", rows=[], started_at=started_at)
+            return "cancelled"
+
+        STATE.set_phase("P2")
+        STATE.log_msg("P2: scoring…")
+        scored, summary, card_ids = score_rows(rows)
+        STATE.add_counters(summary)
+        (run_dir / "scored-list.json").write_text(
+            json.dumps(scored, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        (run_dir / "tier-summary.json").write_text(
+            json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        (run_dir / "card-ids.json").write_text(
+            json.dumps(card_ids, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        STATE.set_cards_progress(0, len(card_ids))
+        STATE.log_msg(f"P2 done: tiers={summary} cards={len(card_ids)}")
+        if STATE.should_stop():
+            STATE.log_msg("Stopped after P2", level="warn")
+            _ingest_step(item=item, status="stopped", rows=[], started_at=started_at)
+            return "cancelled"
+
+        STATE.set_phase("P3")
+        STATE.log_msg("P3: Tender.Pro public cards…")
+        enriched, errors = tender_pro_worker.enrich_cards(
+            scored,
+            card_ids,
+            base_url=base,
+            delay_s=0.2,
+            should_stop=STATE.should_stop,
+            on_progress=lambda d, t: STATE.set_cards_progress(d, t),
+        )
+        (run_dir / "scored-list.json").write_text(
+            json.dumps(enriched, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        (run_dir / "cards-errors.json").write_text(
+            json.dumps(errors, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        STATE.log_msg(f"P3 done: errors={len(errors)}")
+        if STATE.should_stop():
+            STATE.set_phase("P4")
+            write_artifacts(run_dir, enriched)
+            STATE.log_msg("Stopped during/after P3; partial artifacts written", level="warn")
+            _ingest_step(item=item, status="stopped", rows=enriched, started_at=started_at)
+            _download_docs(enriched, platform_id=PLATFORM_TENDER_PRO)
+            return "cancelled"
+
+        STATE.set_phase("P4")
+        STATE.log_msg("P4: artifacts…")
+        return _finish_artifacts(
+            item=item,
+            run_dir=run_dir,
+            enriched=enriched,
+            summary=summary,
+            limit=limit,
+            started_at=started_at,
+            platform_id=PLATFORM_TENDER_PRO,
+        )
     except Exception as e:  # noqa: BLE001
         _ingest_step(
             item=item,

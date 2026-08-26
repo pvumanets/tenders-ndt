@@ -15,6 +15,7 @@ from app.worker.card_scrape import enrich_cards
 from app.worker.docs import download_docs_enabled, download_inbox_docs
 from app.worker.ingest import ingest_run, redact_db_error
 from app.worker.list_scrape import AuthError, scrape_list
+from app.worker.platform_ids import PLATFORM_ROSTENDER, prefix_rows
 
 
 def _repo_root() -> Path:
@@ -56,6 +57,7 @@ def cmd_scrape(args: argparse.Namespace) -> int:
             limit=args.limit,
             headless=not args.headed,
         )
+        rows = prefix_rows(rows, PLATFORM_ROSTENDER)
     except AuthError as e:
         readme.write_text(
             f"# Run {out_dir.name}\n\n**status:** blocked\n\n**phase:** P1\n\n**error:** AuthError — {e}\n",

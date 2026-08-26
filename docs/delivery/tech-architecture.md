@@ -7,7 +7,7 @@
 **Фазы P0–P5.0:** [`code-phases.md`](./code-phases.md)  
 **Фазы P5.1–P7:** [`platform-phases.md`](./platform-phases.md) (`accepted`; P5.1–P7 **done**)
 
-Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**; ПК = тот же compose; SoT inbox = **Postgres**; две учётки без ролей. P5.1–P7 **done**. NEXT+: именованные поиски ([023](./tasks/023-named-searches.md)), Tender.Pro ([024](./tasks/024-tender-pro-adapter.md)).
+Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**; ПК = тот же compose; SoT inbox = **Postgres**; две учётки без ролей. P5.1–P7 **done**. Именованные поиски ([023](./tasks/023-named-searches.md)) и Tender.Pro ([024](./tasks/024-tender-pro-adapter.md)) **done**.
 
 ---
 
@@ -39,7 +39,7 @@ Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**;
 | Секреты | `.env` / `.env.vps` (gitignore) + Netscape cookies-файл. Пароли не в git и не в skills. |
 | Выгрузка P4 | том прогона: CSV + MD + JSON (inbox их **не** читает) |
 
-Вне текущего ship: Bitrix lead sync, роли, cron, Excel-вкладка, СИБУР / OnlineContract / остальные ЭТП кроме Tender.Pro. Поиски + Tender.Pro — NEXT+ код 023/024, lock [`../discovery/named-searches.md`](../discovery/named-searches.md).
+Вне текущего ship: Bitrix lead sync, роли, cron, Excel-вкладка, СИБУР / OnlineContract / остальные ЭТП кроме Tender.Pro. Поиски + Tender.Pro — **done** (023/024); lock [`../discovery/named-searches.md`](../discovery/named-searches.md).
 
 ## FAQ — стек, скрейп, VPS (обновлено 2026-08-13)
 

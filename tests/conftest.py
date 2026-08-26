@@ -57,7 +57,12 @@ def _sweep_smoke_lots() -> None:
     with factory() as session:
         try:
             lot_ids = list(
-                session.scalars(select(Lot.tender_id).where(Lot.tender_id.startswith(SMOKE_PREFIX)))
+                session.scalars(
+                    select(Lot.tender_id).where(
+                        (Lot.tender_id.startswith(SMOKE_PREFIX))
+                        | (Lot.tender_id.like(f"%:{SMOKE_PREFIX}%"))
+                    )
+                )
             )
             if lot_ids:
                 session.execute(delete(Document).where(Document.tender_id.in_(lot_ids)))
