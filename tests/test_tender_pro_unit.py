@@ -75,6 +75,12 @@ def test_rename_legacy_docs_dirs(tmp_path: Path) -> None:
 
 
 @pytest.mark.unit
+def test_rename_legacy_docs_dirs_missing_root(tmp_path: Path) -> None:
+    missing = tmp_path / "nope"
+    assert rename_legacy_docs_dirs(missing) == 0
+
+
+@pytest.mark.unit
 def test_parse_list_html() -> None:
     rows, total = tender_pro.parse_list_html(_LIST_HTML)
     assert total == 2
