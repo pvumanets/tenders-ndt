@@ -127,8 +127,9 @@ UI: всё на вкладке **Прогон** (третью вкладку н�
 - [x] Owner выбрал именованные поиски и очередь (2026-08-19)
 - [x] Сиды и смысл `queries[]` по площадкам записаны
 - [x] Tender.Pro не копирует `list_scrape.py` вслепую
-- [ ] Код 023/024 — отдельные ветки `feat/023-…` / `feat/024-…` после этого lock
+- [x] Код 023 — ветка `feat/023-named-searches` (очередь + Tech)
+- [ ] Код 024 — `feat/024-…` после merge 023
 
 ## Next skill
 
-Код: `scout-architect` (уже в этом файле) → `scout-designer` + `scout-ux-writer` + `scout-backend` + `scout-frontend` → `scout-qa` → docs. Не начинать, пока этот файл `accepted` (уже).
+024: `scout-backend` → `scout-qa` → docs. Ветка `feat/024-tender-pro-adapter` после merge 023 (или поверх него).

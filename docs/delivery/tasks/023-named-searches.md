@@ -1,7 +1,7 @@
 ---
 id: "023"
 type: task
-status: ready
+status: done
 phase: NEXT+
 title: "Именованные поиски + очередь прогонов"
 was: "Q16/Q25"
@@ -19,16 +19,16 @@ was: "Q16/Q25"
 
 Lock: [`../../discovery/named-searches.md`](../../discovery/named-searches.md). Postgres `searches`; CRUD `/api/searches*`; Старт читает `in_queue`; Стоп рвёт хвост; `GET /api/status` — текущий шаг и cookies по площадке. Вкладка Прогон, без третьей вкладки. Сиды: «РосТендер НК» в очереди; «Tender.Pro НК» не в очереди.
 
-Код — ветка `feat/023-named-searches` от `main`. Этот docs-срез адаптер не пишет.
+Код — ветка `feat/023-named-searches`. Адаптер Tender.Pro не в этом срезе ([024](./024-tender-pro-adapter.md)).
 
 ## Acceptance
 
-- [ ] таблица `searches` + сиды
-- [ ] CRUD за сессией Scout; имя уникально; `queries` непустой
-- [ ] Старт пустой очереди → 400 `empty_queue`; второй Старт → 409
-- [ ] очередь: шаг = один `runs` (`search_id`, `source_platform_id`); ошибка шага не рвёт хвост
-- [ ] Стоп рвёт текущий шаг и остаток очереди
-- [ ] Tech: список поисков + чекбокс очереди + CRUD + Старт/Стоп; query/limit не на кнопке
+- [x] таблица `searches` + сиды
+- [x] CRUD за сессией Scout; имя уникально; `queries` непустой
+- [x] Старт пустой очереди → 400 `empty_queue`; второй Старт → 409
+- [x] очередь: шаг = один `runs` (`search_id`, `source_platform_id`); ошибка шага не рвёт хвост
+- [x] Стоп рвёт текущий шаг и остаток очереди
+- [x] Tech: список поисков + чекбокс очереди + CRUD + Старт/Стоп; query/limit не на кнопке
 
 ## Файлы
 

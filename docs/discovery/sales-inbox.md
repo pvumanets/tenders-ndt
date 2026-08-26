@@ -45,7 +45,7 @@
 | Именованные поиски + очередь | lock 2026-08-19; код [023](../delivery/tasks/023-named-searches.md) / [024](../delivery/tasks/024-tender-pro-adapter.md) | fact |
 | Порядок кода | [`../delivery/platform-phases.md`](../delivery/platform-phases.md) P5.1→P7 | fact |
 | Фильтры дат | must: **срок подачи** + **`ingested_at`** (пресеты в UI) | fact |
-| Tech вкладка | Статус + Старт/Стоп (**022 done**); поиски/очередь — 023 | fact |
+| Tech вкладка | Статус + Старт/Стоп + поиски/очередь (**023 done**) | fact |
 
 ## Facts / Hypotheses / Gaps
 
@@ -149,8 +149,8 @@
 ## Handoff
 
 ```text
-Done: P5.0–P7 (HTTPS + Старт/Стоп)
-Now: lock поисков accepted → код 023 затем 024
+Done: P5.0–P7 + поиски/очередь (023)
+Now: адаптер Tender.Pro (024)
 ```
 
-**Стоп кода:** не начинать 023, пока [`named-searches.md`](./named-searches.md) не `accepted` (уже).
+**Стоп кода 024:** не начинать, пока 023 не влит в `main` (или работать поверх `feat/023-named-searches`).

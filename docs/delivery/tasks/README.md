@@ -1,7 +1,7 @@
 # Tasks / backlog
 
 **status:** active  
-**last-review-date:** 2026-08-19  
+**last-review-date:** 2026-08-26  
 
 Владелец смотрит **эту таблицу**. Карточка = детали и acceptance. Cursor Plans ≠ канон.
 
@@ -41,10 +41,10 @@
 | 020 | Дев-стенд: скрипт подъёма + агенты не скикают БД | task | done | P5.1 | | [020-dev-stand.md](./020-dev-stand.md) |
 | 021 | GitHub origin + git workflow | task | done | P6 | | [021-github-origin.md](./021-github-origin.md) |
 | 022 | Tech: Старт/Стоп прогона в React | task | done | NEXT+ | Q25 | [022-tech-start-stop.md](./022-tech-start-stop.md) |
-| 023 | Именованные поиски + очередь прогонов | task | ready | NEXT+ | Q16/Q25 | [023-named-searches.md](./023-named-searches.md) |
+| 023 | Именованные поиски + очередь прогонов | task | done | NEXT+ | Q16/Q25 | [023-named-searches.md](./023-named-searches.md) |
 | 024 | Адаптер Tender.Pro | task | ready | NEXT+ | Q16 | [024-tender-pro-adapter.md](./024-tender-pro-adapter.md) |
 
 ### Очередь
 
 - **001–011** — done в mock; P5.0 **accepted** (2026-08-13).
-- **012** — done (P5.1). **013** — done (P5.2). **014** — done (P5.3). **015** — done (P5.4). **016** — done (P5.5). **017** — done (P6). **019** — done (P1 hotfix: только открытые). **020** — done (P5.1 DX: `dev-up.ps1`). **021** — done (GitHub origin). **018** — done (P7 HTTPS). **022** — done (Start/Stop в React). **023** — ready (именованные поиски + очередь; lock [`../../discovery/named-searches.md`](../../discovery/named-searches.md)). **024** — ready (Tender.Pro; зависит от 023).
+- **012** — done (P5.1). **013** — done (P5.2). **014** — done (P5.3). **015** — done (P5.4). **016** — done (P5.5). **017** — done (P6). **019** — done (P1 hotfix: только открытые). **020** — done (P5.1 DX: `dev-up.ps1`). **021** — done (GitHub origin). **018** — done (P7 HTTPS). **022** — done (Start/Stop в React). **023** — done (именованные поиски + очередь). **024** — ready (Tender.Pro; зависит от 023).

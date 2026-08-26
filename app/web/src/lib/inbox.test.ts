@@ -7,6 +7,7 @@ import {
   documentDownloadUrl,
   fetchInbox,
   mapRunStatus,
+  runControlMessage,
   startRun,
   stopRun,
 } from "./inbox";
@@ -63,12 +64,18 @@ describe("mapRunStatus", () => {
       session: "missing_cookies",
       run_dir: "/data/runs",
       counters: { L1: 1, L2: 2, L3: 3, noise: 4 },
+      queue: [{ id: "s1", name: "РосТендер НК", platform_id: "rostender", status: "running" }],
+      queue_index: 0,
+      queue_total: 1,
+      current_search_name: "РосТендер НК",
       log: [],
     });
     expect(status.list_done).toBe(12);
     expect(status.list_total).toBe(1000);
     expect(status.session).toBe("missing");
     expect(status.phase_label).toBe(copy.phase_list);
+    expect(status.queue).toHaveLength(1);
+    expect(status.current_search_name).toBe("РосТендер НК");
   });
 });
 
@@ -125,8 +132,9 @@ describe("startRun / stopRun", () => {
     await startRun();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/run/start",
-      expect.objectContaining({ method: "POST", credentials: "include" }),
+      expect.objectContaining({ method: "POST", credentials: "include", body: "{}" }),
     );
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toEqual({});
   });
 
   it("maps already_running and missing_cookies", async () => {
@@ -149,6 +157,17 @@ describe("startRun / stopRun", () => {
       }),
     );
     await expect(startRun()).rejects.toMatchObject({ code: "missing_cookies" });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        status: 400,
+        ok: false,
+        json: async () => ({ detail: "empty_queue" }),
+      }),
+    );
+    await expect(startRun()).rejects.toMatchObject({ code: "empty_queue" });
+    expect(runControlMessage("empty_queue")).toBe(copy.run_error_empty_queue);
   });
 
   it("posts stop", async () => {

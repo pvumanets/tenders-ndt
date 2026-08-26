@@ -40,7 +40,7 @@
 ### NEXT / ship (lock 2026-08-13)
 
 1. **Sales Inbox** — принятый visual; **документы с файлами**; просмотренность; ручная смена приоритета.  
-2. **Tech-вкладка** — статус + Старт/Стоп (022 **done**); поиски/очередь — 023.  
+2. **Tech-вкладка** — статус + Старт/Стоп + поиски/очередь (023 **done**).  
 3. UI = **vendored kit `ndt-personal`**.  
 4. Порядок: [`../delivery/platform-phases.md`](../delivery/platform-phases.md) — P5.1 Platform → … → P7 VPS.  
 5. Storage: **Postgres**; вход: две учётки без ролей.  
@@ -50,7 +50,7 @@
 
 ### Сейчас (активный этап)
 
-Канон платформы **accepted**. **P5.1–P7 done** (VPS HTTPS [tenders.ndtexam.ru](https://tenders.ndtexam.ru)). NEXT+: именованные поиски + очередь ([023](../delivery/tasks/023-named-searches.md)), адаптер Tender.Pro ([024](../delivery/tasks/024-tender-pro-adapter.md)). P5.0 visual **accepted**.
+Канон платформы **accepted**. **P5.1–P7 done** (VPS HTTPS [tenders.ndtexam.ru](https://tenders.ndtexam.ru)). **023 done** (именованные поиски + очередь). NEXT+: адаптер Tender.Pro ([024](../delivery/tasks/024-tender-pro-adapter.md)). P5.0 visual **accepted**.
 
 ## Готово (док / код MVP)
 

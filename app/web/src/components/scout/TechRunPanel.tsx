@@ -1,31 +1,122 @@
 import { useState } from "react";
-import { Alert, Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
-import type { TechStatus } from "../../types";
+import {
+  Alert,
+  Box,
+  Button,
+  FormControlLabel,
+  MenuItem,
+  Paper,
+  Stack,
+  Switch,
+  TextField,
+  Typography,
+} from "@mui/material";
+import type { NamedSearch, QueueStepStatus, TechStatus } from "../../types";
 import { copy } from "../../copy";
+import {
+  formatQueuePosition,
+  platformLabel,
+  queueStatusLabel,
+  rostenderSessionCopy,
+  type SearchWrite,
+} from "../../lib/inbox";
 import { stripe } from "../../theme/palette";
+
+type SearchDraft = {
+  id?: string;
+  name: string;
+  platform_id: string;
+  queriesText: string;
+  limit_n: number;
+  in_queue: boolean;
+  sort_order: number;
+};
+
+function emptyDraft(sortOrder: number): SearchDraft {
+  return {
+    name: "",
+    platform_id: "rostender",
+    queriesText: "",
+    limit_n: 1000,
+    in_queue: false,
+    sort_order: sortOrder,
+  };
+}
+
+function draftFromSearch(search: NamedSearch): SearchDraft {
+  return {
+    id: search.id,
+    name: search.name,
+    platform_id: search.platform_id,
+    queriesText: search.queries.join("\n"),
+    limit_n: search.limit_n,
+    in_queue: search.in_queue,
+    sort_order: search.sort_order,
+  };
+}
+
+function parseQueries(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
 
 export default function TechRunPanel({
   status,
+  searches,
   busy = false,
   error = null,
+  searchError = null,
   onStart,
   onStop,
+  onToggleQueue,
+  onSaveSearch,
+  onDeleteSearch,
 }: {
   status: TechStatus;
+  searches: NamedSearch[];
   busy?: boolean;
   error?: string | null;
+  searchError?: string | null;
   onStart: () => void;
   onStop: () => void;
+  onToggleQueue: (search: NamedSearch, inQueue: boolean) => void;
+  onSaveSearch: (id: string | undefined, body: SearchWrite) => Promise<void>;
+  onDeleteSearch: (search: NamedSearch) => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const sessionLabel =
-    status.session === "ok"
-      ? copy.session_ok
-      : status.session === "expired"
-        ? copy.session_expired
-        : copy.session_missing;
-  const canStart = !busy && !status.running && status.session === "ok";
+  const [draft, setDraft] = useState<SearchDraft | null>(null);
+  const [saving, setSaving] = useState(false);
+  const queuedCount = searches.filter((row) => row.in_queue).length;
+  const canEdit = !busy && !status.running && !saving;
+  const canStart = canEdit && queuedCount > 0;
   const canStop = !busy && status.running;
+  const nextSort = searches.reduce((max, row) => Math.max(max, row.sort_order), -1) + 1;
+  const queueVisible = status.queue.length > 0;
+  const queueCurrent = Math.min(status.queue_index + 1, Math.max(status.queue_total, status.queue.length));
+
+  async function submitDraft() {
+    if (!draft) return;
+    const queries = parseQueries(draft.queriesText);
+    if (!draft.name.trim() || queries.length === 0) return;
+    setSaving(true);
+    try {
+      await onSaveSearch(draft.id, {
+        name: draft.name.trim(),
+        platform_id: draft.platform_id,
+        queries,
+        limit_n: Math.min(1000, Math.max(1, Number(draft.limit_n) || 1)),
+        in_queue: draft.in_queue,
+        sort_order: draft.sort_order,
+      });
+      setDraft(null);
+    } catch {
+      /* parent sets searchError */
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <Paper
@@ -46,12 +137,39 @@ export default function TechRunPanel({
             {copy.run_stop}
           </Button>
         </Stack>
-        {error ? (
-          <Alert severity="error">{error}</Alert>
+        {error ? <Alert severity="error">{error}</Alert> : null}
+        {!status.running && queuedCount === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            {copy.run_error_empty_queue}
+          </Typography>
         ) : null}
-        <Typography variant="body2" color="primary" sx={{ fontWeight: 500 }}>
-          {sessionLabel}
-        </Typography>
+        <Stack spacing={0.5}>
+          <Typography variant="body2" color="primary" sx={{ fontWeight: 500 }}>
+            {rostenderSessionCopy(status.session)}
+          </Typography>
+          <Typography variant="body2" color="primary" sx={{ fontWeight: 500 }}>
+            {copy.session_tender_pro}
+          </Typography>
+        </Stack>
+        {queueVisible ? (
+          <Box>
+            <Typography color="secondary" sx={{ fontWeight: 600 }}>
+              {formatQueuePosition(queueCurrent, status.queue_total || status.queue.length)}
+            </Typography>
+            {status.current_search_name ? (
+              <Typography variant="body2" color="text.secondary">
+                {status.current_search_name}
+              </Typography>
+            ) : null}
+            <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+              {status.queue.map((step) => (
+                <Typography key={step.id} variant="body2">
+                  {step.name} — {queueStatusLabel(step.status as QueueStepStatus)}
+                </Typography>
+              ))}
+            </Stack>
+          </Box>
+        ) : null}
         <Box>
           <Typography color="secondary" sx={{ fontWeight: 600 }}>
             {status.phase_label || copy.phase_done}
@@ -72,6 +190,152 @@ export default function TechRunPanel({
             <Typography variant="body2">noise {status.counters.noise}</Typography>
           </Stack>
         </Box>
+
+        <Box>
+          <Stack direction="row" spacing={1} sx={{ mb: 1, alignItems: "center" }}>
+            <Typography variant="subtitle2" sx={{ flex: 1 }}>
+              {copy.searches_title}
+            </Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              disabled={!canEdit || draft !== null}
+              onClick={() => setDraft(emptyDraft(nextSort))}
+            >
+              {copy.searches_add}
+            </Button>
+          </Stack>
+          {searchError ? <Alert severity="error" sx={{ mb: 1 }}>{searchError}</Alert> : null}
+          {searches.length === 0 && !draft ? (
+            <Typography variant="body2" color="text.secondary">
+              {copy.searches_empty}
+            </Typography>
+          ) : (
+            <Stack spacing={1}>
+              {searches.map((search) => (
+                <Box
+                  key={search.id}
+                  sx={{
+                    py: 0.75,
+                    px: 0.5,
+                    borderBottom: `1px solid ${stripe.border}`,
+                  }}
+                >
+                  <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                    <Typography sx={{ flex: 1, minWidth: 0 }} noWrap>
+                      {search.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
+                      {platformLabel(search.platform_id)}
+                    </Typography>
+                    <FormControlLabel
+                      sx={{ mr: 0, flexShrink: 0 }}
+                      control={
+                        <Switch
+                          size="small"
+                          checked={search.in_queue}
+                          disabled={!canEdit}
+                          onChange={(_, checked) => onToggleQueue(search, checked)}
+                          slotProps={{ input: { "aria-label": `${copy.searches_queue}: ${search.name}` } }}
+                        />
+                      }
+                      label={copy.searches_queue}
+                    />
+                    <Button
+                      size="small"
+                      disabled={!canEdit}
+                      onClick={() => setDraft(draftFromSearch(search))}
+                    >
+                      {copy.searches_edit}
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      disabled={!canEdit}
+                      onClick={() => {
+                        if (window.confirm(copy.searches_delete_confirm)) onDeleteSearch(search);
+                      }}
+                    >
+                      {copy.searches_delete}
+                    </Button>
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    {search.queries.join(", ")} · {copy.searches_limit} {search.limit_n}
+                  </Typography>
+                  {search.platform_id === "tender-pro" ? (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                      {copy.searches_tender_pro_skip}
+                    </Typography>
+                  ) : null}
+                </Box>
+              ))}
+            </Stack>
+          )}
+          {draft ? (
+            <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+              <TextField
+                size="small"
+                label={copy.searches_name}
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              />
+              <TextField
+                size="small"
+                select
+                label={copy.searches_platform}
+                value={draft.platform_id}
+                onChange={(e) => setDraft({ ...draft, platform_id: e.target.value })}
+              >
+                <MenuItem value="rostender">{copy.platform_rostender}</MenuItem>
+                <MenuItem value="tender-pro">{copy.platform_tender_pro}</MenuItem>
+              </TextField>
+              <TextField
+                size="small"
+                label={copy.searches_queries}
+                value={draft.queriesText}
+                onChange={(e) => setDraft({ ...draft, queriesText: e.target.value })}
+                multiline
+                minRows={3}
+              />
+              {draft.platform_id === "tender-pro" ? (
+                <Typography variant="caption" color="text.secondary">
+                  {copy.searches_tender_pro_skip}
+                </Typography>
+              ) : null}
+              <TextField
+                size="small"
+                type="number"
+                label={copy.searches_limit}
+                value={draft.limit_n}
+                onChange={(e) => setDraft({ ...draft, limit_n: Number(e.target.value) })}
+                slotProps={{ htmlInput: { min: 1, max: 1000 } }}
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={draft.in_queue}
+                    onChange={(_, checked) => setDraft({ ...draft, in_queue: checked })}
+                  />
+                }
+                label={copy.searches_queue}
+              />
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={saving || !draft.name.trim() || parseQueries(draft.queriesText).length === 0}
+                  onClick={() => void submitDraft()}
+                >
+                  {copy.searches_save}
+                </Button>
+                <Button size="small" disabled={saving} onClick={() => setDraft(null)}>
+                  {copy.searches_cancel}
+                </Button>
+              </Stack>
+            </Stack>
+          ) : null}
+        </Box>
+
         <Box>
           <Typography variant="caption" color="text.secondary">
             {copy.run_path_label}

@@ -1,7 +1,7 @@
 # Sales Inbox — RU microcopy
 
 **status:** accepted-with-notes  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-26  
 **voice:** короткий RU, без сленга и emoji; директор и продажи — без жаргона L1  
 **catalog:** [`sales-inbox-components.md`](./sales-inbox-components.md)  
 **note:** строки copy ок по flight worksheet; UI = иконка + подпись на ключевых действиях
@@ -176,6 +176,10 @@
 | session_ok | Сессия: cookies OK |
 | session_expired | Сессия: cookies истекли — обновите файл cookies |
 | session_missing | Нет файла cookies — положите cookies по инструкции |
+| session_rostender_ok | РосТендер: cookies OK |
+| session_rostender_expired | РосТендер: cookies истекли — обновите файл cookies |
+| session_rostender_missing | РосТендер: нет файла cookies — положите cookies по инструкции |
+| session_tender_pro | Tender.Pro: список без cookies |
 | phase_list | Фаза: список |
 | phase_score | Фаза: оценка |
 | phase_cards | Фаза: карточки |
@@ -195,9 +199,35 @@
 | run_error_already | Прогон уже идёт |
 | run_error_cookies | Нет файла cookies — положите cookies по инструкции |
 | run_error_failed | Не удалось запустить прогон. Обновите страницу и повторите. |
+| run_error_empty_queue | Отметьте хотя бы один поиск в очереди |
 | run_start_busy | Запуск… |
+| searches_title | Поиски |
+| searches_queue | В очереди |
+| searches_add | Новый поиск |
+| searches_save | Сохранить |
+| searches_cancel | Отмена |
+| searches_delete | Удалить |
+| searches_edit | Править |
+| searches_name | Имя |
+| searches_platform | Площадка |
+| searches_queries | Запросы (по одному на строку) |
+| searches_limit | Лимит |
+| searches_empty | Нет сохранённых поисков |
+| searches_save_failed | Не удалось сохранить поиск |
+| searches_duplicate_name | Поиск с таким именем уже есть |
+| searches_delete_confirm | Удалить этот поиск? |
+| searches_tender_pro_skip | Адаптер Tender.Pro пока не подключён — шаг в очереди будет пропущен |
+| platform_rostender | РосТендер |
+| platform_tender_pro | Tender.Pro |
+| queue_position | Очередь: {current} из {total} |
+| queue_status_pending | ждёт |
+| queue_status_running | идёт |
+| queue_status_done | готово |
+| queue_status_skipped | пропуск |
+| queue_status_error | ошибка |
+| queue_status_cancelled | отменён |
 
-Tech показывает `L1` / `L2` / `L3` в счётчиках — это норма. Старт/Стоп — [022](../../delivery/tasks/022-tech-start-stop.md) **done**. Query и limit — в карточке именованного поиска ([023](../../delivery/tasks/023-named-searches.md)), не на кнопке Старт.
+Tech показывает `L1` / `L2` / `L3` в счётчиках — это норма. Старт/Стоп и поиски — [023](../../delivery/tasks/023-named-searches.md) **done**. Query и limit — в карточке именованного поиска, не на кнопке Старт. Сессия cookies — **по площадке**. Шаг Tender.Pro до 024 пропускается.
 
 ---
 

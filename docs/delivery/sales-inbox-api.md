@@ -1,11 +1,11 @@
 # Sales Inbox — API и storage
 
 **status:** accepted  
-**last-review-date:** 2026-08-19  
+**last-review-date:** 2026-08-26  
 **продукт:** [`../discovery/sales-inbox.md`](../discovery/sales-inbox.md)  
 **поиски / очередь:** [`../discovery/named-searches.md`](../discovery/named-searches.md)  
 **архитектура:** [`tech-architecture.md`](./tech-architecture.md)  
-**фазы:** [`platform-phases.md`](./platform-phases.md) — P5.2–P7 **done**; NEXT+ поиски [023](./tasks/023-named-searches.md)
+**фазы:** [`platform-phases.md`](./platform-phases.md) — P5.2–P7 **done**; поиски [023](./tasks/023-named-searches.md) **done**; Tender.Pro [024](./tasks/024-tender-pro-adapter.md)
 
 Термины для владельца: **просмотренность**, **ручная смена приоритета**. Ключи JSON/API — на английском.
 
@@ -68,7 +68,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | `GET` | `/api/results` | Legacy список по одному run (AS-IS HTML на деве) |
 | `GET` | `/api/results/{tender_id}` | Legacy карточка |
 
-### Именованные поиски (023 — контракт, кода нет)
+### Именованные поиски (023 **done**)
 
 Тело поиска (GET list item / POST / PUT):
 
@@ -189,7 +189,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 - «Скачать»: same-origin `GET /api/inbox/{id}/documents/{filename}` (cookie как у навигации).
 - `GET /api/status` (as-is): `list_n` / `list_limit` / `phase` / `session` (`ok` \| `expired` \| `missing_cookies` \| `unknown`), без `phase_label`. UI: `list_done=list_n`, `list_total=list_limit`; `missing_cookies` и `unknown` → session `missing`; подпись фазы — из copy.
 - `GET /api/status` (023): плюс текущий поиск, позиция i/N, статусы шагов очереди; cookies **по** `platform_id` (не одно поле rostender).
-- `POST /api/run/start` после 023: без body настроек; очередь = поиски с `in_queue=true` по `sort_order`. Пусто → 400 `empty_queue`. As-is до 023: дефолты `limit=1000`, `query=неразрушающий`.
+- `POST /api/run/start` после 023: без body настроек; очередь = поиски с `in_queue=true` по `sort_order`. Пусто → 400 `empty_queue`.
 - 401 на `/api/*` после входа → экран логина. Null-поля списка нормализовать в `""` / `[]`.
 
 AS-IS HTML и `/api/results` — только дев/legacy, не публичный `/`.

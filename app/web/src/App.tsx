@@ -13,6 +13,7 @@ import type {
   DeadlinePreset,
   InboxLot,
   IngestedPreset,
+  NamedSearch,
   PriorityFilter,
   SalesTier,
   TechStatus,
@@ -23,16 +24,23 @@ import { deadlineQuery, ingestedQuery, mskTodayIso } from "./lib/date-filters";
 import { effectiveTier } from "./lib/format";
 import {
   RunControlError,
+  SearchControlError,
   UnauthorizedError,
   apiTierParam,
+  createSearch,
+  deleteSearch,
   fetchInbox,
   fetchInboxItem,
+  fetchSearches,
   fetchStatus,
   putPriority,
   putViewed,
   runControlMessage,
+  searchControlMessage,
   startRun,
   stopRun,
+  updateSearch,
+  type SearchWrite,
 } from "./lib/inbox";
 import { stripe } from "./theme/palette";
 import ThemeRegistry from "./theme/ThemeRegistry";
@@ -59,6 +67,10 @@ const idleTech: TechStatus = {
   counters: { L1: 0, L2: 0, L3: 0, noise: 0 },
   session: "missing",
   run_dir: "",
+  queue: [],
+  queue_index: 0,
+  queue_total: 0,
+  current_search_name: "",
   log: [],
 };
 
@@ -114,6 +126,8 @@ function AppInner() {
   const [tech, setTech] = useState<TechStatus>(idleTech);
   const [techBusy, setTechBusy] = useState(false);
   const [techError, setTechError] = useState<string | null>(null);
+  const [searches, setSearches] = useState<NamedSearch[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,10 +222,11 @@ function AppInner() {
     let timer: number | undefined;
 
     const tick = () => {
-      fetchStatus()
-        .then((status) => {
+      Promise.all([fetchStatus(), fetchSearches()])
+        .then(([status, items]) => {
           if (cancelled) return;
           setTech(status);
+          setSearches(items);
           timer = window.setTimeout(tick, status.running ? STATUS_POLL_MS : STATUS_POLL_MS * 4);
         })
         .catch((err: unknown) => {
@@ -243,6 +258,70 @@ function AppInner() {
       );
     } finally {
       setTechBusy(false);
+    }
+  }
+
+  function replaceSearch(next: NamedSearch) {
+    setSearches((prev) => {
+      const exists = prev.some((row) => row.id === next.id);
+      if (!exists) return [...prev, next];
+      return prev.map((row) => (row.id === next.id ? next : row));
+    });
+  }
+
+  async function onToggleQueue(search: NamedSearch, inQueue: boolean) {
+    setSearchError(null);
+    try {
+      replaceSearch(
+        await updateSearch(search.id, {
+          name: search.name,
+          platform_id: search.platform_id,
+          queries: search.queries,
+          limit_n: search.limit_n,
+          in_queue: inQueue,
+          sort_order: search.sort_order,
+        }),
+      );
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
+      setSearchError(
+        err instanceof SearchControlError ? searchControlMessage(err.code) : copy.searches_save_failed,
+      );
+    }
+  }
+
+  async function onSaveSearch(id: string | undefined, body: SearchWrite) {
+    setSearchError(null);
+    try {
+      const saved = id ? await updateSearch(id, body) : await createSearch(body);
+      if (id) replaceSearch(saved);
+      else setSearches((prev) => [...prev, saved]);
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        throw err;
+      }
+      setSearchError(
+        err instanceof SearchControlError ? searchControlMessage(err.code) : copy.searches_save_failed,
+      );
+      throw err;
+    }
+  }
+
+  async function onDeleteSearch(search: NamedSearch) {
+    setSearchError(null);
+    try {
+      await deleteSearch(search.id);
+      setSearches((prev) => prev.filter((row) => row.id !== search.id));
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
+      setSearchError(copy.searches_save_failed);
     }
   }
 
@@ -394,10 +473,15 @@ function AppInner() {
         ) : (
           <TechRunPanel
             status={tech}
+            searches={searches}
             busy={techBusy}
             error={techError}
+            searchError={searchError}
             onStart={onStartRun}
             onStop={onStopRun}
+            onToggleQueue={onToggleQueue}
+            onSaveSearch={onSaveSearch}
+            onDeleteSearch={onDeleteSearch}
           />
         )}
       </Box>

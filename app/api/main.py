@@ -5,13 +5,15 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from uuid import UUID
+
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api import auth, inbox, results, runner
+from app.api import auth, inbox, results, runner, searches as searches_api
 from app.api.state import STATE
 from app.db.bootstrap import bootstrap_users
 from app.db.session import ping_db
@@ -48,11 +50,6 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="ndt-tender-scout", version="0.5.5", lifespan=lifespan)
-
-
-class StartBody(BaseModel):
-    limit: int = Field(default=1000, ge=1, le=1000)
-    query: str = Field(default="неразрушающий", min_length=1)
 
 
 class LoginBody(BaseModel):
@@ -125,17 +122,18 @@ def api_status():
 
 
 @app.post("/api/run/start")
-def api_start(body: StartBody | None = None):
-    body = body or StartBody()
+def api_start():
     if STATE.snapshot()["running"]:
         raise HTTPException(status_code=409, detail="already_running")
     try:
-        runner.start_run(limit=body.limit, query=body.query)
+        runner.start_run()
     except RuntimeError as e:
         if str(e) == "missing_cookies":
             raise HTTPException(status_code=400, detail="missing_cookies") from e
         if str(e) == "already_running":
             raise HTTPException(status_code=409, detail="already_running") from e
+        if str(e) == "empty_queue":
+            raise HTTPException(status_code=400, detail="empty_queue") from e
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": True, "status": STATE.snapshot()}
 
@@ -144,6 +142,62 @@ def api_start(body: StartBody | None = None):
 def api_stop():
     runner.request_stop()
     return {"ok": True, "status": STATE.snapshot()}
+
+
+def _search_http(exc: Exception) -> None:
+    if isinstance(exc, searches_api.SearchError):
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if isinstance(exc, searches_api.SearchConflict):
+        raise HTTPException(status_code=409, detail="duplicate_name") from exc
+    if isinstance(exc, searches_api.SearchNotFound):
+        raise HTTPException(status_code=404, detail="not_found") from exc
+    if isinstance(exc, RuntimeError) and str(exc) == "database_unconfigured":
+        raise HTTPException(status_code=503, detail="db_down") from exc
+    raise exc
+
+
+def _parse_search_body(body: dict) -> searches_api.SearchIn:
+    try:
+        return searches_api.SearchIn.model_validate(body)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail="invalid_search") from exc
+
+
+@app.get("/api/searches")
+def api_searches_list():
+    try:
+        return searches_api.list_searches()
+    except RuntimeError as exc:
+        _search_http(exc)
+
+
+@app.post("/api/searches")
+def api_searches_create(body: dict):
+    try:
+        return searches_api.create_search(_parse_search_body(body))
+    except (searches_api.SearchError, searches_api.SearchConflict, RuntimeError) as exc:
+        _search_http(exc)
+
+
+@app.put("/api/searches/{search_id}")
+def api_searches_update(search_id: UUID, body: dict):
+    try:
+        return searches_api.update_search(search_id, _parse_search_body(body))
+    except (
+        searches_api.SearchError,
+        searches_api.SearchConflict,
+        searches_api.SearchNotFound,
+        RuntimeError,
+    ) as exc:
+        _search_http(exc)
+
+
+@app.delete("/api/searches/{search_id}", status_code=204)
+def api_searches_delete(search_id: UUID) -> None:
+    try:
+        searches_api.delete_search(search_id)
+    except (searches_api.SearchNotFound, RuntimeError) as exc:
+        _search_http(exc)
 
 
 def _inbox_http(exc: Exception) -> None:

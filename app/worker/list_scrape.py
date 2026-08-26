@@ -282,3 +282,47 @@ def scrape_list(
             page_num += 1
 
     return [asdict(r) for r in results[:limit]]
+
+
+def scrape_queries(
+    *,
+    cookies_path: Path,
+    queries: list[str],
+    limit: int = POOL_LIMIT,
+    base_url: str = DEFAULT_BASE,
+    should_stop=None,
+    on_progress=None,
+) -> list[dict]:
+    """Union of keyword searches, deduped by tender_id, capped at limit."""
+    combined: list[dict] = []
+    seen: set[str] = set()
+    for query in queries:
+        if should_stop and should_stop():
+            break
+        if len(combined) >= limit:
+            break
+        remaining = limit - len(combined)
+        batch = scrape_list(
+            cookies_path=cookies_path,
+            base_url=base_url,
+            query=query,
+            limit=remaining,
+            should_stop=should_stop,
+            on_progress=lambda n, _lim, offset=len(combined): on_progress(
+                min(offset + n, limit), limit
+            )
+            if on_progress
+            else None,
+        )
+        for row in batch:
+            tid = str(row.get("tender_id") or "")
+            if not tid or tid in seen:
+                continue
+            seen.add(tid)
+            combined.append(row)
+            if len(combined) >= limit:
+                break
+        if on_progress:
+            on_progress(len(combined), limit)
+    return combined[:limit]
+
