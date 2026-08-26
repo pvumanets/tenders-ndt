@@ -30,6 +30,25 @@ export type InboxLot = {
   documents: DocFile[];
 };
 
+export type NamedSearch = {
+  id: string;
+  name: string;
+  platform_id: string;
+  queries: string[];
+  limit_n: number;
+  in_queue: boolean;
+  sort_order: number;
+};
+
+export type QueueStepStatus = "pending" | "running" | "done" | "skipped" | "error" | "cancelled";
+
+export type QueueStep = {
+  id: string;
+  name: string;
+  platform_id: string;
+  status: QueueStepStatus;
+};
+
 export type TechStatus = {
   phase: string;
   phase_label: string;
@@ -40,7 +59,12 @@ export type TechStatus = {
   cards_total: number;
   counters: { L1: number; L2: number; L3: number; noise: number };
   session: "ok" | "expired" | "missing";
+  sessions?: { rostender?: string; "tender-pro"?: string };
   run_dir: string;
+  queue: QueueStep[];
+  queue_index: number;
+  queue_total: number;
+  current_search_name: string;
   log: { t: string; msg: string; level?: "error" | "info" }[];
 };
 

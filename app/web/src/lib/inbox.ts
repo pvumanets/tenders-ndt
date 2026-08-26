@@ -1,4 +1,12 @@
-import type { InboxLot, PriorityFilter, SalesTier, TechStatus } from "../types";
+import type {
+  InboxLot,
+  NamedSearch,
+  PriorityFilter,
+  QueueStep,
+  QueueStepStatus,
+  SalesTier,
+  TechStatus,
+} from "../types";
 import { copy } from "../copy";
 
 export class UnauthorizedError extends Error {
@@ -8,7 +16,7 @@ export class UnauthorizedError extends Error {
   }
 }
 
-export type RunControlCode = "already_running" | "missing_cookies" | "failed";
+export type RunControlCode = "already_running" | "missing_cookies" | "empty_queue" | "failed";
 
 export class RunControlError extends Error {
   readonly code: RunControlCode;
@@ -23,6 +31,7 @@ export class RunControlError extends Error {
 export function runControlMessage(code: RunControlCode): string {
   if (code === "already_running") return copy.run_error_already;
   if (code === "missing_cookies") return copy.run_error_cookies;
+  if (code === "empty_queue") return copy.run_error_empty_queue;
   return copy.run_error_failed;
 }
 
@@ -53,8 +62,13 @@ type StatusSnapshot = {
   cards_total?: number;
   counters?: Partial<TechStatus["counters"]> & { pool?: number };
   session?: string;
+  sessions?: Record<string, string>;
   run_dir?: string | null;
   log?: TechStatus["log"];
+  queue?: QueueStep[];
+  queue_index?: number;
+  queue_total?: number;
+  current_search_name?: string | null;
 };
 
 async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
@@ -178,6 +192,135 @@ function sessionUi(raw: string | undefined): TechStatus["session"] {
   return "missing";
 }
 
+const QUEUE_STATUSES: QueueStepStatus[] = [
+  "pending",
+  "running",
+  "done",
+  "skipped",
+  "error",
+  "cancelled",
+];
+
+function parseQueue(raw: QueueStep[] | undefined): QueueStep[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item, index) => {
+    const status = QUEUE_STATUSES.includes(item?.status) ? item.status : "pending";
+    return {
+      id: text(item?.id) || `step-${index}`,
+      name: text(item?.name),
+      platform_id: text(item?.platform_id),
+      status,
+    };
+  });
+}
+
+export function platformLabel(platformId: string): string {
+  if (platformId === "tender-pro") return copy.platform_tender_pro;
+  if (platformId === "rostender") return copy.platform_rostender;
+  return platformId;
+}
+
+export function queueStatusLabel(status: QueueStepStatus): string {
+  switch (status) {
+    case "running":
+      return copy.queue_status_running;
+    case "done":
+      return copy.queue_status_done;
+    case "skipped":
+      return copy.queue_status_skipped;
+    case "error":
+      return copy.queue_status_error;
+    case "cancelled":
+      return copy.queue_status_cancelled;
+    default:
+      return copy.queue_status_pending;
+  }
+}
+
+export function formatQueuePosition(current: number, total: number): string {
+  return copy.queue_position
+    .replace("{current}", String(current))
+    .replace("{total}", String(total));
+}
+
+export function rostenderSessionCopy(session: TechStatus["session"]): string {
+  if (session === "ok") return copy.session_rostender_ok;
+  if (session === "expired") return copy.session_rostender_expired;
+  return copy.session_rostender_missing;
+}
+
+export type SearchWrite = {
+  name: string;
+  platform_id: string;
+  queries: string[];
+  limit_n: number;
+  in_queue: boolean;
+  sort_order: number;
+};
+
+export class SearchControlError extends Error {
+  readonly code: "duplicate_name" | "failed";
+
+  constructor(code: "duplicate_name" | "failed") {
+    super(code);
+    this.name = "SearchControlError";
+    this.code = code;
+  }
+}
+
+export function searchControlMessage(code: SearchControlError["code"]): string {
+  if (code === "duplicate_name") return copy.searches_duplicate_name;
+  return copy.searches_save_failed;
+}
+
+function parseSearch(raw: Partial<NamedSearch>): NamedSearch {
+  return {
+    id: text(raw.id),
+    name: text(raw.name),
+    platform_id: text(raw.platform_id) || "rostender",
+    queries: Array.isArray(raw.queries) ? raw.queries.map((item) => text(item)).filter(Boolean) : [],
+    limit_n: typeof raw.limit_n === "number" ? raw.limit_n : 1000,
+    in_queue: Boolean(raw.in_queue),
+    sort_order: typeof raw.sort_order === "number" ? raw.sort_order : 0,
+  };
+}
+
+export async function fetchSearches(): Promise<NamedSearch[]> {
+  const res = await apiFetch("/api/searches");
+  if (!res.ok) throw new Error("searches_load_failed");
+  const body = (await res.json()) as { items?: Partial<NamedSearch>[] };
+  return Array.isArray(body.items) ? body.items.map(parseSearch) : [];
+}
+
+async function writeSearch(res: Response): Promise<NamedSearch> {
+  if (res.status === 409) throw new SearchControlError("duplicate_name");
+  if (!res.ok) throw new SearchControlError("failed");
+  return parseSearch((await res.json()) as Partial<NamedSearch>);
+}
+
+export async function createSearch(body: SearchWrite): Promise<NamedSearch> {
+  const res = await apiFetch("/api/searches", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return writeSearch(res);
+}
+
+export async function updateSearch(id: string, body: SearchWrite): Promise<NamedSearch> {
+  const res = await apiFetch(`/api/searches/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return writeSearch(res);
+}
+
+export async function deleteSearch(id: string): Promise<void> {
+  const res = await apiFetch(`/api/searches/${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (res.status === 404 || !res.ok) throw new SearchControlError("failed");
+}
+
 export function mapRunStatus(raw: StatusSnapshot): TechStatus {
   return {
     phase: raw.phase ?? "idle",
@@ -194,7 +337,12 @@ export function mapRunStatus(raw: StatusSnapshot): TechStatus {
       noise: raw.counters?.noise ?? 0,
     },
     session: sessionUi(raw.session),
+    sessions: raw.sessions,
     run_dir: raw.run_dir ?? "",
+    queue: parseQueue(raw.queue),
+    queue_index: raw.queue_index ?? 0,
+    queue_total: raw.queue_total ?? (Array.isArray(raw.queue) ? raw.queue.length : 0),
+    current_search_name: raw.current_search_name ?? "",
     log: Array.isArray(raw.log) ? raw.log : [],
   };
 }
@@ -217,6 +365,7 @@ async function readDetail(res: Response): Promise<string> {
 function throwRunControl(detail: string): never {
   if (detail === "already_running") throw new RunControlError("already_running");
   if (detail === "missing_cookies") throw new RunControlError("missing_cookies");
+  if (detail === "empty_queue") throw new RunControlError("empty_queue");
   throw new RunControlError("failed");
 }
 

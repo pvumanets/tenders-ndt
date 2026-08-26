@@ -48,21 +48,31 @@ def _sweep_smoke_users() -> None:
 
 def _sweep_smoke_lots() -> None:
     from sqlalchemy import delete, select
+    from sqlalchemy.exc import ProgrammingError
 
-    from app.db.models import Document, Lot, LotState, Run
+    from app.db.models import Document, Lot, LotState, NamedSearch, Run
     from app.db.session import session_factory
 
     factory = session_factory()
     with factory() as session:
-        lot_ids = list(
-            session.scalars(select(Lot.tender_id).where(Lot.tender_id.startswith(SMOKE_PREFIX)))
-        )
-        if lot_ids:
-            session.execute(delete(Document).where(Document.tender_id.in_(lot_ids)))
-            session.execute(delete(LotState).where(LotState.tender_id.in_(lot_ids)))
-            session.execute(delete(Lot).where(Lot.tender_id.in_(lot_ids)))
-        session.execute(delete(Run).where(Run.query.startswith(SMOKE_PREFIX)))
-        session.commit()
+        try:
+            lot_ids = list(
+                session.scalars(select(Lot.tender_id).where(Lot.tender_id.startswith(SMOKE_PREFIX)))
+            )
+            if lot_ids:
+                session.execute(delete(Document).where(Document.tender_id.in_(lot_ids)))
+                session.execute(delete(LotState).where(LotState.tender_id.in_(lot_ids)))
+                session.execute(delete(Lot).where(Lot.tender_id.in_(lot_ids)))
+            session.execute(delete(Run).where(Run.query.startswith(SMOKE_PREFIX)))
+            search_ids = list(
+                session.scalars(select(NamedSearch.id).where(NamedSearch.name.startswith(SMOKE_PREFIX)))
+            )
+            if search_ids:
+                session.execute(delete(Run).where(Run.search_id.in_(search_ids)))
+                session.execute(delete(NamedSearch).where(NamedSearch.id.in_(search_ids)))
+            session.commit()
+        except ProgrammingError:
+            session.rollback()
 
 
 def _user_count(factory: sessionmaker[Session]) -> int:

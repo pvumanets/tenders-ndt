@@ -26,8 +26,11 @@ class RunState:
     cards_total: int = 0
     run_dir: str | None = None
     last_error: str | None = None
-    session: str = "unknown"  # ok|missing_cookies|expired|unknown
-    query: str = "неразрушающий"
+    session: str = "unknown"  # rostender: ok|missing_cookies|expired|unknown
+    sessions: dict[str, str] = field(default_factory=lambda: {"rostender": "unknown"})
+    query: str = ""
+    queue: list[dict[str, Any]] = field(default_factory=list)
+    queue_index: int = 0
     log: deque[dict[str, str]] = field(default_factory=lambda: deque(maxlen=100))
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
@@ -45,24 +48,61 @@ class RunState:
                 "run_dir": self.run_dir,
                 "last_error": self.last_error,
                 "session": self.session,
+                "sessions": dict(self.sessions),
                 "query": self.query,
+                "queue": [dict(item) for item in self.queue],
+                "queue_index": self.queue_index,
+                "queue_total": len(self.queue),
+                "current_search_id": self.queue[self.queue_index]["id"]
+                if self.queue and 0 <= self.queue_index < len(self.queue)
+                else None,
+                "current_search_name": self.queue[self.queue_index]["name"]
+                if self.queue and 0 <= self.queue_index < len(self.queue)
+                else None,
                 "log": list(self.log),
             }
 
-    def reset_for_run(self, *, limit: int, query: str, run_dir: str) -> None:
+    def reset_for_queue(self, *, items: list[dict[str, Any]], run_dir: str) -> None:
         with self._lock:
             self.phase = "P1"
             self.running = True
             self.stop_requested = False
             self.list_n = 0
-            self.list_limit = limit
+            self.list_limit = 1000
             self.counters = {"L1": 0, "L2": 0, "L3": 0, "noise": 0, "pool": 0}
             self.cards_done = 0
             self.cards_total = 0
             self.run_dir = run_dir
             self.last_error = None
-            self.query = query
+            self.query = items[0]["name"] if items else ""
+            self.queue = [dict(item) for item in items]
+            self.queue_index = 0
             self.log.clear()
+
+    def set_queue_index(self, index: int) -> None:
+        with self._lock:
+            self.queue_index = index
+            if 0 <= index < len(self.queue):
+                self.query = str(self.queue[index].get("name") or "")
+                self.list_n = 0
+                self.cards_done = 0
+                self.cards_total = 0
+
+    def set_queue_status(self, index: int, status: str) -> None:
+        with self._lock:
+            if 0 <= index < len(self.queue):
+                self.queue[index]["status"] = status
+
+    def cancel_remaining(self, from_index: int) -> None:
+        with self._lock:
+            for item in self.queue[from_index:]:
+                if item.get("status") in {"pending", "running"}:
+                    item["status"] = "cancelled"
+
+    def add_counters(self, counters: dict[str, int]) -> None:
+        with self._lock:
+            for key in ("L1", "L2", "L3", "noise", "pool"):
+                self.counters[key] = self.counters.get(key, 0) + int(counters.get(key, 0) or 0)
 
     def log_msg(self, message: str, *, level: str = "info") -> None:
         with self._lock:
@@ -108,9 +148,11 @@ class RunState:
                 self.last_error = error
                 self.log.append({"t": _now(), "level": "error", "msg": error})
 
-    def set_session(self, session: str) -> None:
+    def set_session(self, session: str, *, platform_id: str = "rostender") -> None:
         with self._lock:
-            self.session = session
+            self.sessions[platform_id] = session
+            if platform_id == "rostender":
+                self.session = session
 
 
 STATE = RunState()

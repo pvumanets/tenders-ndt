@@ -57,6 +57,23 @@ class ScoutSession(Base):
     user: Mapped[User] = relationship(back_populates="sessions")
 
 
+class NamedSearch(Base):
+    __tablename__ = "searches"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    platform_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    queries: Mapped[list] = mapped_column(JSONB, nullable=False)
+    limit_n: Mapped[int] = mapped_column(Integer, nullable=False)
+    in_queue: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    runs: Mapped[list["Run"]] = relationship(back_populates="search")
+
+
 class Run(Base):
     __tablename__ = "runs"
 
@@ -64,12 +81,17 @@ class Run(Base):
     query: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     limit_n: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_platform_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    search_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("searches.id", ondelete="SET NULL"), nullable=True
+    )
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
+    search: Mapped[NamedSearch | None] = relationship(back_populates="runs")
     lots: Mapped[list[Lot]] = relationship(back_populates="run")
 
 
