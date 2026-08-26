@@ -97,6 +97,16 @@ def upgrade() -> None:
             """
         )
     )
+
+    # Rename on disk while volume_path still uses bare numeric dirs. Fail loudly
+    # if the volume exists but rename cannot complete — otherwise Postgres would
+    # point at rostender__* while files stay under the old names.
+    docs_root = _docs_root()
+    if docs_root.is_dir():
+        from app.worker.platform_ids import rename_legacy_docs_dirs
+
+        rename_legacy_docs_dirs(docs_root)
+
     op.execute(
         sa.text(
             """
@@ -132,13 +142,6 @@ def upgrade() -> None:
         ["tender_id"],
         ["tender_id"],
     )
-
-    try:
-        from app.worker.platform_ids import rename_legacy_docs_dirs
-
-        rename_legacy_docs_dirs(_docs_root())
-    except Exception:  # noqa: BLE001 — volume may be absent in CI
-        pass
 
 
 def downgrade() -> None:
