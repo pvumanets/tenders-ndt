@@ -121,6 +121,8 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 
 `deadline_msk` и `ingested_at` в JSON — ISO дата `YYYY-MM-DD`. В таблице `lots.deadline_msk` может лежать display `DD.MM.YYYY[ HH:MM]` (ingest не нормализует) — API парсит при чтении. Неразобранный срок отдаём как есть и **не** включаем строку в выборку, если задан фильтр `deadline_*`.
 
+`customer_name` — одно юрлицо (`clean_customer_name` при list/card/ingest и serialize; колонка списка Rostender без PUA / «Закупки…»).
+
 ```json
 {
   "tender_id": "...",

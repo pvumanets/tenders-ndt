@@ -77,6 +77,15 @@ function renderPanel(
 }
 
 describe("TechRunPanel", () => {
+  it("opens search settings drawer on edit", async () => {
+    const user = userEvent.setup();
+    renderPanel(idle);
+    await user.click(screen.getAllByRole("button", { name: copy.searches_edit })[0]);
+    expect(screen.getByText(copy.searches_drawer_title)).toBeInTheDocument();
+    expect(screen.getByLabelText(copy.searches_name)).toHaveValue(rostender.name);
+    expect(screen.getByLabelText(copy.searches_queries)).toHaveValue("неразрушающий");
+  });
+
   it("enables start when a search is queued, even without cookies", async () => {
     const user = userEvent.setup();
     const { onStart, onStop } = renderPanel({ ...idle, session: "missing" });
