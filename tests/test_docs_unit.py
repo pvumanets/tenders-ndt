@@ -143,12 +143,12 @@ def test_download_docs_saves_score_ge_4_skips_l3(
     result = download_inbox_docs(
         [
             {
-                "tender_id": "45289101",
+                "tender_id": "rostender:45289101",
                 "score": 7,
                 "doc_links": [{"name": "TZ.pdf", "url": "https://x/download/1"}],
             },
             {
-                "tender_id": "low",
+                "tender_id": "rostender:low",
                 "score": 3,
                 "doc_links": [{"name": "nope.pdf", "url": "https://x/download/2"}],
             },
@@ -161,15 +161,15 @@ def test_download_docs_saves_score_ge_4_skips_l3(
     )
     assert result.saved == 1
     assert result.errors == 0
-    saved = dest / "45289101" / "TZ.pdf"
+    saved = dest / "rostender__45289101" / "TZ.pdf"
     assert saved.is_file()
     assert saved.read_bytes() == b"%PDF-fake"
-    assert not (dest / "low").exists()
+    assert not (dest / "rostender__low").exists()
 
     again = download_inbox_docs(
         [
             {
-                "tender_id": "45289101",
+                "tender_id": "rostender:45289101",
                 "score": 7,
                 "doc_links": [{"name": "TZ.pdf", "url": "https://x/download/1"}],
             }

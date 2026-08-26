@@ -264,7 +264,7 @@ export default function TechRunPanel({
                   </Typography>
                   {search.platform_id === "tender-pro" ? (
                     <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-                      {copy.searches_tender_pro_skip}
+                      {copy.searches_tender_pro_docs}
                     </Typography>
                   ) : null}
                 </Box>
@@ -299,7 +299,7 @@ export default function TechRunPanel({
               />
               {draft.platform_id === "tender-pro" ? (
                 <Typography variant="caption" color="text.secondary">
-                  {copy.searches_tender_pro_skip}
+                  {copy.searches_tender_pro_docs}
                 </Typography>
               ) : null}
               <TextField

@@ -98,7 +98,7 @@ class Run(Base):
 class Lot(Base):
     __tablename__ = "lots"
 
-    tender_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tender_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     run_id: Mapped[UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("runs.id"), nullable=True
     )

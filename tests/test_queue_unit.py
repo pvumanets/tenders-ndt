@@ -56,8 +56,8 @@ def test_start_run_already_running(idle_run_state: None) -> None:
 
 
 @pytest.mark.unit
-def test_tender_pro_step_skipped(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setattr(runner, "_ingest_step", lambda **_kw: None)
+def test_tender_pro_step_runs_adapter(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(runner, "_run_tender_pro", lambda **_kw: "done")
     status = runner._run_one_search(
         item={
             "id": str(uuid4()),
@@ -68,11 +68,11 @@ def test_tender_pro_step_skipped(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
         },
         run_dir=tmp_path,
     )
-    assert status == "skipped"
+    assert status == "done"
 
 
 @pytest.mark.unit
-def test_queue_continues_after_tender_pro_skip(
+def test_queue_continues_after_tender_pro_error(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     idle_run_state: None,
@@ -81,7 +81,7 @@ def test_queue_continues_after_tender_pro_skip(
 
     def fake_one(*, item: dict, run_dir: Path) -> str:
         calls.append(str(item["platform_id"]))
-        return "skipped" if item["platform_id"] == "tender-pro" else "done"
+        return "error" if item["platform_id"] == "tender-pro" else "done"
 
     monkeypatch.setattr(runner, "_run_one_search", fake_one)
     items = [
@@ -102,7 +102,7 @@ def test_queue_continues_after_tender_pro_skip(
     runner._run_queue(items=items, run_dir=tmp_path)
     assert calls == ["tender-pro", "rostender"]
     snap = STATE.snapshot()
-    assert snap["queue"][0]["status"] == "skipped"
+    assert snap["queue"][0]["status"] == "error"
     assert snap["queue"][1]["status"] == "done"
     assert snap["running"] is False
 
