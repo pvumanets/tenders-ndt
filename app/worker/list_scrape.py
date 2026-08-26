@@ -19,6 +19,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.worker.cookies import parse_netscape_cookies
+from app.worker.customer_name import clean_customer_name
 
 DEFAULT_BASE = "https://rostender.info"
 SEARCH_QUERY = "неразрушающий"
@@ -174,10 +175,8 @@ def _parse_customer(art) -> str | None:
         return None
     text = col.get_text(" ", strip=True)
     m = re.search(r"Заказчик\s+(.+)$", text)
-    if m:
-        return m.group(1).strip()[:300]
-    # fallback: last long chunk
-    return text[:300] if text else None
+    raw = m.group(1).strip()[:300] if m else (text[:300] if text else None)
+    return clean_customer_name(raw)
 
 
 def _parse_rows(html: str, base_url: str, *, now: datetime | None = None) -> list[TenderRow]:

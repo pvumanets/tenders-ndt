@@ -87,16 +87,22 @@ export default function LotMiniCard({
             >
               {lot.title}
             </Typography>
-            <Typography
-              sx={{
-                mt: 0.5,
-                fontSize: `${theme.density.font.sm}px`,
-                fontWeight: theme.density.weight.medium,
-                color: stripe.navy,
-              }}
-            >
-              {lot.customer_name}
-            </Typography>
+            {lot.customer_name ? (
+              <Typography
+                sx={{
+                  mt: 0.5,
+                  fontSize: `${theme.density.font.sm}px`,
+                  fontWeight: theme.density.weight.medium,
+                  color: stripe.navy,
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+              >
+                {lot.customer_name}
+              </Typography>
+            ) : null}
             <Typography
               variant="caption"
               color="text.secondary"

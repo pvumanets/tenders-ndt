@@ -11,6 +11,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.worker.cookies import parse_netscape_cookies
+from app.worker.customer_name import clean_customer_name
 from app.worker.docs import sanitize_filename
 from app.worker.list_scrape import AuthError, UA
 
@@ -140,7 +141,7 @@ def parse_card_html(html: str, title_hint: str = "") -> dict[str, Any]:
         "contact_phone": phone,
         "contact_email": email,
         "location": location or None,
-        "customer_name": customer if customer and customer != "Наименование" else None,
+        "customer_name": clean_customer_name(customer),
         "price_rub": price if price and re.search(r"\d", price or "") else None,
         "source_etp": source_etp,
         "methods": methods or None,
@@ -181,6 +182,26 @@ def parse_document_links(html: str, page_url: str) -> list[dict[str, str]]:
     if files:
         return files
     return [archive] if archive else []
+
+
+def apply_card_fields(row: dict[str, Any], fields: dict[str, Any]) -> None:
+    """Merge P3 card fields onto a list row. Clean card customer_name always wins."""
+    for key, value in fields.items():
+        if not value:
+            continue
+        if key == "customer_name":
+            cleaned = clean_customer_name(value)
+            if cleaned:
+                row[key] = cleaned
+            continue
+        existing = row.get(key)
+        if key in ("location", "price_rub") and existing and existing not in (None, "—", ""):
+            if key == "price_rub" and existing == "—":
+                row[key] = value
+            elif key == "location" and "Russia" in str(existing):
+                row[key] = value
+            continue
+        row[key] = value
 
 
 def enrich_cards(
@@ -236,22 +257,7 @@ def enrich_cards(
                     links = parse_document_links(r.text, url)
                     if links:
                         row["doc_links"] = links
-                    for k, v in fields.items():
-                        if v:
-                            # don't overwrite list location/customer with worse empty; only fill/upgrade
-                            if k in ("location", "customer_name", "price_rub") and row.get(k) and row[k] not in (
-                                None,
-                                "—",
-                                "",
-                            ):
-                                if k == "price_rub" and row[k] == "—":
-                                    row[k] = v
-                                elif k != "price_rub":
-                                    # prefer card location if cleaner
-                                    if k == "location" and "Russia" in (row.get(k) or ""):
-                                        row[k] = v
-                            else:
-                                row[k] = v
+                    apply_card_fields(row, fields)
                     row.pop("card_error", None)
                     row["card_fetched"] = True
             except AuthError:

@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.db.models import Document, Lot, LotState
 from app.db.session import session_factory
 from app.worker.docs import resolve_volume_file, sanitize_filename
+from app.worker.customer_name import clean_customer_name
 from app.worker.ingest import INBOX_MIN_SCORE
 
 TIER_FILTERS = frozenset({"fit", "L1", "L2", "L3"})
@@ -172,7 +173,7 @@ def serialize_lot(
     payload: dict[str, Any] = {
         "tender_id": lot.tender_id,
         "title": lot.title,
-        "customer_name": lot.customer_name,
+        "customer_name": clean_customer_name(lot.customer_name),
         "score": lot.score,
         "tier": lot.tier,
         "effective_tier": _effective_tier(lot, state),

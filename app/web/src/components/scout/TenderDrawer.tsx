@@ -67,7 +67,7 @@ export default function TenderDrawer({
               {lot.title}
             </Typography>
             <Typography sx={{ mt: 1, fontWeight: 600, color: stripe.navy }}>
-              {lot.customer_name}
+              {lot.customer_name || copy.field_empty}
             </Typography>
             <Stack
               direction="row"
