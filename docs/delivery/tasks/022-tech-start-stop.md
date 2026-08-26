@@ -1,7 +1,7 @@
 ---
 id: "022"
 type: task
-status: doing
+status: done
 phase: NEXT+
 title: "Tech: Старт/Стоп прогона в React на VPS"
 was: "Q25"
@@ -17,7 +17,7 @@ was: "Q25"
 
 ## Решение
 
-Кнопки Старт/Стоп на том же экране Tech. Обе учётки, без ролей. Limit/query в UI нет — дефолты API (1000, «неразрушающий»). На VPS `DOWNLOAD_DOCS=1`. Прогон стартует человек в браузере, не Cursor.
+Limit/query в UI нет на кнопке — дефолты API до 023 (именованные поиски). На VPS `DOWNLOAD_DOCS=1`. Прогон стартует человек в браузере, не Cursor.
 
 Dress rehearsal 2026-08-13: `limit=5` на VPS, сессия rostender ok, дедлайны 18–31.08.2026 (прошлого нет); inbox/runs/docs стёрты, api перезапущен. Директор жмёт Старт на 1000.
 
@@ -27,7 +27,7 @@ Dress rehearsal 2026-08-13: `limit=5` на VPS, сессия rostender ok, де�
 - [x] Старт disabled, если идёт прогон или нет cookies
 - [x] Стоп disabled, если прогон не идёт
 - [x] обе учётки могут стартовать (без ролей)
-- [ ] после прогона лоты score≥4 в inbox; файлы при `DOWNLOAD_DOCS=1` (Owner: нажать Старт на VPS)
+- [x] после прогона лоты score≥4 в inbox; файлы при `DOWNLOAD_DOCS=1` (Owner 2026-08-19: ок)
 
 ## Файлы
 

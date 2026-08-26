@@ -1,7 +1,7 @@
 # Documentation map — ndt-tender-scout
 
 **status:** active  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-19  
 
 This repository is the **source of truth** for tender-monitoring product + code.
 
@@ -24,6 +24,7 @@ This repository is the **source of truth** for tender-monitoring product + code.
 | СИБУР SRM зонд (NEXT+) | [discovery/sibur-srm-probe.md](./discovery/sibur-srm-probe.md) |
 | OnlineContract зонд (NEXT+) | [discovery/onlinecontract-probe.md](./discovery/onlinecontract-probe.md) |
 | Tender.Pro зонд (NEXT+) | [discovery/tender-pro-probe.md](./discovery/tender-pro-probe.md) |
+| Named searches + очередь | [discovery/named-searches.md](./discovery/named-searches.md) |
 
 **Agents:** start with root [`AGENTS.md`](../AGENTS.md) and skill `scout-orchestrator`.
 

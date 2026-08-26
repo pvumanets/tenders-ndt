@@ -1,8 +1,8 @@
 # VPS — доступ и деплой
 
 **status:** active  
-**last-review-date:** 2026-08-13  
-**фаза:** P7 ([018](./tasks/018-vps-tls.md)) — HTTPS live; owner login с другого ПК  
+**last-review-date:** 2026-08-19  
+**фаза:** P7 ([018](./tasks/018-vps-tls.md)) — **done**; HTTPS live  
 **git:** [`git-workflow.md`](./git-workflow.md)
 
 Owner lock 2026-08-13: доступы **не считаем скомпрометированными**. Не ротировать, пока владелец не попросит. **Значения пароля не коммитить, не печатать в чат, не класть в skills.**

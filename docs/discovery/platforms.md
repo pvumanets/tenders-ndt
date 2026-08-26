@@ -1,15 +1,16 @@
 # Реестр тендерных площадок (UI / иконки)
 
 **status:** accepted  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-19  
 **источник списка:** перечень отдела продаж (скрин владельца 2026-08-13)  
 **API-ресёрч:** [`../platform-api-research.md`](../platform-api-research.md)  
+**именованные поиски / очередь:** [`named-searches.md`](./named-searches.md)  
 **зонд СИБУР SRM (NEXT+):** [`sibur-srm-probe.md`](./sibur-srm-probe.md)  
 **зонд OnlineContract (NEXT+):** [`onlinecontract-probe.md`](./onlinecontract-probe.md)  
 **зонд Tender.Pro (NEXT+):** [`tender-pro-probe.md`](./tender-pro-probe.md)  
 **ассеты:** `app/web/public/platforms/{id}.png` (32×32)
 
-Ship A scrape = только **rostender**. Остальные строки — реестр для UI «откуда тендер» и будущего multi-site (NEXT+).
+Ship A scrape = только **rostender**. `tender-pro` — backlog до адаптера [024](../delivery/tasks/024-tender-pro-adapter.md) (lock: [`named-searches.md`](./named-searches.md)). Остальные строки — реестр UI «откуда тендер» и более поздние адаптеры.
 
 ## Поля
 

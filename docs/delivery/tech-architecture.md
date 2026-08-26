@@ -1,13 +1,13 @@
 # Техархитектура — ndt-tender-scout
 
 **status:** accepted  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-19  
 **код + канон:** этот репозиторий (`docs/`)  
 **Sales Inbox API:** [`sales-inbox-api.md`](./sales-inbox-api.md)  
 **Фазы P0–P5.0:** [`code-phases.md`](./code-phases.md)  
-**Фазы P5.1–P7:** [`platform-phases.md`](./platform-phases.md) (`accepted`; P5.1–P6 **done**)
+**Фазы P5.1–P7:** [`platform-phases.md`](./platform-phases.md) (`accepted`; P5.1–P7 **done**)
 
-Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**; ПК = тот же compose; SoT inbox = **Postgres**; две учётки без ролей. P5.1–P6 **done**. Следующая — P7 VPS (нужен домен).
+Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**; ПК = тот же compose; SoT inbox = **Postgres**; две учётки без ролей. P5.1–P7 **done**. NEXT+: именованные поиски ([023](./tasks/023-named-searches.md)), Tender.Pro ([024](./tasks/024-tender-pro-adapter.md)).
 
 ---
 
@@ -28,18 +28,18 @@ Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**;
 | Слой | Технология |
 | --- | --- |
 | Язык | Python 3.12 |
-| Сбор списка (P1) | **httpx + BeautifulSoup** (rostender cookies); Playwright — WAF 403 в текущей среде |
+| Сбор списка (P1) | **httpx + BeautifulSoup**; адаптер по `platform_id` поиска (023/024). Playwright — WAF 403 на rostender; Tender.Pro список без Playwright |
 | Карточки (P3+) | httpx + BeautifulSoup |
 | Документы (P5.5) | httpx download → том `docs/{tender_id}/` для **score ≥ 4**; метаданные в Postgres |
-| SoT inbox | **Postgres 16** (`lots`, `lot_state`, `runs`, `users`, `sessions`, `documents`) |
-| API | FastAPI (`/api/auth*`, `/api/status`, `/api/run/*`, `/api/results*`, `/api/inbox*`) |
+| SoT inbox | **Postgres 16** (`lots`, `lot_state`, `runs`, `users`, `sessions`, `documents`; 023: `searches`) |
+| API | FastAPI (`/api/auth*`, `/api/status`, `/api/run/*`, `/api/searches*` (023), `/api/results*`, `/api/inbox*`) |
 | Экран оператора **AS-IS** | static HTML (`app/static/`) — не корень `/`; hotfix / legacy на деве |
 | Экран оператора **TO-BE** | **React** SPA в `app/web/` — P5.0 mock **accepted**; **P6 done** (живой `/api/*`); за Scout-логином с P5.2 |
 | Упаковка | Docker Compose: `db` + `api` (worker-поток внутри api); prod + Caddy |
 | Секреты | `.env` / `.env.vps` (gitignore) + Netscape cookies-файл. Пароли не в git и не в skills. |
 | Выгрузка P4 | том прогона: CSV + MD + JSON (inbox их **не** читает) |
 
-Вне текущего ship: Bitrix lead sync, роли, cron, Excel-вкладка (NEXT+).
+Вне текущего ship: Bitrix lead sync, роли, cron, Excel-вкладка, СИБУР / OnlineContract / остальные ЭТП кроме Tender.Pro. Поиски + Tender.Pro — NEXT+ код 023/024, lock [`../discovery/named-searches.md`](../discovery/named-searches.md).
 
 ## FAQ — стек, скрейп, VPS (обновлено 2026-08-13)
 
@@ -58,15 +58,16 @@ Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**;
 ## Поток данных
 
 ```text
-cookies.rostender.txt          # auth площадки (worker)
-    → httpx worker
-        → rostender.info (поиск ≤1000, score, карточки L1–L3)
+cookies.{platform}.txt         # Netscape; rostender обязателен; tender-pro список публичный
+    → httpx worker (адаптер по platform_id поиска)
+        → список ≤limit, score, карточки L1–L3
         → upsert Postgres (runs, lots)
         → docs download score≥4 → том + documents meta
         → выгрузка P4 на том (tenders.md, priority-fit.md)
     ← FastAPI (session Scout)
         /api/auth/*             (логин двух учёток)
-        /api/status, /api/run/* (Tech: Старт/Стоп в React, 022)
+        /api/searches*          (именованные поиски, 023)
+        /api/status, /api/run/* (очередь in_queue; Стоп рвёт хвост)
         /api/results*           (legacy HTML на деве)
         /api/inbox*             (Sales Inbox ← Postgres)
 
@@ -84,6 +85,7 @@ ndt-tender-scout/
   .env.example
   alembic.ini
   cookies.rostender.txt          # gitignore; bind на api
+  cookies.tender-pro.txt         # gitignore; 024; список публичный
   app/
     api/                         # FastAPI + health + Scout session (P5.2); ingest P5.3; inbox P5.4
     db/                          # SQLAlchemy models, bootstrap users
@@ -147,10 +149,17 @@ ndt-tender-scout/
 **Choice:** **B**, один вызов в конце прогона (`app/worker/ingest.py`): insert `runs` + upsert `lots` по PK `tender_id`. Карточка = последний прогон (`run_id`, `ingested_at`, поля). `lot_state` **не** трогаем. `source_platform_id` = `rostender` (Ship A scrape); `source_etp` остаётся в `raw`. Нет `DATABASE_URL` — ingest skip, P4-файлы всё равно пишутся. Ошибка ingest не откатывает MD/CSV (сначала том, потом БД).  
 **Consequences:** P5.4 читает только `lots`; авто-L3 в inbox не попадают; повторный прогон не сбрасывает viewed/manual_tier.
 
+### Decision: named searches + queue (2026-08-19)
+
+**Context:** Нужны настройки поисков под разные ЭТП в продукте, не хардкод «неразрушающий» на Старте.  
+**Options:** (A) одна карточка на площадку; (B) именованные поиски; (C) поля только на кнопке Старт.  
+**Choice:** **B** + очередь `in_queue` на одном Старте. Первый чужой адаптер — Tender.Pro.  
+**Consequences:** [`../discovery/named-searches.md`](../discovery/named-searches.md); API `/api/searches*`; `tender_id` prefix с 024.
+
 ## Риски / откат
 
 - Rostender cookies протухают; ToS; пул 1000 — [../discovery/risks-compliance.md](../discovery/risks-compliance.md).  
 - Docs: лимит score≥4; `DOWNLOAD_DOCS`; стоп при ошибке сессии площадки.  
-- Дубли `tender_id`: последний ingest = карточка; `viewed` не сбрасывается.  
+- Дубли `tender_id`: последний ingest = карточка; `viewed` не сбрасывается. С 024 ключ = `{platform_id}:{native_id}`.  
 - Пароль Scout в git/чат — смена паролей обеих учёток.  
 - Откат UI: AS-IS HTML не публичный `/`; React inbox читает Postgres (P6).

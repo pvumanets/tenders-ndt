@@ -1,7 +1,7 @@
 # Operator UI — экран хода работы и Sales Inbox
 
 **status:** accepted  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-19  
 **AS-IS:** фаза P5 в [`code-phases.md`](./code-phases.md)  
 **TO-BE фазы:** [`platform-phases.md`](./platform-phases.md)  
 **стек:** [`tech-architecture.md`](./tech-architecture.md)  
@@ -75,6 +75,10 @@ API: [`sales-inbox-api.md`](./sales-inbox-api.md).
 | --- | --- |
 | Вход | `/api/auth/*` |
 | **Лоты** (default) | тот же UI → `/api/inbox*` |
-| **Прогон** | `GET /api/status` + `POST /api/run/start` / `stop` (022) |
+| **Прогон** | `GET /api/status` + `POST /api/run/start` / `stop` (022 **done**); поиски/очередь — [023](./tasks/023-named-searches.md) |
 
 Пресеты дат остаются в UI; на API уходят `deadline_*` / `ingested_*`. Viewed / приоритет — `PUT`. Документы в drawer — `GET /api/inbox/{id}` + same-origin download.
+
+### NEXT+ — поиски на вкладке Прогон (023)
+
+Третью вкладку не плодим. На «Прогоне»: список именованных поисков, чекбокс «в очереди», CRUD, Старт/Стоп. Макет — designer/ux-writer в 023. Канон: [`../discovery/named-searches.md`](../discovery/named-searches.md).

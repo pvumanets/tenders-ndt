@@ -2,13 +2,13 @@
 
 **status:** draft  
 **date:** 2026-08-13  
-**ship:** backlog / NEXT+ (не текущие фазы P0–P7)  
+**ship:** backlog до [024](../delivery/tasks/024-tender-pro-adapter.md); lock поисков — [`named-searches.md`](./named-searches.md)  
 **slug:** `tender-pro` ([platforms.md](./platforms.md))  
 **ресёрч API:** [`../platform-api-research.md`](../platform-api-research.md) § 6  
 **cookies (файл, не этот md):** `./cookies.tender-pro.txt` · имя переменной `TENDER_PRO_COOKIES_FILE`  
 **auth-правила:** [`../delivery/auth-cookies.md`](../delivery/auth-cookies.md)
 
-Живой HTTP-зонд 2026-08-13. Канон поиска владельца: поле **«Товар в тендере»**, не название; статус **Открыт**; страна **Россия**; запросы `ВИК`, `ПВК`, `УЗК`, `РК`. **Код адаптера не пишем** до отдельного OK владельца после P7. Playwright для списка **не понадобился**.
+Живой HTTP-зонд 2026-08-13. Канон поиска владельца: поле **«Товар в тендере»**, не название; статус **Открыт**; страна **Россия**; запросы `ВИК`, `ПВК`, `УЗК`, `РК`. **Код адаптера** — таск [024](../delivery/tasks/024-tender-pro-adapter.md) после [023](../delivery/tasks/023-named-searches.md); в этом md его нет. Playwright для списка **не понадобился**.
 
 ---
 
@@ -85,7 +85,7 @@ POST www.tender.pro/api   # JSON-RPC 2.0 PGWS; лента по товару бе
 
 ---
 
-## Рецепт адаптера (когда NEXT+)
+## Рецепт адаптера ([024](../delivery/tasks/024-tender-pro-adapter.md))
 
 Отдельный worker `tender-pro`:
 
@@ -119,4 +119,4 @@ Compose bind и код — **вне** этой заметки.
 
 ## Вне скоупа заметки
 
-Код адаптера, bind в Docker, смена фаз P0–P7, таск в очереди P7, повторный живой прогон из агента.
+Код адаптера — [024](../delivery/tasks/024-tender-pro-adapter.md) (после 023). Bind cookies на VPS = `--sync`. Повторный живой прогон — человек в браузере, не агент.

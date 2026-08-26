@@ -4,7 +4,7 @@ UI-мониторинг тендеров [rostender.info](https://rostender.info
 
 **GitHub:** [pvumanets/tenders-ndt](https://github.com/pvumanets/tenders-ndt) · ветка `main` · [git workflow](./docs/delivery/git-workflow.md)
 
-**Phases:** P0–P6 done · **P7** HTTPS [tenders.ndtexam.ru](https://tenders.ndtexam.ru) (owner: логин с другого ПК).
+**Phases:** P0–P7 **done** · HTTPS [tenders.ndtexam.ru](https://tenders.ndtexam.ru) · NEXT+: [named searches](./docs/discovery/named-searches.md) (023/024).
 
 ## Canon (this repo)
 

@@ -1,7 +1,7 @@
 # Sales Inbox — продукт NEXT (discovery)
 
 **status:** accepted  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-19  
 **платформа / фазы хвоста:** [`../delivery/platform-phases.md`](../delivery/platform-phases.md)  
 **brief:** [`product-brief.md`](./product-brief.md)  
 **AS-IS UI:** [`../delivery/operator-ui.md`](../delivery/operator-ui.md)  
@@ -42,9 +42,10 @@
 | Runtime | **VPS + Docker** (прод); ПК = тот же compose (дев) | fact |
 | Вход | две учётки, без ролей, один inbox; HTTPS на P7 | fact |
 | Cron / роли / Excel-вкладка | NEXT+ | fact |
+| Именованные поиски + очередь | lock 2026-08-19; код [023](../delivery/tasks/023-named-searches.md) / [024](../delivery/tasks/024-tender-pro-adapter.md) | fact |
 | Порядок кода | [`../delivery/platform-phases.md`](../delivery/platform-phases.md) P5.1→P7 | fact |
 | Фильтры дат | must: **срок подачи** + **`ingested_at`** (пресеты в UI) | fact |
-| Tech вкладка | Статус + Старт/Стоп в React (022) | fact |
+| Tech вкладка | Статус + Старт/Стоп (**022 done**); поиски/очередь — 023 | fact |
 
 ## Facts / Hypotheses / Gaps
 
@@ -56,7 +57,8 @@
 | Tasks 004/005/007/008 | Toolbar: FilterTrigger + вертикальный список; даты отдельными меню; карточка без chip приоритета/«новое» | fact |
 | Иконка + подпись на ключевых действиях | fact |
 | REST `/api/inbox/*` из Postgres + `/api/auth/*` | fact → [`../delivery/sales-inbox-api.md`](../delivery/sales-inbox-api.md) |
-| Cron / 10–12 сайтов / роли | backlog NEXT+ |
+| Cron / роли / остальные ЭТП | backlog NEXT+ |
+| Поиски + Tender.Pro | [named-searches.md](./named-searches.md); код 023/024 |
 | Реальный Bitrix API | out этого ship |
 
 ## Information architecture
@@ -86,7 +88,7 @@
 ### Вкладка «Прогон» (Tech)
 
 - Фаза, прогресс, cookies площадки OK/expired, счётчики L1–L3, идентификатор/путь выгрузки.  
-- Старт / Стоп (022); limit/query в UI нет (дефолты API).
+- Старт / Стоп (022 **done**). Query/limit — не на кнопке: именованные поиски + очередь на этой же вкладке ([023](../delivery/tasks/023-named-searches.md), [`named-searches.md`](./named-searches.md)). Третью вкладку не плодим.
 
 ## Mapping engine → UI
 
@@ -120,7 +122,7 @@
 ### Out / backlog
 
 - Bitrix UI / API в приёмке  
-- Cron + 10–12 площадок  
+- Cron; СИБУР / OnlineContract / остальные ЭТП кроме Tender.Pro (024)  
 - Роли  
 - Excel как вкладка / daily UX  
 - ЭЦП  
@@ -133,8 +135,8 @@
 - [ ] Карточки / Таблица; **документы с файлами**; ручная смена приоритета.  
 - [ ] Просмотренность и приоритет переживают перезапуск браузера и контейнера (БД жива).  
 - [ ] Фильтры/сорт по сроку подачи и «попало к нам».  
-- [ ] Вкладка «Прогон» отдельно (статус + Старт/Стоп).  
-- [ ] Вход по логину; на P7 — HTTPS с другого компьютера.  
+- [x] Вкладка «Прогон» отдельно (статус + Старт/Стоп).  
+- [x] Вход по логину; на P7 — HTTPS с другого компьютера.  
 - [ ] **Не** требуется: Bitrix, роли.
 
 ## Acceptance (design package)
@@ -147,8 +149,8 @@
 ## Handoff
 
 ```text
-Done: P5.0 visual accepted; канон платформы 2026-08-13 (docs)
-Now: owner OK на docs/delivery/platform-phases.md → код P5.1
+Done: P5.0–P7 (HTTPS + Старт/Стоп)
+Now: lock поисков accepted → код 023 затем 024
 ```
 
-**Стоп кода:** не начинать P5.1, пока `platform-phases.md` не `accepted`.
+**Стоп кода:** не начинать 023, пока [`named-searches.md`](./named-searches.md) не `accepted` (уже).

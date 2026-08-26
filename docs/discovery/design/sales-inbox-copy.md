@@ -197,7 +197,7 @@
 | run_error_failed | Не удалось запустить прогон. Обновите страницу и повторите. |
 | run_start_busy | Запуск… |
 
-Tech показывает `L1` / `L2` / `L3` в счётчиках — это норма. Старт/Стоп в React — таск [022](../../delivery/tasks/022-tech-start-stop.md). Limit и query в UI нет.
+Tech показывает `L1` / `L2` / `L3` в счётчиках — это норма. Старт/Стоп — [022](../../delivery/tasks/022-tech-start-stop.md) **done**. Query и limit — в карточке именованного поиска ([023](../../delivery/tasks/023-named-searches.md)), не на кнопке Старт.
 
 ---
 
