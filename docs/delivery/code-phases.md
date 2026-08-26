@@ -1,7 +1,7 @@
 # Фазы кода — ndt-tender-scout
 
 **status:** accepted  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-19  
 **репо:** этот (`ndt-tender-scout`)  
 **хвост P5.1–P7 (подробно):** [`platform-phases.md`](./platform-phases.md)  
 **канон:** [`tech-architecture.md`](./tech-architecture.md) · [`sales-inbox-api.md`](./sales-inbox-api.md) · [`fit-tiers.md`](./fit-tiers.md) · [`acceptance.md`](./acceptance.md)
@@ -27,13 +27,14 @@
 | **P5.4** | Inbox API из БД | **done** |
 | **P5.5** | Docs на том | **done** |
 | **P6** | Wire React | **done** |
-| **P7** | VPS + TLS | **doing** (HTTPS live) |
+| **P7** | VPS + TLS | **done** |
 
 ```text
 P0 → … → P5 → P5.0 accepted
               → P5.1 → P5.2 → P5.3 → P5.4 → P5.5 → P6 → P7
                                                          ↓
-                                                    NEXT+: cron, Bitrix, роли
+                                                    NEXT+: cron, Bitrix, роли,
+                                                    поиски 023, Tender.Pro 024
 ```
 
 ---
@@ -85,7 +86,7 @@ P0 → … → P5 → P5.0 accepted
 
 **Не делать в P5.0 (уже закрыто):** API inbox, Postgres, Docker platform.
 
-Дальше — [`platform-phases.md`](./platform-phases.md) (`accepted`). **P5.1–P6 done.** Следующая фаза — P7 VPS (нужен домен).
+Дальше — [`platform-phases.md`](./platform-phases.md) (`accepted`). **P5.1–P7 done.** NEXT+: [023](./tasks/023-named-searches.md) / [024](./tasks/024-tender-pro-adapter.md).
 
 ---
 
@@ -99,4 +100,5 @@ P0 → … → P5 → P5.0 accepted
 
 ## После P7 (NEXT+)
 
-- Cron, роли, Bitrix, Excel-вкладка
+- Именованные поиски + очередь ([023](./tasks/023-named-searches.md)), адаптер Tender.Pro ([024](./tasks/024-tender-pro-adapter.md))
+- Cron, роли, Bitrix, Excel-вкладка, остальные ЭТП

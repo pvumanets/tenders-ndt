@@ -168,7 +168,7 @@ flowchart LR
 | **Отдаваемые данные** | UI: HTML-таблица; RPC: JSON id/даты/статус при наличии ключа; карточка `/api/tender/{id}/view_public` |
 | **Доступ** | Регистрация на площадке; полная интеграция RPC — `_key` / техподдержка Tender.Pro |
 | **Альтернатива без API** | HTML-список (зонд) или [конструктор ленты](https://help.tender.pro/vigruzka_lenti_procedur.html) |
-| **Зонд (канон)** | [`discovery/tender-pro-probe.md`](./discovery/tender-pro-probe.md) — httpx HTML-грид; адаптер **NEXT+** |
+| **Зонд (канон)** | [`discovery/tender-pro-probe.md`](./discovery/tender-pro-probe.md) — httpx HTML-грид; адаптер [024](./delivery/tasks/024-tender-pro-adapter.md); поиски [`discovery/named-searches.md`](./discovery/named-searches.md) |
 | **Релевантность для НДТ** | **Средняя–высокая**. Мониторинг услуг НК = UI по товару; RPC-лента без ключа мониторинг не закрывает |
 
 ---

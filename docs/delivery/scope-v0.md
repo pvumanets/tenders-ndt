@@ -1,7 +1,7 @@
 # Scope v0 / ship — UI-прототип rostender + платформа
 
 **status:** accepted  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-19  
 **Sales Inbox:** [`../discovery/sales-inbox.md`](../discovery/sales-inbox.md) · [`sales-inbox-api.md`](./sales-inbox-api.md)  
 **фазы хвоста:** [`platform-phases.md`](./platform-phases.md)
 
@@ -33,8 +33,9 @@
 | State | `lot_state` (не JSON-файл) |
 | Вход | две учётки, без ролей, session cookie |
 | Документы | **must** на демо (score ≥ 4, том) |
-| Директор | любой ПК, **HTTPS** (P7, нужен домен) |
+| Директор | любой ПК, **HTTPS** (P7 **done**) |
 | Bitrix / cron / роли | **не** этот ship (NEXT+) |
+| Поиски / Tender.Pro | lock [`../discovery/named-searches.md`](../discovery/named-searches.md); код 023/024 |
 
 Worker и скоринг **в scope** — не выкидываем.
 

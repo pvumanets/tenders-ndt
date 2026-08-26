@@ -1,14 +1,14 @@
 # Product brief — мониторинг тендеров
 
 **status:** accepted  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-19  
 **юрлицо:** ООО СВАРКА  
 **площадка (AS-IS):** rostender.info  
 **код:** `ndt-tender-scout` · обзор [`../delivery/code-phases.md`](../delivery/code-phases.md) · хвост [`../delivery/platform-phases.md`](../delivery/platform-phases.md)  
 **UI NEXT:** [`sales-inbox.md`](./sales-inbox.md) (**accepted**; visual P5.0 **accepted**)  
 **Design package:** [`design/`](./design/)  
 **Architect:** [`../delivery/tech-architecture.md`](../delivery/tech-architecture.md) · [`../delivery/sales-inbox-api.md`](../delivery/sales-inbox-api.md)  
-**Runtime:** VPS + Docker (прод); ПК = тот же compose (дев). Cron / роли / Bitrix = NEXT+.
+**Runtime:** VPS + Docker (прод); ПК = тот же compose (дев). Cron / роли / Bitrix = NEXT+. Поиски + Tender.Pro: [`named-searches.md`](./named-searches.md).
 
 ---
 
@@ -40,7 +40,7 @@
 ### NEXT / ship (lock 2026-08-13)
 
 1. **Sales Inbox** — принятый visual; **документы с файлами**; просмотренность; ручная смена приоритета.  
-2. **Tech-вкладка** — статус + Старт/Стоп (022).  
+2. **Tech-вкладка** — статус + Старт/Стоп + поиски/очередь (023 **done**).  
 3. UI = **vendored kit `ndt-personal`**.  
 4. Порядок: [`../delivery/platform-phases.md`](../delivery/platform-phases.md) — P5.1 Platform → … → P7 VPS.  
 5. Storage: **Postgres**; вход: две учётки без ролей.  
@@ -50,7 +50,7 @@
 
 ### Сейчас (активный этап)
 
-Канон платформы **accepted**. **P5.1–P6 done** (compose + Postgres + Scout login + ingest + inbox API + docs на томе + React на живом API). Следующая фаза — P7 VPS (нужен домен). P5.0 visual **accepted**.
+Канон платформы **accepted**. **P5.1–P7 done** (VPS HTTPS [tenders.ndtexam.ru](https://tenders.ndtexam.ru)). **023 done** (именованные поиски + очередь). NEXT+: адаптер Tender.Pro ([024](../delivery/tasks/024-tender-pro-adapter.md)). P5.0 visual **accepted**.
 
 ## Готово (док / код MVP)
 
@@ -61,4 +61,4 @@
 
 - Роли и cron.  
 - Реальный Bitrix API.  
-- 10–12 площадок, GPT/LLM для скрейпа, ~17k dump, ЭЦП.
+- Остальные ЭТП кроме Tender.Pro (024), GPT/LLM для скрейпа, ~17k dump, ЭЦП.

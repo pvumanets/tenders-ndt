@@ -1,10 +1,11 @@
 # Sales Inbox — API и storage
 
 **status:** accepted  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-26  
 **продукт:** [`../discovery/sales-inbox.md`](../discovery/sales-inbox.md)  
+**поиски / очередь:** [`../discovery/named-searches.md`](../discovery/named-searches.md)  
 **архитектура:** [`tech-architecture.md`](./tech-architecture.md)  
-**фазы:** [`platform-phases.md`](./platform-phases.md) — P5.2–P6 **done** → P7 VPS
+**фазы:** [`platform-phases.md`](./platform-phases.md) — P5.2–P7 **done**; поиски [023](./tasks/023-named-searches.md) **done**; Tender.Pro [024](./tasks/024-tender-pro-adapter.md)
 
 Термины для владельца: **просмотренность**, **ручная смена приоритета**. Ключи JSON/API — на английском.
 
@@ -25,7 +26,8 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | --- | --- |
 | Карточка лота | `lots` |
 | viewed / manual_tier | `lot_state` (один ряд на `tender_id`, глобально) |
-| Прогон | `runs` |
+| Прогон | `runs` (`query`, `limit_n`, `status`; после 023: `source_platform_id`, `search_id`) |
+| Именованный поиск (023) | `searches` (`name`, `platform_id`, `queries`, `limit_n`, `in_queue`, `sort_order`) |
 | Учётки Scout | `users` (password_hash; bootstrap из `.env`) |
 | Сессия Scout | `sessions` (`token_hash` = sha256 opaque cookie; TTL 7 суток) |
 | Мета документов | `documents`; байты — том `docs/{tender_id}/` |
@@ -33,7 +35,9 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 
 `viewed` не сбрасывается новым прогоном. `PUT` пишет в `lot_state`, не в файл прогона.
 
-**Ingest (P5.3):** конец прогона (runner и CLI `artifacts` / `run`) вызывает `ingest_run`. В `lots` попадают только строки **score ≥ 4**. Повтор того же `tender_id` — `INSERT … ON CONFLICT` (карточка обновляется). `lot_state` ingest не создаёт и не обновляет. Без `DATABASE_URL` — skip.
+**Ingest (P5.3):** конец **одного** поиска-шага очереди вызывает `ingest_run`. В `lots` попадают только строки **score ≥ 4**. Повтор того же `tender_id` — `INSERT … ON CONFLICT` (карточка обновляется). `lot_state` ingest не создаёт и не обновляет. Без `DATABASE_URL` — skip.
+
+После 024 `tender_id` = `{source_platform_id}:{native_id}` (миграция существующих rostender-рядов — в 024, не as-is). До 024 rostender пишет голый native id.
 
 Поля `lot_state`: `viewed`, `viewed_at`, `manual_tier` (`L1` \| `L2` \| `L3` \| null = оценка движка), `manual_tier_at` (ISO-8601).
 
@@ -54,11 +58,35 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | Метод | Путь | Назначение |
 | --- | --- | --- |
 | `GET` | `/api/health` | liveness, без секретов (можно без сессии) |
-| `GET` | `/api/status` | Фаза, прогресс, счётчики, cookies площадки, путь выгрузки — **с сессией** |
-| `POST` | `/api/run/start` | Старт прогона (React Tech, 022) |
-| `POST` | `/api/run/stop` | Мягкая остановка |
+| `GET` | `/api/status` | Фаза, прогресс, очередь поисков, cookies **по площадке**, путь выгрузки — **с сессией** |
+| `POST` | `/api/run/start` | Старт **очереди** `in_queue` (023). Body `query`/`limit` не способ настройки |
+| `POST` | `/api/run/stop` | Мягкая остановка текущего шага **и** drop хвоста очереди |
+| `GET` | `/api/searches` | Список именованных поисков (023) |
+| `POST` | `/api/searches` | Создать поиск |
+| `PUT` | `/api/searches/{id}` | Правка (имя, площадка, `queries`, `limit_n`, `in_queue`, `sort_order`) |
+| `DELETE` | `/api/searches/{id}` | Удалить |
 | `GET` | `/api/results` | Legacy список по одному run (AS-IS HTML на деве) |
 | `GET` | `/api/results/{tender_id}` | Legacy карточка |
+
+### Именованные поиски (023 **done**)
+
+Тело поиска (GET list item / POST / PUT):
+
+```json
+{
+  "id": "uuid",
+  "name": "РосТендер НК",
+  "platform_id": "rostender",
+  "queries": ["неразрушающий"],
+  "limit_n": 1000,
+  "in_queue": true,
+  "sort_order": 0
+}
+```
+
+`platform_id` сейчас: `rostender` \| `tender-pro`. `queries` — непустой массив строк. Имя уникально. Сиды — [`../discovery/named-searches.md`](../discovery/named-searches.md).
+
+Очередь: `POST /api/run/start` без настроек в body. Один шаг очереди = один `runs` (`search_id`, `source_platform_id`). Ошибка шага → `skipped`/`error`, очередь дальше. Стоп рвёт хвост. Пусто → `empty_queue`.
 
 ## REST — Sales Inbox (P5.4)
 
@@ -125,10 +153,10 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 
 | Code | Когда |
 | --- | --- |
-| `400` | валидация body/query / `filename` (`..`, `/`, `\`) |
+| `400` | валидация body/query / `filename` (`..`, `/`, `\`) / `empty_queue` |
 | `401` | нет / протухла сессия Scout |
-| `404` | лот не найден в пуле score≥4; файла нет в `documents` или на томе |
-| `409` | конфликт run (start) |
+| `404` | лот не найден в пуле score≥4; файла нет в `documents` или на томе; поиск не найден |
+| `409` | конфликт run (`already_running`) |
 
 Секреты, cookie values площадки, пароли Scout в ответах **запрещены**.
 
@@ -150,7 +178,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | --- | --- |
 | Экран входа | `/api/auth/*` |
 | Вкладка «Лоты» | `/api/inbox*` |
-| Вкладка «Прогон» | `GET /api/status`, `POST /api/run/start`, `POST /api/run/stop` |
+| Вкладка «Прогон» | `GET /api/status`, `POST /api/run/start`, `POST /api/run/stop`; CRUD `/api/searches*` (023) |
 | Bitrix | **не** в приёмке |
 
 **Клиент (lock, без смены FastAPI):**
@@ -159,7 +187,9 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 - Пресеты дат считает UI; на API — абсолютные `deadline_*` / `ingested_*`. Пресет «любой» — параметры не слать.
 - Мультивыбор приоритета в UI: 0 выбранных → `tier=fit`; ровно 1 → этот тир; 2+ → `tier=fit` и фильтр `effective_tier` на клиенте. Query `tier` не расширяем.
 - «Скачать»: same-origin `GET /api/inbox/{id}/documents/{filename}` (cookie как у навигации).
-- `GET /api/status` отдаёт `list_n` / `list_limit` / `phase` / `session` (`ok` \| `expired` \| `missing_cookies` \| `unknown`), без `phase_label`. UI: `list_done=list_n`, `list_total=list_limit`; `missing_cookies` и `unknown` → session `missing`; подпись фазы — из copy.
+- `GET /api/status` (as-is): `list_n` / `list_limit` / `phase` / `session` (`ok` \| `expired` \| `missing_cookies` \| `unknown`), без `phase_label`. UI: `list_done=list_n`, `list_total=list_limit`; `missing_cookies` и `unknown` → session `missing`; подпись фазы — из copy.
+- `GET /api/status` (023): плюс текущий поиск, позиция i/N, статусы шагов очереди; cookies **по** `platform_id` (не одно поле rostender).
+- `POST /api/run/start` после 023: без body настроек; очередь = поиски с `in_queue=true` по `sort_order`. Пусто → 400 `empty_queue`.
 - 401 на `/api/*` после входа → экран логина. Null-поля списка нормализовать в `""` / `[]`.
 
 AS-IS HTML и `/api/results` — только дев/legacy, не публичный `/`.

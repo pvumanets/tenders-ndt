@@ -1,7 +1,7 @@
 # Фазы платформы — VPS + Docker + Postgres + вход
 
 **status:** accepted  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-19  
 **owner lock:** 2026-08-13 (дизайн P5.0 accepted; runtime VPS+Docker; Postgres; две учётки без ролей)  
 **owner OK:** 2026-08-13 (запрос «делаем P5.1»)  
 **обзор P0–P5.0:** [`code-phases.md`](./code-phases.md)  
@@ -12,7 +12,7 @@
 
 Этот файл — **подробный план хвоста** после visual mock. **Код в этом документе не пишем** — только вход, выход, границы, Done. **Не перескакивать фазы.**
 
-Документ **accepted**. P5.1 **done** — [012](./tasks/012-platform-compose.md). P5.2 **done** — [013](./tasks/013-auth-login.md). P5.3 **done** — [014](./tasks/014-ingest-postgres.md). P5.4 **done** — [015](./tasks/015-inbox-api.md). P5.5 **done** — [016](./tasks/016-docs-volume.md). P6 **done** — [017](./tasks/017-react-wire.md).
+Документ **accepted**. P5.1 **done** — [012](./tasks/012-platform-compose.md). P5.2 **done** — [013](./tasks/013-auth-login.md). P5.3 **done** — [014](./tasks/014-ingest-postgres.md). P5.4 **done** — [015](./tasks/015-inbox-api.md). P5.5 **done** — [016](./tasks/016-docs-volume.md). P6 **done** — [017](./tasks/017-react-wire.md). P7 **done** — [018](./tasks/018-vps-tls.md).
 
 ---
 
@@ -45,14 +45,15 @@
 | **P5.4** | Inbox API из БД | **done** | [015](./tasks/015-inbox-api.md) |
 | **P5.5** | Docs download (том) | **done** | [016](./tasks/016-docs-volume.md) |
 | **P6** | Wire mock → API | **done** | [017](./tasks/017-react-wire.md) |
-| **P7** | VPS + TLS | **doing** (HTTPS live) | [018](./tasks/018-vps-tls.md) |
+| **P7** | VPS + TLS | **done** | [018](./tasks/018-vps-tls.md) |
 
 ```text
 P0 … P5 → P5.0 accepted
               → P5.1 Platform → P5.2 Auth → P5.3 Ingest
               → P5.4 Inbox API → P5.5 Docs → P6 Wire → P7 VPS
                                                     ↓
-                                              NEXT+: cron, Bitrix, роли
+                                              NEXT+: cron, Bitrix, роли,
+                                              поиски 023, Tender.Pro 024
 ```
 
 Без P5.1 нет P5.2. Без P5.3 таблица `lots` пустая — inbox нечем кормить.
@@ -296,7 +297,7 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 
 ## P7 — VPS + TLS
 
-**Статус:** doing (HTTPS [tenders.ndtexam.ru](https://tenders.ndtexam.ru); Owner OK — логин с другого ПК)  
+**Статус:** **done** (HTTPS [tenders.ndtexam.ru](https://tenders.ndtexam.ru); owner 2026-08-19: логин с другого ПК ок)  
 **Зависит от:** P6; **домен** на A-запись VPS (owner)  
 **Таск:** [018](./tasks/018-vps-tls.md)  
 **Вход:** тот же compose, профиль `prod`  
@@ -309,7 +310,7 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 **Done:**
 
 - [x] HTTPS без warning (валидный сертификат)
-- [ ] логин директора с другой машины
+- [x] логин директора с другой машины
 - [x] сессия переживает перезапуск контейнера api (БД жива)
 - [x] cookies rostender не в git и не в UI
 
@@ -321,13 +322,15 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 
 ## После P7 (NEXT+)
 
+- Именованные поиски + очередь — [023](./tasks/023-named-searches.md); lock [`../discovery/named-searches.md`](../discovery/named-searches.md)
+- Адаптер Tender.Pro — [024](./tasks/024-tender-pro-adapter.md)
 - Cron прогона
 - Роли (если digital ≠ директор по правам)
 - Bitrix leads
 - Excel-вкладка
-- Другие ЭТП (реестр [`../discovery/platforms.md`](../discovery/platforms.md); зонды: [`../discovery/sibur-srm-probe.md`](../discovery/sibur-srm-probe.md), [`../discovery/onlinecontract-probe.md`](../discovery/onlinecontract-probe.md), [`../discovery/tender-pro-probe.md`](../discovery/tender-pro-probe.md)
+- Остальные ЭТП (реестр [`../discovery/platforms.md`](../discovery/platforms.md); зонды СИБУР / OnlineContract)
 
-Start/Stop в Tech — [022](./tasks/022-tech-start-stop.md) (owner 2026-08-13).
+Start/Stop в Tech — [022](./tasks/022-tech-start-stop.md) (**done**, owner 2026-08-19).
 
 ---
 

@@ -121,7 +121,13 @@ def _raw_payload(row: dict) -> dict[str, Any]:
     return payload
 
 
-def lot_values(row: dict, *, run_id: UUID, ingested_at: datetime) -> dict[str, Any]:
+def lot_values(
+    row: dict,
+    *,
+    run_id: UUID,
+    ingested_at: datetime,
+    source_platform_id: str = SOURCE_PLATFORM_ID,
+) -> dict[str, Any]:
     location = _clean_loc(_optional_text(row.get("location")) or "") or None
     try:
         score = int(row["score"])
@@ -141,7 +147,7 @@ def lot_values(row: dict, *, run_id: UUID, ingested_at: datetime) -> dict[str, A
         "status": _optional_text(row.get("status")),
         "price_rub": parse_price_rub(row.get("price_rub")),
         "fit_reason": _optional_text(row.get("fit_reason")),
-        "source_platform_id": SOURCE_PLATFORM_ID,
+        "source_platform_id": source_platform_id,
         "contact_name": _optional_text(row.get("contact_name")),
         "contact_phone": _optional_text(row.get("contact_phone")),
         "contact_email": _optional_text(row.get("contact_email")),
@@ -158,6 +164,8 @@ def ingest_run(
     rows: list[dict],
     started_at: datetime | None = None,
     finished_at: datetime | None = None,
+    source_platform_id: str = SOURCE_PLATFORM_ID,
+    search_id: UUID | None = None,
 ) -> IngestResult | None:
     """Write one run + upsert inbox lots. None if DATABASE_URL is unset."""
     if not database_url():
@@ -172,13 +180,23 @@ def ingest_run(
             query=query,
             status=status,
             limit_n=limit_n,
+            source_platform_id=source_platform_id,
+            search_id=search_id,
             started_at=started,
             finished_at=finished,
         )
         session.add(run)
         session.flush()
         if candidates:
-            values = [lot_values(row, run_id=run.id, ingested_at=now) for row in candidates]
+            values = [
+                lot_values(
+                    row,
+                    run_id=run.id,
+                    ingested_at=now,
+                    source_platform_id=source_platform_id,
+                )
+                for row in candidates
+            ]
             stmt = pg_insert(Lot).values(values)
             excluded = stmt.excluded
             update = {

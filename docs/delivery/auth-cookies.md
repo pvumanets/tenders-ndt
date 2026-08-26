@@ -1,7 +1,7 @@
 # Auth: два контура
 
 **status:** accepted  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-19  
 **архитектура:** [`tech-architecture.md`](./tech-architecture.md)  
 **API Scout:** [`sales-inbox-api.md`](./sales-inbox-api.md)  
 **фазы:** P5.2 (Scout login), worker cookies — как P1
@@ -61,7 +61,7 @@
 | OnlineContract (`onlinecontract`) | `./cookies.onlinecontract.txt` | `ONLINECONTRACT_COOKIES_FILE` | [`../discovery/onlinecontract-probe.md`](../discovery/onlinecontract-probe.md) |
 | Tender.Pro (`tender-pro`) | `./cookies.tender-pro.txt` | `TENDER_PRO_COOKIES_FILE` | [`../discovery/tender-pro-probe.md`](../discovery/tender-pro-probe.md) |
 
-Учётка OnlineContract: имена `ONLINECONTRACT_USER` / `ONLINECONTRACT_PASSWORD` только в `.env`. Worker as-is **не** читает эти переменные и cookie-файлы NEXT+ (в т.ч. `TENDER_PRO_COOKIES_FILE`). Не путать со Scout login и с `cookies.rostender.txt`. Значения cookie и пароли сюда не писать. Пароль Tender.Pro в env **не** заводим — только Netscape-файл.
+Учётка OnlineContract: имена `ONLINECONTRACT_USER` / `ONLINECONTRACT_PASSWORD` только в `.env`. Worker as-is **не** читает cookie-файлы NEXT+ кроме rostender. После [024](./tasks/024-tender-pro-adapter.md) worker читает `TENDER_PRO_COOKIES_FILE` для ЛК/файлов; **список Tender.Pro идёт и без файла**. Не путать со Scout login и с `cookies.rostender.txt`. Значения cookie и пароли сюда не писать. Пароль Tender.Pro в env **не** заводим — только Netscape-файл.
 
 После утечки дампа в чат / зонда, который трогал NWBC `page_collection`: перелогин в ЛК площадки и свежий экспорт файла.
 
