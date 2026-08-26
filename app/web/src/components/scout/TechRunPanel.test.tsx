@@ -122,8 +122,9 @@ describe("TechRunPanel", () => {
     renderPanel(idle);
     expect(screen.queryByLabelText(/query/i)).not.toBeInTheDocument();
     expect(screen.getByText(/неразрушающий/)).toBeInTheDocument();
-    expect(screen.getByText(copy.searches_tender_pro_skip)).toBeInTheDocument();
+    expect(screen.getByText(copy.searches_tender_pro_docs)).toBeInTheDocument();
     expect(screen.getByText(copy.session_tender_pro)).toBeInTheDocument();
+    expect(screen.queryByText(/пока не подключён/)).not.toBeInTheDocument();
   });
 
   it("toggles in_queue from the switch", async () => {

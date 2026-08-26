@@ -33,8 +33,8 @@ def test_ingest_upserts_score_ge_4_and_preserves_lot_state(
     smoke_db: sessionmaker[Session],
 ) -> None:
     suffix = uuid4().hex[:12]
-    tender_id = f"{SMOKE_PREFIX}{suffix}"
-    l3_id = f"{SMOKE_PREFIX}l3_{suffix}"
+    tender_id = f"rostender:{SMOKE_PREFIX}{suffix}"
+    l3_id = f"rostender:{SMOKE_PREFIX}l3_{suffix}"
     query = f"{SMOKE_PREFIX}ingest_{suffix}"
     try:
         first = ingest_run(

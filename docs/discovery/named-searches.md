@@ -3,7 +3,7 @@
 **status:** accepted  
 **last-review-date:** 2026-08-19  
 **owner lock:** 2026-08-19 (имена поисков + очередь Старта; первая чужая ЭТП = Tender.Pro)  
-**код:** [023](../delivery/tasks/023-named-searches.md) (таблица + Tech + очередь) → [024](../delivery/tasks/024-tender-pro-adapter.md) (адаптер). Этот файл — решения, не реализация.  
+**код:** [023](../delivery/tasks/023-named-searches.md) **done** → [024](../delivery/tasks/024-tender-pro-adapter.md) **done**. Этот файл — решения.  
 **зонд Tender.Pro:** [`tender-pro-probe.md`](./tender-pro-probe.md)  
 **реестр ЭТП:** [`platforms.md`](./platforms.md)  
 **API:** [`../delivery/sales-inbox-api.md`](../delivery/sales-inbox-api.md)
@@ -128,8 +128,8 @@ UI: всё на вкладке **Прогон** (третью вкладку н�
 - [x] Сиды и смысл `queries[]` по площадкам записаны
 - [x] Tender.Pro не копирует `list_scrape.py` вслепую
 - [x] Код 023 — ветка `feat/023-named-searches` (очередь + Tech)
-- [ ] Код 024 — `feat/024-…` после merge 023
+- [x] Код 024 — `feat/024-tender-pro-adapter` (адаптер + prefix `tender_id`)
 
 ## Next skill
 
-024: `scout-backend` → `scout-qa` → docs. Ветка `feat/024-tender-pro-adapter` после merge 023 (или поверх него).
+Дальше по бэклогу владельца; СИБУР / OnlineContract — отдельные зонды, не этот файл.

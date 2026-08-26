@@ -2,7 +2,7 @@
 
 **status:** draft  
 **date:** 2026-08-13  
-**ship:** backlog до [024](../delivery/tasks/024-tender-pro-adapter.md); lock поисков — [`named-searches.md`](./named-searches.md)  
+**ship:** код [024](../delivery/tasks/024-tender-pro-adapter.md) **done**; lock поисков — [`named-searches.md`](./named-searches.md)  
 **slug:** `tender-pro` ([platforms.md](./platforms.md))  
 **ресёрч API:** [`../platform-api-research.md`](../platform-api-research.md) § 6  
 **cookies (файл, не этот md):** `./cookies.tender-pro.txt` · имя переменной `TENDER_PRO_COOKIES_FILE`  
@@ -119,4 +119,4 @@ Compose bind и код — **вне** этой заметки.
 
 ## Вне скоупа заметки
 
-Код адаптера — [024](../delivery/tasks/024-tender-pro-adapter.md) (после 023). Bind cookies на VPS = `--sync`. Повторный живой прогон — человек в браузере, не агент.
+Код адаптера — [024](../delivery/tasks/024-tender-pro-adapter.md) **done**. Bind cookies на VPS = `--sync`. Живой прогон списка — человек в UI, не агент.
