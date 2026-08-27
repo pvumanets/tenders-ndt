@@ -1,7 +1,7 @@
 # Tasks / backlog
 
 **status:** active  
-**last-review-date:** 2026-08-26  
+**last-review-date:** 2026-08-27  
 
 Владелец смотрит **эту таблицу**. Карточка = детали и acceptance. Cursor Plans ≠ канон.
 
@@ -13,7 +13,7 @@
 
 Шаблоны: [`_template-task.md`](./_template-task.md) · [`_template-story.md`](./_template-story.md)
 
-Фазы хвоста: [`../platform-phases.md`](../platform-phases.md) (`accepted`). Не перескакивать фазы.
+Фазы хвоста: [`../platform-phases.md`](../platform-phases.md) (`accepted`) · **NEXT+ детально:** [`../next-phases.md`](../next-phases.md) (`draft`). Не перескакивать фазы.
 
 ## Индекс
 
@@ -45,8 +45,17 @@
 | 024 | Адаптер Tender.Pro | task | done | NEXT+ | Q16 | [024-tender-pro-adapter.md](./024-tender-pro-adapter.md) |
 | 025 | Чистый customer_name на карточке | task | done | NEXT+ | | [025-customer-name.md](./025-customer-name.md) |
 | 026 | Drawer настроек поиска (Править) | task | done | NEXT+ | | [026-search-settings-drawer.md](./026-search-settings-drawer.md) |
+| 027 | Колонка «Просроченные» + архив | task | backlog | NEXT+ | | [027-expired-column.md](./027-expired-column.md) |
+| 028 | Прогон: уже был + отчёт счётчиков | task | backlog | NEXT+ | | [028-run-idempotent-report.md](./028-run-idempotent-report.md) |
+| 029 | Тиры: услуги vs поставка + ИИ отдельным шагом | task | backlog | NEXT+ | | [029-tier-rules-and-ai.md](./029-tier-rules-and-ai.md) |
+| 030 | Покрытие поиска: сиды A–E + без лимита 1000 | task | backlog | NEXT+ | | [030-search-coverage.md](./030-search-coverage.md) |
+| 031 | Укрепление скрейпа: меньше тихих пропусков | task | backlog | NEXT+ | | [031-scrape-hardening.md](./031-scrape-hardening.md) |
 
 ### Очередь
 
 - **001–011** — done в mock; P5.0 **accepted** (2026-08-13).
 - **012** — done (P5.1). **013** — done (P5.2). **014** — done (P5.3). **015** — done (P5.4). **016** — done (P5.5). **017** — done (P6). **019** — done (P1 hotfix: только открытые). **020** — done (P5.1 DX: `dev-up.ps1`). **021** — done (GitHub origin). **018** — done (P7 HTTPS). **022** — done (Start/Stop в React). **023** — done (именованные поиски + очередь). **024** — done (Tender.Pro adapter + prefix `tender_id`). **025** — done (clean customer_name). **026** — done (search settings drawer).
+- **027–029** — backlog; owner lock 2026-08-26/27. Код **по одному**: 027 → 028 → 029.
+- **030** — покрытие поиска (сиды A–E, без лимита); **до** wipe/чистого прогона. Можно после 028, параллельно с 029.
+- **031** — hardening скрейпа; после 030 / P13.
+- Порядок фаз: [`../next-phases.md`](../next-phases.md). После выкладки P8–P11 — **wipe всего на проде** + полный прогон.

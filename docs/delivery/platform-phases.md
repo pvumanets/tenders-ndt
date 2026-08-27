@@ -322,8 +322,12 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 
 ## После P7 (NEXT+)
 
-- Именованные поиски + очередь — [023](./tasks/023-named-searches.md); lock [`../discovery/named-searches.md`](../discovery/named-searches.md)
-- Адаптер Tender.Pro — [024](./tasks/024-tender-pro-adapter.md)
+Детальный план фаз **P8–P14** (просрочка, прогон, тиры/ИИ, сиды, wipe, hardening): [`next-phases.md`](./next-phases.md) (`draft`, lock 2026-08-27).
+
+Краткий список хвоста:
+
+- Именованные поиски + очередь — [023](./tasks/023-named-searches.md) (**done**); lock [`../discovery/named-searches.md`](../discovery/named-searches.md)
+- Адаптер Tender.Pro — [024](./tasks/024-tender-pro-adapter.md) (**done**)
 - Cron прогона
 - Роли (если digital ≠ директор по правам)
 - Bitrix leads

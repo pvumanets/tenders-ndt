@@ -8,11 +8,14 @@ Code and product rules live **in this repo**. Do not duplicate scoring/scope rul
 | --- | --- |
 | Code phases P0–P5.0 (обзор) | [delivery/code-phases.md](./delivery/code-phases.md) |
 | Фазы P5.1–P7 (подробно) | [delivery/platform-phases.md](./delivery/platform-phases.md) (`accepted`; P5.1–P7 **done**) |
+| Фазы NEXT+ (P8–P14) | [delivery/next-phases.md](./delivery/next-phases.md) (`draft`; после lock 2026-08-27) |
 | Dev stand (compose db+api) | [delivery/dev-stand.md](./delivery/dev-stand.md) · `scripts/dev-up.ps1` |
 | Architecture / stack | [delivery/tech-architecture.md](./delivery/tech-architecture.md) |
 | Sales Inbox API (Postgres + auth) | [delivery/sales-inbox-api.md](./delivery/sales-inbox-api.md) |
 | React UI (P5.0 accepted; в image с P5.1; **P6 done**) | `app/web/` (`theme/`, `vendor/personal/`, `components/scout/`) |
-| Fit L1–L3 | [delivery/fit-tiers.md](./delivery/fit-tiers.md) |
+| Fit L1–L3 | [delivery/fit-tiers.md](./delivery/fit-tiers.md) (`draft` v0.2; услуги vs поставка; эталоны владельца) |
+| ИИ подтверждение тира (provod.ai) | [delivery/ai-tier-review.md](./delivery/ai-tier-review.md) (`draft`; **отдельный шаг** после прогона; ключ только `.env`) |
+| Inbox lifecycle (просрочка, архив, уже был, wipe) | [discovery/inbox-lifecycle.md](./discovery/inbox-lifecycle.md) (`draft`; задачи 027–028; код 027→028→029) |
 | Operator UI | [delivery/operator-ui.md](./delivery/operator-ui.md) |
 | Acceptance | [delivery/acceptance.md](./delivery/acceptance.md) |
 | Tasks / backlog | [delivery/tasks/](./delivery/tasks/) |
@@ -24,6 +27,9 @@ Code and product rules live **in this repo**. Do not duplicate scoring/scope rul
 | Sales Inbox (product) | [discovery/sales-inbox.md](./discovery/sales-inbox.md) (`accepted`) |
 | Sales Inbox design package | [discovery/design/](./discovery/design/) |
 | Open questions | [discovery/open-questions.md](./discovery/open-questions.md) |
+| Решения владельца (простой язык) | [discovery/owner-decisions.md](./discovery/owner-decisions.md) (`active`; lock 2026-08-27) |
+| Ключевые слова поиска | [discovery/search-keywords.md](./discovery/search-keywords.md) (`active`) |
+| Ревью решений: узкие места (пропуски + ИИ) | [discovery/decision-risks-review.md](./discovery/decision-risks-review.md) (`draft`; cross-skill review 2026-08-26) |
 | Named searches + очередь (NEXT+) | [discovery/named-searches.md](./discovery/named-searches.md) (`accepted`; код 023/024 **done**) |
 | Platforms registry | [discovery/platforms.md](./discovery/platforms.md) |
 | СИБУР SRM зонд (NEXT+) | [discovery/sibur-srm-probe.md](./discovery/sibur-srm-probe.md) (`draft`; cookies = `cookies.sibur.txt`, не в md) |
@@ -39,8 +45,8 @@ On rule drift: edit docs here first, then sync `app/scoring/`.
 
 ## Secrets
 
-- Tracked: auth **rules** in `delivery/auth-cookies.md`, `.env.example` (имена переменных)
-- Never commit: `cookies*.txt` (в т.ч. `cookies.rostender.txt`, `cookies.sibur.txt`, `cookies.onlinecontract.txt`, `cookies.tender-pro.txt`), `.env`, `.env.vps`, passwords, cookie values, `_probe_*`
+- Tracked: auth **rules** in `delivery/auth-cookies.md`, `.env.example` (имена переменных, в т.ч. будущий `PROVOD_API_KEY`)
+- Never commit: `cookies*.txt` (в т.ч. `cookies.rostender.txt`, `cookies.sibur.txt`, `cookies.onlinecontract.txt`, `cookies.tender-pro.txt`), `.env`, `.env.vps`, passwords, cookie values, API keys (provod.ai и др.), `_probe_*`
 - Heavy run artifacts / docs volume: gitignore
 - Origin: [github.com/pvumanets/tenders-ndt](https://github.com/pvumanets/tenders-ndt) — ветки [delivery/git-workflow.md](./delivery/git-workflow.md)
 - VPS: [tenders.ndtexam.ru](https://tenders.ndtexam.ru) · root password only `.env.vps`; host/key in [delivery/vps.md](./delivery/vps.md). Do not print. Owner: do not rotate unless asked.
