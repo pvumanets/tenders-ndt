@@ -45,12 +45,13 @@ def test_ingest_upserts_score_ge_4_and_preserves_lot_state(
             status="done",
             rows=[
                 _row(tender_id),
-                _row(l3_id, score=3, tier="L3", title="авто-L3"),
+                _row(l3_id, score=3, tier="L3", title="авто-L3 borderline"),
+                _row(f"{l3_id}_noise", score=0, tier="noise", title="шум"),
             ],
         )
         assert first is not None
-        assert first.lot_count == 1
-        assert first.new_count == 1
+        assert first.lot_count == 2
+        assert first.new_count == 2
         assert first.already_count == 0
         assert first.updated_count == 0
         with smoke_db() as session:
@@ -61,7 +62,10 @@ def test_ingest_upserts_score_ge_4_and_preserves_lot_state(
             assert lot.location == "Казань"
             assert lot.url.endswith(tender_id)
             assert lot.ingested_at is not None
-            assert session.get(Lot, l3_id) is None
+            l3 = session.get(Lot, l3_id)
+            assert l3 is not None
+            assert l3.tier == "L3"
+            assert session.get(Lot, f"{l3_id}_noise") is None
             session.add(
                 LotState(tender_id=tender_id, viewed=True, manual_tier="L2")
             )
@@ -110,6 +114,6 @@ def test_ingest_upserts_score_ge_4_and_preserves_lot_state(
     finally:
         with smoke_db() as session:
             session.execute(delete(LotState).where(LotState.tender_id == tender_id))
-            session.execute(delete(Lot).where(Lot.tender_id.in_((tender_id, l3_id))))
+            session.execute(delete(Lot).where(Lot.tender_id.in_((tender_id, l3_id, f"{l3_id}_noise"))))
             session.execute(delete(Run).where(Run.query == query))
             session.commit()

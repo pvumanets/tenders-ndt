@@ -7,7 +7,7 @@
 **тиры:** [`fit-tiers.md`](./fit-tiers.md)  
 **решения владельца:** [`../discovery/owner-decisions.md`](../discovery/owner-decisions.md)  
 **lifecycle:** [`../discovery/inbox-lifecycle.md`](../discovery/inbox-lifecycle.md)  
-**код:** задача [029](./tasks/029-tier-rules-and-ai.md) (backlog)
+**код:** задача [029](./tasks/029-tier-rules-and-ai.md) (**done**)
 
 Этот файл — **канон будущей реализации**, не инструкция запускать ИИ из Cursor.
 

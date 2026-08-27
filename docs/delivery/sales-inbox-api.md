@@ -12,7 +12,7 @@
 
 SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /api/health`, `POST /api/auth/login`, `POST /api/auth/logout` — **с сессией Scout**.
 
-**AS-IS runtime (после 028, до 029/030):** ingest/inbox ещё фильтруют **score ≥ 4**; обрезка `limit_n=1000` ещё в коде. Update-on-diff + `run_report` — **done** ([028](./tasks/028-run-idempotent-report.md)). Целевой пул `tier ∈ {L1,L2,L3}` — [029](./tasks/029-tier-rules-and-ai.md); снятие лимита — [030](./tasks/030-search-coverage.md).
+**AS-IS runtime (после 029, до 030):** ingest/inbox/docs — пул **`tier ∈ {L1,L2,L3}`**; обрезка `limit_n=1000` ещё в коде. Update-on-diff + `run_report` — **done** ([028](./tasks/028-run-idempotent-report.md)). ИИ — отдельный шаг ([029](./tasks/029-tier-rules-and-ai.md)). Снятие лимита / сиды — [030](./tasks/030-search-coverage.md).
 
 ---
 
@@ -20,7 +20,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 
 - Кандидаты: лоты с **`tier ∈ {L1, L2, L3}`** в таблице `lots` (после ingest всех прогонов). Колонка «Смотреть» = **системный** L3, не только ручной перенос.
 - При повторном ingest того же `tender_id` — см. § Ingest (update-on-diff); без изменений на площадке карточку **не** переписываем.
-- Эффективный приоритет для UI: `manual_tier` из `lot_state`, иначе `tier` движка.
+- Эффективный приоритет для UI: `manual_tier` > `ai_tier` (если был успешный ИИ) > `tier` / `rules_tier` движка.
 
 ## Storage
 
@@ -37,7 +37,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 
 `viewed` не сбрасывается новым прогоном. `PUT` пишет в `lot_state`, не в файл прогона.
 
-**Ingest (P5.3 + P9/028 done):** конец **одного** поиска-шага очереди вызывает `ingest_run`. Runtime пул пока **score ≥ 4**; целевой пул **`tier ∈ {L1, L2, L3}`** — после [029](./tasks/029-tier-rules-and-ai.md).
+**Ingest (P5.3 + P9/028 + P10/029):** конец **одного** поиска-шага очереди вызывает `ingest_run`. В `lots` попадают строки с **`tier ∈ {L1, L2, L3}`** (не порог score≥4).
 
 Повтор того же `tender_id`:
 
@@ -47,13 +47,25 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | Есть diff | UPDATE полей с площадки | `updated` — «Обновлено с площадки» |
 | Новый `tender_id` | INSERT | `new` — «Новые лоты» |
 
-`lot_state` (`viewed`, `manual_tier`, AI-флаги) ingest **не** создаёт и **не** сбрасывает. Без `DATABASE_URL` — skip. Детали: [`../discovery/inbox-lifecycle.md`](../discovery/inbox-lifecycle.md), [028](./tasks/028-run-idempotent-report.md).
+`lot_state` (`viewed`, `manual_tier`, AI-поля) ingest **не** создаёт и **не** сбрасывает. Без `DATABASE_URL` — skip. Детали: [`../discovery/inbox-lifecycle.md`](../discovery/inbox-lifecycle.md), [028](./tasks/028-run-idempotent-report.md).
 
 «Ушли в просроченные» (`run_report.expired`): снимок протухших `tender_id` в начале очереди; в конце — текущие протухшие минус снимок (впервые протухшие в окне прогона).
 
 После 024 `tender_id` = `{source_platform_id}:{native_id}`. Числовые rostender-ряды мигрируют на `rostender:{id}`; том docs на диске — `rostender__{id}/` (двоеточие в имени папки нельзя).
 
-Поля `lot_state`: `viewed`, `viewed_at`, `manual_tier` (`L1` \| `L2` \| `L3` \| null = оценка движка), `manual_tier_at`, `board_hidden` (bool), `board_hidden_at` (ISO-8601).
+Поля `lot_state`: `viewed`, `viewed_at`, `manual_tier` (`L1` \| `L2` \| `L3` \| null), `manual_tier_at`, `board_hidden`, `board_hidden_at`, плюс ИИ (029): `rules_tier`, `ai_reviewed_at`, `ai_tier`, `ai_reason_ru`, `ai_error`, `ai_wrong_at`, `ai_wrong_note`.
+
+## ИИ-разбор (P10 / 029)
+
+Прогон **не** вызывает ИИ. Оператор на вкладке Лоты:
+
+| Метод | Путь | Назначение |
+| --- | --- | --- |
+| `POST` | `/api/inbox/ai-review` | body `{ "tender_ids"?: string[] }` — пусто = очередь без успешного review; ответ `{ processed, failed, items }` |
+| `POST` | `/api/inbox/{id}/ai-wrong` | body `{ "note"?: string }` — журнал «ИИ ошибся» |
+| `GET` | `/api/inbox?ai_reviewed=1` | раздел «Разобрано с помощью ИИ» |
+
+Сбой → `ai_error`, tier правил не меняется. `GET /api/status` может нести `ai_failures` (накопитель сбоев с последнего review-батча / сессии UI). Docs download — для лотов пула L1–L3.
 
 ## Доска: просрочка и архив (P8 / 027)
 

@@ -219,6 +219,7 @@ def api_inbox(
     deadline_to: str | None = Query(default=None),
     ingested_from: str | None = Query(default=None),
     ingested_to: str | None = Query(default=None),
+    ai_reviewed: str | None = Query(default=None),
 ):
     try:
         return inbox.list_inbox(
@@ -229,7 +230,16 @@ def api_inbox(
             deadline_to=deadline_to,
             ingested_from=ingested_from,
             ingested_to=ingested_to,
+            ai_reviewed=ai_reviewed,
         )
+    except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
+        _inbox_http(exc)
+
+
+@app.post("/api/inbox/ai-review")
+def api_inbox_ai_review(body: dict | None = None):
+    try:
+        return inbox.run_ai_review(body or {})
     except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
         _inbox_http(exc)
 
@@ -262,6 +272,14 @@ def api_inbox_priority(tender_id: str, body: dict):
 def api_inbox_board_hidden(tender_id: str, body: dict):
     try:
         return inbox.set_board_hidden(tender_id, body)
+    except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
+        _inbox_http(exc)
+
+
+@app.post("/api/inbox/{tender_id}/ai-wrong")
+def api_inbox_ai_wrong(tender_id: str, body: dict | None = None):
+    try:
+        return inbox.mark_ai_wrong(tender_id, body or {})
     except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
         _inbox_http(exc)
 

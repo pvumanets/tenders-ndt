@@ -140,7 +140,7 @@ def _ingest_step(
             )
             STATE.log_msg(
                 "Ingest: "
-                f"{result.lot_count} lots (score≥4); "
+                f"{result.lot_count} lots (L1–L3); "
                 f"новые={result.new_count}, "
                 f"уже были={result.already_count}, "
                 f"обновлено={result.updated_count}"
@@ -165,7 +165,7 @@ def _download_docs(rows: list[dict], *, platform_id: str) -> None:
     if platform_id == PLATFORM_ROSTENDER and not cookies.is_file():
         STATE.log_msg("Docs: rostender cookies missing — skip files", level="warn")
         return
-    STATE.log_msg("Docs: downloading score≥4…")
+    STATE.log_msg("Docs: downloading L1–L3…")
     try:
         result = download_inbox_docs(
             rows,
