@@ -126,6 +126,7 @@ export const copy = {
   searches_platform: "Площадка",
   searches_queries: "Запросы (по одному на строку)",
   searches_limit: "Лимит",
+  searches_limit_hint: "0 — без потолка; иначе мягкая остановка на этом числе",
   searches_empty: "Нет сохранённых поисков",
   searches_save_failed: "Не удалось сохранить поиск",
   searches_duplicate_name: "Поиск с таким именем уже есть",

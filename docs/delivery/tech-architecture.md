@@ -161,7 +161,7 @@ ndt-tender-scout/
 
 ## Риски / откат
 
-- Rostender cookies протухают; ToS — [../discovery/risks-compliance.md](../discovery/risks-compliance.md). Обрезка limit 1000 — **не** канон продукта (P11/030); AS-IS в коде до 030.  
+- Rostender cookies протухают; ToS — [../discovery/risks-compliance.md](../discovery/risks-compliance.md). Обрезка limit 1000 — **не** канон; код [030](./tasks/030-search-coverage.md) — `limit_n=0` без must-cap.  
 - Docs: для лотов на доске (`tier ∈ {L1,L2,L3}`); `DOWNLOAD_DOCS`; стоп при ошибке сессии площадки. **P10/029 done.**
 - Дубли `tender_id`: update-on-diff (**P9/028 done**); `viewed` / AI-поля не сбрасываются. С 024 ключ = `{platform_id}:{native_id}`. Пул **tier L1–L3** (**P10/029 done**).
 - ИИ: `POST /api/inbox/ai-review` по кнопке; `lot_state` AI-поля; прогон без авто-ИИ.

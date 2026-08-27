@@ -109,7 +109,7 @@
 
 ### S2. Cap 1000 + multi-query starvation
 
-- **Что:** `limit_n ≤ 1000`; rostender newest-first; `scrape_queries` заполняет лимит с **первого** query — остальные голодают.
+- **Что (было до 030):** `limit_n ≤ 1000`; rostender newest-first; `scrape_queries` заполняет лимит с **первого** query — остальные голодают. **После 030:** must-cap снят (`limit_n=0`); soft stop только если оператор задал >0.
 - **Evidence:** [`list_scrape.py`](../../app/worker/list_scrape.py); [`named-searches.md`](./named-searches.md) Q1.
 - **Mitigation:** Per-query budget; отчёт «platform total vs scraped»; поднять cap или split searches.
 

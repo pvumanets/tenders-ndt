@@ -1,7 +1,7 @@
 # Реестр тендерных площадок (UI / иконки)
 
 **status:** accepted  
-**last-review-date:** 2026-08-19  
+**last-review-date:** 2026-08-27  
 **источник списка:** перечень отдела продаж (скрин владельца 2026-08-13)  
 **API-ресёрч:** [`../platform-api-research.md`](../platform-api-research.md)  
 **именованные поиски / очередь:** [`named-searches.md`](./named-searches.md)  
@@ -10,7 +10,7 @@
 **зонд Tender.Pro (NEXT+):** [`tender-pro-probe.md`](./tender-pro-probe.md)  
 **ассеты:** `app/web/public/platforms/{id}.png` (32×32)
 
-Ship A scrape = только **rostender**. `tender-pro` — backlog до адаптера [024](../delivery/tasks/024-tender-pro-adapter.md) (lock: [`named-searches.md`](./named-searches.md)). Остальные строки — реестр UI «откуда тендер» и более поздние адаптеры.
+Ship A scrape = **rostender** + **tender-pro** (адаптер [024](../delivery/tasks/024-tender-pro-adapter.md) done; сиды очереди — [030](../delivery/tasks/030-search-coverage.md)). Остальные строки — реестр UI «откуда тендер» и более поздние адаптеры.
 
 ## Поля
 
@@ -31,7 +31,7 @@ Ship A scrape = только **rostender**. `tender-pro` — backlog до ада
 | `onlinecontract` | OnlineContract | onlinecontract.ru | backlog | `/platforms/onlinecontract.png` |
 | `rts-rosatom` | РТС (Росатом) | www.rosatom.rts-tender.ru, rosatom.rts-tender.ru | backlog | `/platforms/rts-rosatom.png` |
 | `sibur-srm` | СИБУР SRM | srm.sibur.ru | backlog | `/platforms/sibur-srm.png` |
-| `tender-pro` | Tender.Pro | www.tender.pro, tender.pro | backlog | `/platforms/tender-pro.png` |
+| `tender-pro` | Tender.Pro | www.tender.pro, tender.pro | **as-is** | `/platforms/tender-pro.png` |
 | `tektorg-kim` | ТЭК-Торг КИМ | kim.tektorg.ru | backlog | `/platforms/tektorg-kim.png` |
 | `astgoz` | АСТ ГОЗ | 223.astgoz.ru | backlog | `/platforms/astgoz.png` |
 | `roseltorg` | Росэлторг | com.roseltorg.ru, lk.roseltorg.ru | backlog | `/platforms/roseltorg.png` |

@@ -23,7 +23,8 @@ from app.worker.customer_name import clean_customer_name
 
 DEFAULT_BASE = "https://rostender.info"
 SEARCH_QUERY = "неразрушающий"
-POOL_LIMIT = 1000
+POOL_LIMIT = 0  # 0 = no product cap (P11); soft stop only when caller passes limit > 0
+MAX_PAGES = 500
 MSK = ZoneInfo("Europe/Moscow")
 OPEN_STATE = "10"  # Приём заявок
 SORT_NEWEST = "0"
@@ -245,13 +246,15 @@ def scrape_list(
     if not _cookie_dict(cookies_path):
         raise AuthError(f"No cookies parsed from {cookies_path}")
 
+    cap = None if int(limit or 0) <= 0 else int(limit)
+    progress_total = cap if cap is not None else 0
     results: list[TenderRow] = []
     seen: set[str] = set()
 
     with _client(cookies_path, base_url) as client:
         results_url = _start_search(client, query)
         page_num = 1
-        while len(results) < limit and page_num <= 200:
+        while page_num <= MAX_PAGES and (cap is None or len(results) < cap):
             if should_stop and should_stop():
                 break
             if page_num == 1:
@@ -272,15 +275,17 @@ def scrape_list(
                 seen.add(row.tender_id)
                 results.append(row)
                 new += 1
-                if len(results) >= limit:
+                if cap is not None and len(results) >= cap:
                     break
             if on_progress:
-                on_progress(len(results), limit)
+                on_progress(len(results), progress_total)
             if new == 0:
                 break
             page_num += 1
 
-    return [asdict(r) for r in results[:limit]]
+    if cap is None:
+        return [asdict(r) for r in results]
+    return [asdict(r) for r in results[:cap]]
 
 
 def scrape_queries(
@@ -292,15 +297,17 @@ def scrape_queries(
     should_stop=None,
     on_progress=None,
 ) -> list[dict]:
-    """Union of keyword searches, deduped by tender_id, capped at limit."""
+    """Union of keyword searches, deduped by tender_id; soft-capped only if limit > 0."""
+    cap = None if int(limit or 0) <= 0 else int(limit)
+    progress_total = cap if cap is not None else 0
     combined: list[dict] = []
     seen: set[str] = set()
     for query in queries:
         if should_stop and should_stop():
             break
-        if len(combined) >= limit:
+        if cap is not None and len(combined) >= cap:
             break
-        remaining = limit - len(combined)
+        remaining = 0 if cap is None else max(0, cap - len(combined))
         batch = scrape_list(
             cookies_path=cookies_path,
             base_url=base_url,
@@ -308,7 +315,7 @@ def scrape_queries(
             limit=remaining,
             should_stop=should_stop,
             on_progress=lambda n, _lim, offset=len(combined): on_progress(
-                min(offset + n, limit), limit
+                offset + n, progress_total
             )
             if on_progress
             else None,
@@ -319,9 +326,11 @@ def scrape_queries(
                 continue
             seen.add(tid)
             combined.append(row)
-            if len(combined) >= limit:
+            if cap is not None and len(combined) >= cap:
                 break
         if on_progress:
-            on_progress(len(combined), limit)
-    return combined[:limit]
+            on_progress(len(combined), progress_total)
+    if cap is None:
+        return combined
+    return combined[:cap]
 

@@ -12,7 +12,7 @@
 
 SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /api/health`, `POST /api/auth/login`, `POST /api/auth/logout` — **с сессией Scout**.
 
-**AS-IS runtime (после 029, до 030):** ingest/inbox/docs — пул **`tier ∈ {L1,L2,L3}`**; обрезка `limit_n=1000` ещё в коде. Update-on-diff + `run_report` — **done** ([028](./tasks/028-run-idempotent-report.md)). ИИ — отдельный шаг ([029](./tasks/029-tier-rules-and-ai.md)). Снятие лимита / сиды — [030](./tasks/030-search-coverage.md).
+**AS-IS runtime (после 030):** ingest/inbox/docs — пул **`tier ∈ {L1,L2,L3}`**; `limit_n=0` = без потолка (мягкий stop если задан >0). Update-on-diff + `run_report` — **done** ([028](./tasks/028-run-idempotent-report.md)). ИИ — отдельный шаг ([029](./tasks/029-tier-rules-and-ai.md)). Сиды A–E + TP пакеты — [030](./tasks/030-search-coverage.md).
 
 ---
 
@@ -119,7 +119,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 
 `platform_id` сейчас: `rostender` \| `tender-pro`. `queries` — непустой массив строк. Имя уникально. Сиды — [`../discovery/named-searches.md`](../discovery/named-searches.md).
 
-**`limit_n`:** поле в схеме/API может оставаться; **обрезка выдачи до 1000 — не канон продукта** (lock 2026-08-27). Целевое поведение: без продуктового потолка; снятие в коде — [030](./tasks/030-search-coverage.md). AS-IS до 030: в сидах/коде ещё встречается `1000`.
+**`limit_n`:** optional soft stop; **`0` = без потолка** (lock 2026-08-27; код [030](./tasks/030-search-coverage.md)). Продуктового must-cap 1000 нет.
 
 Очередь: `POST /api/run/start` без настроек в body. Один шаг очереди = один `runs` (`search_id`, `source_platform_id`). Ошибка шага → `skipped`/`error`, очередь дальше. Стоп рвёт хвост. Пусто → `empty_queue`.
 

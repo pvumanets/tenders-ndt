@@ -12,7 +12,7 @@
 
 ## Problem
 
-Сейчас в коде ещё хардкод: один seed «неразрушающий», limit 1000. **Продуктовый lock 2026-08-27:** лимит убираем; несколько поисков по [`search-keywords.md`](./search-keywords.md). Нужно в системе хранить **несколько поисков** под разные площадки и одним Стартом прогонять выбранные подряд.
+Сейчас в коде: сиды A–E + Tender.Pro пакеты ([030](../delivery/tasks/030-search-coverage.md)); `limit_n=0` без must-cap. Несколько поисков по [`search-keywords.md`](./search-keywords.md).
 
 ## Users
 
@@ -44,7 +44,7 @@
 | `name` | человеческое; уникально в инстансе |
 | `platform_id` | ровно одна ЭТП: сейчас `rostender` \| `tender-pro`; позже slug из [`platforms.md`](./platforms.md) |
 | `queries` | массив строк, минимум 1; порядок **слож → прост** (см. search-keywords) |
-| `limit_n` | **deprecated в продукте (2026-08-27)** — без потолка; в коде AS-IS ещё ≤1000 до отдельной задачи |
+| `limit_n` | optional soft stop; **`0` = без потолка** ([030](../delivery/tasks/030-search-coverage.md) done) |
 | `in_queue` | попадет в следующий Старт |
 | `sort_order` | порядок в очереди |
 
@@ -71,7 +71,7 @@ Q25 **держим:** query и limit живут в карточке поиска
 
 Tender.Pro: методы / аббревиатуры / контроли / страховка — включить в очередь когда cookies OK.
 
-**AS-IS миграция 023:** один seed «неразрушающий» / limit 1000 — заменить при задаче sync keywords.
+**Сиды (030 done):** A–E на rostender в очереди; Tender.Pro пакеты — `in_queue` при живых cookies (см. migration `0007_search_coverage` + sync при старте API).
 
 ---
 

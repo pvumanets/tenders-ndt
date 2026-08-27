@@ -46,6 +46,12 @@ def _legacy_enabled() -> bool:
 async def lifespan(_app: FastAPI):
     runner.refresh_session()
     bootstrap_users()
+    try:
+        from app.api.search_queue_sync import sync_tender_pro_queue_from_cookies
+
+        sync_tender_pro_queue_from_cookies()
+    except Exception:  # noqa: BLE001 — startup must not die on optional sync
+        pass
     yield
 
 

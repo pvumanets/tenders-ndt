@@ -30,7 +30,7 @@ class SearchIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     platform_id: str
     queries: list[str] = Field(min_length=1)
-    limit_n: int = Field(default=1000, ge=1, le=1000)
+    limit_n: int = Field(default=0, ge=0, description="0 = без потолка; иначе soft stop")
     in_queue: bool = False
     sort_order: int = Field(default=0, ge=0, le=10_000)
 
