@@ -15,7 +15,7 @@ Code and product rules live **in this repo**. Do not duplicate scoring/scope rul
 | React UI (P5.0 accepted; в image с P5.1; **P6 done**) | `app/web/` (`theme/`, `vendor/personal/`, `components/scout/`) |
 | Fit L1–L3 | [delivery/fit-tiers.md](./delivery/fit-tiers.md) (`draft` v0.2; услуги vs поставка; эталоны владельца) |
 | ИИ подтверждение тира (provod.ai) | [delivery/ai-tier-review.md](./delivery/ai-tier-review.md) (`draft`; **отдельный шаг** после прогона; ключ только `.env`) |
-| Inbox lifecycle (просрочка, архив, уже был, wipe) | [discovery/inbox-lifecycle.md](./discovery/inbox-lifecycle.md) (`accepted` P8–P11; 027–030 **done**; дальше wipe P13) |
+| Inbox lifecycle (просрочка, архив, уже был, wipe) | [discovery/inbox-lifecycle.md](./discovery/inbox-lifecycle.md) (`accepted` P8–P13; 027–030 + wipe **done**; дальше P14/031) |
 | Operator UI | [delivery/operator-ui.md](./delivery/operator-ui.md) |
 | Acceptance | [delivery/acceptance.md](./delivery/acceptance.md) |
 | Tasks / backlog | [delivery/tasks/](./delivery/tasks/) |
