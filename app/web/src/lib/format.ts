@@ -2,7 +2,9 @@ import type { InboxLot, SalesTier } from "../types";
 import { copy } from "../copy";
 
 export function effectiveTier(lot: InboxLot): SalesTier {
-  return lot.manual_tier ?? lot.tier;
+  if (lot.manual_tier) return lot.manual_tier;
+  if (lot.ai_reviewed && lot.ai_tier) return lot.ai_tier;
+  return lot.tier;
 }
 
 export function tierLabel(tier: SalesTier): string {

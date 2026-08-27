@@ -43,6 +43,7 @@ export type InboxListQuery = {
   deadline_to?: string;
   ingested_from?: string;
   ingested_to?: string;
+  ai_reviewed?: boolean;
 };
 
 type ApiLot = Partial<InboxLot> & {
@@ -62,6 +63,7 @@ type StatusSnapshot = {
   cards_total?: number;
   counters?: Partial<TechStatus["counters"]> & { pool?: number };
   run_report?: Partial<TechStatus["run_report"]>;
+  ai_failures?: number;
   session?: string;
   sessions?: Record<string, string>;
   run_dir?: string | null;
@@ -89,6 +91,12 @@ export function normalizeLot(raw: ApiLot): InboxLot {
     raw.manual_tier === "L1" || raw.manual_tier === "L2" || raw.manual_tier === "L3"
       ? raw.manual_tier
       : null;
+  const aiTier =
+    raw.ai_tier === "L1" || raw.ai_tier === "L2" || raw.ai_tier === "L3" ? raw.ai_tier : null;
+  const rulesTier =
+    raw.rules_tier === "L1" || raw.rules_tier === "L2" || raw.rules_tier === "L3"
+      ? raw.rules_tier
+      : null;
   return {
     tender_id: text(raw.tender_id),
     title: text(raw.title),
@@ -111,6 +119,12 @@ export function normalizeLot(raw: ApiLot): InboxLot {
     url: text(raw.url),
     source_platform_id: text(raw.source_platform_id) || "rostender",
     documents: Array.isArray(raw.documents) ? raw.documents : [],
+    rules_tier: rulesTier,
+    ai_reviewed: Boolean(raw.ai_reviewed),
+    ai_tier: aiTier,
+    ai_reason_ru: text(raw.ai_reason_ru),
+    ai_error: raw.ai_error ? text(raw.ai_error) : null,
+    ai_wrong: Boolean(raw.ai_wrong),
   };
 }
 
@@ -127,6 +141,7 @@ export function buildInboxSearchParams(query: InboxListQuery): URLSearchParams {
   if (query.deadline_to) params.set("deadline_to", query.deadline_to);
   if (query.ingested_from) params.set("ingested_from", query.ingested_from);
   if (query.ingested_to) params.set("ingested_to", query.ingested_to);
+  if (query.ai_reviewed) params.set("ai_reviewed", "1");
   return params;
 }
 
@@ -175,6 +190,39 @@ export async function putBoardHidden(tenderId: string, hidden: boolean): Promise
     body: JSON.stringify({ hidden }),
   });
   if (!res.ok) throw new Error("inbox_write_failed");
+  return normalizeLot((await res.json()) as ApiLot);
+}
+
+export async function postAiReview(tenderIds?: string[]): Promise<{
+  processed: number;
+  failed: number;
+  items: InboxLot[];
+}> {
+  const res = await apiFetch("/api/inbox/ai-review", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(tenderIds ? { tender_ids: tenderIds } : {}),
+  });
+  if (!res.ok) throw new Error("ai_review_failed");
+  const body = (await res.json()) as {
+    processed?: number;
+    failed?: number;
+    items?: ApiLot[];
+  };
+  return {
+    processed: body.processed ?? 0,
+    failed: body.failed ?? 0,
+    items: Array.isArray(body.items) ? body.items.map(normalizeLot) : [],
+  };
+}
+
+export async function postAiWrong(tenderId: string, note?: string): Promise<InboxLot> {
+  const res = await apiFetch(`/api/inbox/${encodeURIComponent(tenderId)}/ai-wrong`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(note ? { note } : {}),
+  });
+  if (!res.ok) throw new Error("ai_wrong_failed");
   return normalizeLot((await res.json()) as ApiLot);
 }
 
@@ -355,6 +403,7 @@ export function mapRunStatus(raw: StatusSnapshot): TechStatus {
       updated: raw.run_report?.updated ?? 0,
       expired: raw.run_report?.expired ?? 0,
     },
+    ai_failures: raw.ai_failures ?? 0,
     session: sessionUi(raw.session),
     sessions: raw.sessions,
     run_dir: raw.run_dir ?? "",

@@ -1,4 +1,4 @@
-"""P5.4–P5.5 + P8: Sales Inbox from Postgres (score ≥ 4). Does not read run JSON."""
+"""P5.4–P5.5 + P8–P10: Sales Inbox from Postgres (tier L1–L3). Does not read run JSON."""
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -13,9 +13,9 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.deadline import deadline_date, deadline_iso, is_deadline_expired, today_msk_date
 from app.db.models import Document, Lot, LotState
 from app.db.session import session_factory
+from app.worker.ingest import INBOX_TIERS
 from app.worker.customer_name import clean_customer_name
 from app.worker.docs import resolve_volume_file, sanitize_filename
-from app.worker.ingest import INBOX_MIN_SCORE
 
 TIER_FILTERS = frozenset({"fit", "L1", "L2", "L3"})
 PRIORITY_TIERS = frozenset({"L1", "L2", "L3"})
@@ -26,7 +26,7 @@ class InboxQueryError(ValueError):
 
 
 class InboxNotFound(LookupError):
-    """Lot missing from the score ≥ 4 pool — map to HTTP 404."""
+    """Lot missing from the L1–L3 pool — map to HTTP 404."""
 
 
 def parse_query_date(value: str | None) -> date | None:
@@ -111,10 +111,27 @@ def _price_json(value: Decimal | None) -> int | float | None:
     return float(quantized)
 
 
+def parse_ai_reviewed(value: str | None) -> bool | None:
+    if value is None or value.strip() == "":
+        return None
+    key = value.strip().lower()
+    if key in {"true", "1", "yes"}:
+        return True
+    if key in {"false", "0", "no"}:
+        return False
+    raise InboxQueryError("invalid_ai_reviewed")
+
+
 def _effective_tier(lot: Lot, state: LotState | None) -> str:
     if state is not None and state.manual_tier:
         return state.manual_tier
+    if state is not None and state.ai_reviewed_at is not None and state.ai_tier in PRIORITY_TIERS:
+        return state.ai_tier
     return lot.tier
+
+
+def _in_pool(lot: Lot) -> bool:
+    return lot.tier in INBOX_TIERS
 
 
 def _in_date_range(value: date | None, start: date | None, end: date | None) -> bool:
@@ -176,6 +193,13 @@ def serialize_lot(
         "contact_name": lot.contact_name,
         "contact_phone": lot.contact_phone,
         "contact_email": lot.contact_email,
+        "rules_tier": (state.rules_tier if state is not None else None) or lot.tier,
+        "ai_reviewed": bool(state is not None and state.ai_reviewed_at is not None),
+        "ai_reviewed_at": ingested_iso(state.ai_reviewed_at) if state is not None else None,
+        "ai_tier": state.ai_tier if state is not None else None,
+        "ai_reason_ru": state.ai_reason_ru if state is not None else None,
+        "ai_error": state.ai_error if state is not None else None,
+        "ai_wrong": bool(state is not None and state.ai_wrong_at is not None),
     }
     if include_documents:
         rows = documents if documents is not None else []
@@ -203,10 +227,12 @@ def list_inbox(
     deadline_to: str | None = None,
     ingested_from: str | None = None,
     ingested_to: str | None = None,
+    ai_reviewed: str | None = None,
     today: date | None = None,
 ) -> dict[str, Any]:
     unread_flag = parse_unread(unread)
     tier_filter = parse_tier_filter(tier)
+    ai_flag = parse_ai_reviewed(ai_reviewed)
     dl_from = parse_query_date(deadline_from)
     dl_to = parse_query_date(deadline_to)
     ing_from = parse_query_date(ingested_from)
@@ -219,10 +245,16 @@ def list_inbox(
         stmt = (
             select(Lot, LotState)
             .outerjoin(LotState, LotState.tender_id == Lot.tender_id)
-            .where(Lot.score >= INBOX_MIN_SCORE)
+            .where(Lot.tier.in_(tuple(INBOX_TIERS)))
         )
         if unread_flag is True:
             stmt = stmt.where(or_(LotState.viewed.is_(None), LotState.viewed.is_(False)))
+        if ai_flag is True:
+            stmt = stmt.where(LotState.ai_reviewed_at.is_not(None))
+        if ai_flag is False:
+            stmt = stmt.where(
+                or_(LotState.ai_reviewed_at.is_(None), LotState.tender_id.is_(None))
+            )
         if needle:
             pattern = f"%{needle}%"
             stmt = stmt.where(
@@ -267,7 +299,7 @@ def list_inbox(
 
 def _require_pool_lot(session, tender_id: str) -> Lot:
     lot = session.get(Lot, tender_id)
-    if lot is None or lot.score < INBOX_MIN_SCORE:
+    if lot is None or not _in_pool(lot):
         raise InboxNotFound(tender_id)
     return lot
 
@@ -398,3 +430,123 @@ def download_document(tender_id: str, filename: str) -> Path:
     if path is None:
         raise InboxNotFound(filename)
     return path
+
+
+def _ensure_lot_state(session, tender_id: str) -> LotState:
+    state = session.get(LotState, tender_id)
+    if state is not None:
+        return state
+    state = LotState(tender_id=tender_id)
+    session.add(state)
+    session.flush()
+    return state
+
+
+def run_ai_review(body: Any) -> dict[str, Any]:
+    """POST /api/inbox/ai-review — operator-triggered; never called from runner."""
+    from app.ai.provod import AiTierError, review_tier
+    from app.api.state import STATE
+
+    ids: list[str] | None = None
+    if body is None or body == {}:
+        ids = None
+    elif isinstance(body, dict):
+        raw_ids = body.get("tender_ids")
+        if raw_ids is None:
+            ids = None
+        elif isinstance(raw_ids, list) and all(isinstance(x, str) for x in raw_ids):
+            ids = [x.strip() for x in raw_ids if str(x).strip()]
+        else:
+            raise InboxQueryError("invalid_body")
+    else:
+        raise InboxQueryError("invalid_body")
+
+    factory = session_factory()
+    processed = 0
+    failed = 0
+    items: list[dict[str, Any]] = []
+    with factory() as session:
+        if ids is None:
+            stmt = (
+                select(Lot, LotState)
+                .outerjoin(LotState, LotState.tender_id == Lot.tender_id)
+                .where(Lot.tier.in_(tuple(INBOX_TIERS)))
+                .where(or_(LotState.ai_reviewed_at.is_(None), LotState.tender_id.is_(None)))
+            )
+            pairs = list(session.execute(stmt).all())
+        else:
+            pairs = []
+            for tid in ids:
+                lot = session.get(Lot, tid)
+                if lot is None or not _in_pool(lot):
+                    failed += 1
+                    continue
+                pairs.append((lot, session.get(LotState, tid)))
+
+        for lot, state in pairs:
+            if state is not None and state.board_hidden:
+                continue
+            rules_tier = (state.rules_tier if state and state.rules_tier else None) or lot.tier
+            now = datetime.now(timezone.utc)
+            state = _ensure_lot_state(session, lot.tender_id)
+            if not state.rules_tier:
+                state.rules_tier = lot.tier
+            try:
+                result = review_tier(
+                    title=lot.title,
+                    rules_tier=rules_tier,
+                    fit_reason=lot.fit_reason,
+                    platform_id=lot.source_platform_id,
+                )
+                state.ai_tier = result.tier
+                state.ai_reason_ru = result.reason_ru
+                state.ai_reviewed_at = now
+                state.ai_error = None
+                processed += 1
+            except AiTierError as exc:
+                state.ai_error = str(exc.message)
+                failed += 1
+            session.flush()
+            docs = list(
+                session.scalars(select(Document).where(Document.tender_id == lot.tender_id)).all()
+            )
+            items.append(
+                serialize_lot(lot, state, documents=docs, include_documents=True)
+            )
+        session.commit()
+
+    STATE.set_ai_failures(failed)
+    if failed:
+        STATE.log_msg(f"ИИ: сбоев {failed}, успешно {processed}", level="warn")
+    else:
+        STATE.log_msg(f"ИИ: разобрано {processed}")
+    return {"processed": processed, "failed": failed, "items": items}
+
+
+def mark_ai_wrong(tender_id: str, body: Any) -> dict[str, Any]:
+    note: str | None = None
+    if body is None or body == {}:
+        note = None
+    elif isinstance(body, dict):
+        raw = body.get("note")
+        if raw is None:
+            note = None
+        elif isinstance(raw, str):
+            note = raw.strip() or None
+        else:
+            raise InboxQueryError("invalid_body")
+    else:
+        raise InboxQueryError("invalid_body")
+
+    now = datetime.now(timezone.utc)
+    factory = session_factory()
+    with factory() as session:
+        lot = _require_pool_lot(session, tender_id)
+        state = _ensure_lot_state(session, tender_id)
+        state.ai_wrong_at = now
+        state.ai_wrong_note = note
+        session.commit()
+        docs = list(
+            session.scalars(select(Document).where(Document.tender_id == tender_id)).all()
+        )
+        return serialize_lot(lot, state, documents=docs, include_documents=True)

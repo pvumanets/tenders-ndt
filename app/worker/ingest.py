@@ -19,6 +19,8 @@ from app.db.session import session_factory
 from app.worker.artifacts import _clean_loc
 from app.worker.customer_name import clean_customer_name
 
+INBOX_TIERS = frozenset({"L1", "L2", "L3"})
+# Deprecated alias — pool is tier-based (P10/029), not score≥4.
 INBOX_MIN_SCORE = 4
 SOURCE_PLATFORM_ID = "rostender"
 _RAW_KEYS = (
@@ -61,11 +63,8 @@ class IngestResult:
 def inbox_rows(rows: list[dict]) -> list[dict]:
     by_id: dict[str, dict] = {}
     for row in rows:
-        try:
-            score = int(row.get("score") or 0)
-        except (TypeError, ValueError):
-            continue
-        if score < INBOX_MIN_SCORE:
+        tier = str(row.get("tier") or "").strip()
+        if tier not in INBOX_TIERS:
             continue
         tender_id = str(row.get("tender_id") or "").strip()
         title = str(row.get("title") or "").strip()
@@ -206,7 +205,7 @@ def expired_tender_ids(
 ) -> set[str]:
     """Inbox-pool lots whose deadline is strictly before today (MSK)."""
     today_d = today_msk_date(today)
-    rows = session.scalars(select(Lot).where(Lot.score >= INBOX_MIN_SCORE)).all()
+    rows = session.scalars(select(Lot).where(Lot.tier.in_(tuple(INBOX_TIERS)))).all()
     out: set[str] = set()
     for lot in rows:
         due = deadline_date(lot.deadline_msk)
