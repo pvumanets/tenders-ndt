@@ -35,6 +35,7 @@ import {
   fetchStatus,
   putPriority,
   putViewed,
+  putBoardHidden,
   runControlMessage,
   searchControlMessage,
   startRun,
@@ -346,15 +347,16 @@ function AppInner() {
   }
 
   const filtered = useMemo(() => {
-    if (priority.length < 2) return lots;
-    return lots.filter((lot) => priority.includes(effectiveTier(lot)));
+    const visible = lots.filter((lot) => !lot.board_hidden);
+    if (priority.length < 2) return visible;
+    return visible.filter((lot) => priority.includes(effectiveTier(lot)));
   }, [lots, priority]);
 
   const selected = lots.find((l) => l.tender_id === selectedId) ?? null;
   const emptyKind =
     lotsState === "error"
       ? "error"
-      : lots.length === 0
+      : lots.filter((l) => !l.board_hidden).length === 0
         ? unreadOnly && !debouncedSearch && deadlinePreset === "any" && ingestedPreset === "any"
           ? "no-unread"
           : "no-data"
@@ -378,6 +380,14 @@ function AppInner() {
     try {
       replaceLot(await putPriority(id, tier));
       setToast(copy.override_done);
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) onUnauthorized();
+    }
+  }
+
+  async function onSetBoardHidden(id: string, hidden: boolean) {
+    try {
+      replaceLot(await putBoardHidden(id, hidden));
     } catch (err: unknown) {
       if (err instanceof UnauthorizedError) onUnauthorized();
     }
@@ -467,6 +477,7 @@ function AppInner() {
                 onClose={() => setSelectedId(null)}
                 onToggleViewed={onToggleViewed}
                 onSetPriority={onSetPriority}
+                onSetBoardHidden={onSetBoardHidden}
               />
             ) : null}
           </>

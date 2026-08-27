@@ -1,4 +1,4 @@
-"""P5.4–P5.5: Sales Inbox from Postgres (score ≥ 4). Does not read run JSON."""
+"""P5.4–P5.5 + P8: Sales Inbox from Postgres (score ≥ 4). Does not read run JSON."""
 from __future__ import annotations
 
 import re
@@ -13,9 +13,10 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.models import Document, Lot, LotState
 from app.db.session import session_factory
-from app.worker.docs import resolve_volume_file, sanitize_filename
 from app.worker.customer_name import clean_customer_name
+from app.worker.docs import resolve_volume_file, sanitize_filename
 from app.worker.ingest import INBOX_MIN_SCORE
+from app.worker.list_scrape import today_msk
 
 TIER_FILTERS = frozenset({"fit", "L1", "L2", "L3"})
 PRIORITY_TIERS = frozenset({"L1", "L2", "L3"})
@@ -81,6 +82,20 @@ def deadline_date(text: str | None) -> date | None:
     return None
 
 
+def today_msk_date(today: date | None = None) -> date:
+    if today is not None:
+        return today
+    return today_msk().date()
+
+
+def is_deadline_expired(deadline_msk: str | None, today: date | None = None) -> bool:
+    """True when calendar deadline is strictly before today (MSK). Undated → False."""
+    due = deadline_date(deadline_msk)
+    if due is None:
+        return False
+    return due < today_msk_date(today)
+
+
 def deadline_iso(text: str | None) -> str | None:
     parsed = deadline_date(text)
     if parsed is not None:
@@ -104,6 +119,15 @@ def parse_viewed_body(body: Any) -> bool:
     if not isinstance(viewed, bool):
         raise InboxQueryError("invalid_body")
     return viewed
+
+
+def parse_board_hidden_body(body: Any) -> bool:
+    if not isinstance(body, dict) or "hidden" not in body:
+        raise InboxQueryError("invalid_body")
+    hidden = body["hidden"]
+    if not isinstance(hidden, bool):
+        raise InboxQueryError("invalid_body")
+    return hidden
 
 
 def parse_priority_body(body: Any) -> str | None:
@@ -169,7 +193,11 @@ def serialize_lot(
     *,
     documents: list[Document] | None = None,
     include_documents: bool = False,
+    today: date | None = None,
 ) -> dict[str, Any]:
+    due = deadline_date(lot.deadline_msk)
+    today_d = today_msk_date(today)
+    expired = due is not None and due < today_d
     payload: dict[str, Any] = {
         "tender_id": lot.tender_id,
         "title": lot.title,
@@ -179,6 +207,8 @@ def serialize_lot(
         "effective_tier": _effective_tier(lot, state),
         "manual_tier": state.manual_tier if state is not None else None,
         "viewed": bool(state.viewed) if state is not None else False,
+        "board_hidden": bool(state.board_hidden) if state is not None else False,
+        "deadline_expired": expired,
         "deadline_msk": deadline_iso(lot.deadline_msk),
         "ingested_at": ingested_iso(lot.ingested_at),
         "price_rub": _price_json(lot.price_rub),
@@ -197,9 +227,15 @@ def serialize_lot(
     return payload
 
 
-def _sort_key(lot: Lot) -> tuple[int, date, str]:
+def _sort_key_live(lot: Lot) -> tuple[int, date, str]:
     due = deadline_date(lot.deadline_msk) or date.max
     return (-lot.score, due, lot.tender_id)
+
+
+def _sort_key_expired(lot: Lot) -> tuple[date, str]:
+    """Freshest expired first (deadline DESC)."""
+    due = deadline_date(lot.deadline_msk) or date.min
+    return (due, lot.tender_id)
 
 
 def list_inbox(
@@ -211,6 +247,7 @@ def list_inbox(
     deadline_to: str | None = None,
     ingested_from: str | None = None,
     ingested_to: str | None = None,
+    today: date | None = None,
 ) -> dict[str, Any]:
     unread_flag = parse_unread(unread)
     tier_filter = parse_tier_filter(tier)
@@ -219,6 +256,7 @@ def list_inbox(
     ing_from = parse_query_date(ingested_from)
     ing_to = parse_query_date(ingested_to)
     needle = (q or "").strip()
+    today_d = today_msk_date(today)
 
     factory = session_factory()
     with factory() as session:
@@ -240,11 +278,17 @@ def list_inbox(
                 )
             )
         rows = list(session.execute(stmt).all())
-        filtered: list[tuple[Lot, LotState | None]] = []
+        live: list[tuple[Lot, LotState | None]] = []
+        expired: list[tuple[Lot, LotState | None]] = []
         for lot, state in rows:
+            if state is not None and state.board_hidden:
+                continue
+            due = deadline_date(lot.deadline_msk)
+            if due is None:
+                continue
             if tier_filter != "fit" and _effective_tier(lot, state) != tier_filter:
                 continue
-            if not _in_date_range(deadline_date(lot.deadline_msk), dl_from, dl_to):
+            if not _in_date_range(due, dl_from, dl_to):
                 continue
             ingested = None
             if lot.ingested_at is not None:
@@ -254,9 +298,14 @@ def list_inbox(
                 ingested = stamp.astimezone(timezone.utc).date()
             if not _in_date_range(ingested, ing_from, ing_to):
                 continue
-            filtered.append((lot, state))
-        filtered.sort(key=lambda pair: _sort_key(pair[0]))
-        items = [serialize_lot(lot, state) for lot, state in filtered]
+            if due < today_d:
+                expired.append((lot, state))
+            else:
+                live.append((lot, state))
+        live.sort(key=lambda pair: _sort_key_live(pair[0]))
+        expired.sort(key=lambda pair: _sort_key_expired(pair[0]), reverse=True)
+        filtered = live + expired
+        items = [serialize_lot(lot, state, today=today_d) for lot, state in filtered]
         return {"items": items, "total": len(items)}
 
 
@@ -317,6 +366,37 @@ def set_priority(tender_id: str, body: Any) -> dict[str, Any]:
             stmt.on_conflict_do_update(
                 index_elements=["tender_id"],
                 set_={"manual_tier": tier, "manual_tier_at": now},
+            )
+        )
+        session.commit()
+        lot = session.get(Lot, tender_id)
+        state = session.get(LotState, tender_id)
+        docs = list(
+            session.scalars(select(Document).where(Document.tender_id == tender_id)).all()
+        )
+        assert lot is not None
+        return serialize_lot(lot, state, documents=docs, include_documents=True)
+
+
+def set_board_hidden(tender_id: str, body: Any) -> dict[str, Any]:
+    hidden = parse_board_hidden_body(body)
+    now = datetime.now(timezone.utc)
+    factory = session_factory()
+    with factory() as session:
+        _require_pool_lot(session, tender_id)
+        values: dict[str, Any] = {
+            "tender_id": tender_id,
+            "board_hidden": hidden,
+            "board_hidden_at": now if hidden else None,
+        }
+        stmt = pg_insert(LotState).values(values)
+        session.execute(
+            stmt.on_conflict_do_update(
+                index_elements=["tender_id"],
+                set_={
+                    "board_hidden": hidden,
+                    "board_hidden_at": now if hidden else None,
+                },
             )
         )
         session.commit()

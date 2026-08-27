@@ -15,6 +15,8 @@ export type InboxLot = {
   tier: SalesTier;
   manual_tier: SalesTier | null;
   viewed: boolean;
+  board_hidden: boolean;
+  deadline_expired: boolean;
   deadline_msk: string;
   ingested_at: string;
   price_rub: number | null;
