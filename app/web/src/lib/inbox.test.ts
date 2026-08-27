@@ -64,6 +64,7 @@ describe("mapRunStatus", () => {
       session: "missing_cookies",
       run_dir: "/data/runs",
       counters: { L1: 1, L2: 2, L3: 3, noise: 4 },
+      run_report: { new: 2, already: 5, updated: 1, expired: 3 },
       queue: [{ id: "s1", name: "РосТендер НК", platform_id: "rostender", status: "running" }],
       queue_index: 0,
       queue_total: 1,
@@ -76,6 +77,12 @@ describe("mapRunStatus", () => {
     expect(status.phase_label).toBe(copy.phase_list);
     expect(status.queue).toHaveLength(1);
     expect(status.current_search_name).toBe("РосТендер НК");
+    expect(status.run_report).toEqual({ new: 2, already: 5, updated: 1, expired: 3 });
+  });
+
+  it("defaults run_report when missing", () => {
+    const status = mapRunStatus({ phase: "done", running: false });
+    expect(status.run_report).toEqual({ new: 0, already: 0, updated: 0, expired: 0 });
   });
 });
 

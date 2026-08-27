@@ -19,6 +19,7 @@ const idle: TechStatus = {
   cards_done: 0,
   cards_total: 0,
   counters: { L1: 0, L2: 0, L3: 0, noise: 0 },
+  run_report: { new: 0, already: 0, updated: 0, expired: 0 },
   session: "ok",
   run_dir: "",
   queue: [],
@@ -134,6 +135,17 @@ describe("TechRunPanel", () => {
     expect(screen.getByText(copy.searches_tender_pro_docs)).toBeInTheDocument();
     expect(screen.getByText(copy.session_tender_pro)).toBeInTheDocument();
     expect(screen.queryByText(/пока не подключён/)).not.toBeInTheDocument();
+  });
+
+  it("shows four run report phrases", () => {
+    renderPanel({
+      ...idle,
+      run_report: { new: 1, already: 2, updated: 3, expired: 4 },
+    });
+    expect(screen.getByText(`${copy.run_report_new}: 1`)).toBeInTheDocument();
+    expect(screen.getByText(`${copy.run_report_already}: 2`)).toBeInTheDocument();
+    expect(screen.getByText(`${copy.run_report_updated}: 3`)).toBeInTheDocument();
+    expect(screen.getByText(`${copy.run_report_expired}: 4`)).toBeInTheDocument();
   });
 
   it("toggles in_queue from the switch", async () => {

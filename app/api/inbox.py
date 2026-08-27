@@ -1,7 +1,6 @@
 """P5.4–P5.5 + P8: Sales Inbox from Postgres (score ≥ 4). Does not read run JSON."""
 from __future__ import annotations
 
-import re
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -11,17 +10,15 @@ from urllib.parse import quote
 from sqlalchemy import or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from app.deadline import deadline_date, deadline_iso, is_deadline_expired, today_msk_date
 from app.db.models import Document, Lot, LotState
 from app.db.session import session_factory
 from app.worker.customer_name import clean_customer_name
 from app.worker.docs import resolve_volume_file, sanitize_filename
 from app.worker.ingest import INBOX_MIN_SCORE
-from app.worker.list_scrape import today_msk
 
 TIER_FILTERS = frozenset({"fit", "L1", "L2", "L3"})
 PRIORITY_TIERS = frozenset({"L1", "L2", "L3"})
-_ISO_DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
-_DMY_DATE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{4})")
 
 
 class InboxQueryError(ValueError):
@@ -61,47 +58,6 @@ def parse_tier_filter(value: str | None) -> str:
     if tier not in TIER_FILTERS:
         raise InboxQueryError("invalid_tier")
     return tier
-
-
-def deadline_date(text: str | None) -> date | None:
-    if not text:
-        return None
-    raw = text.strip()
-    iso = _ISO_DATE.match(raw)
-    if iso:
-        try:
-            return date(int(iso.group(1)), int(iso.group(2)), int(iso.group(3)))
-        except ValueError:
-            return None
-    dmy = _DMY_DATE.match(raw)
-    if dmy:
-        try:
-            return date(int(dmy.group(3)), int(dmy.group(2)), int(dmy.group(1)))
-        except ValueError:
-            return None
-    return None
-
-
-def today_msk_date(today: date | None = None) -> date:
-    if today is not None:
-        return today
-    return today_msk().date()
-
-
-def is_deadline_expired(deadline_msk: str | None, today: date | None = None) -> bool:
-    """True when calendar deadline is strictly before today (MSK). Undated → False."""
-    due = deadline_date(deadline_msk)
-    if due is None:
-        return False
-    return due < today_msk_date(today)
-
-
-def deadline_iso(text: str | None) -> str | None:
-    parsed = deadline_date(text)
-    if parsed is not None:
-        return parsed.isoformat()
-    stripped = (text or "").strip()
-    return stripped or None
 
 
 def ingested_iso(value: datetime | None) -> str | None:

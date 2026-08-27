@@ -61,6 +61,7 @@ type StatusSnapshot = {
   cards_done?: number;
   cards_total?: number;
   counters?: Partial<TechStatus["counters"]> & { pool?: number };
+  run_report?: Partial<TechStatus["run_report"]>;
   session?: string;
   sessions?: Record<string, string>;
   run_dir?: string | null;
@@ -347,6 +348,12 @@ export function mapRunStatus(raw: StatusSnapshot): TechStatus {
       L2: raw.counters?.L2 ?? 0,
       L3: raw.counters?.L3 ?? 0,
       noise: raw.counters?.noise ?? 0,
+    },
+    run_report: {
+      new: raw.run_report?.new ?? 0,
+      already: raw.run_report?.already ?? 0,
+      updated: raw.run_report?.updated ?? 0,
+      expired: raw.run_report?.expired ?? 0,
     },
     session: sessionUi(raw.session),
     sessions: raw.sessions,

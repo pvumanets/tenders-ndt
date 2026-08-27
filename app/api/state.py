@@ -22,6 +22,9 @@ class RunState:
     counters: dict[str, int] = field(
         default_factory=lambda: {"L1": 0, "L2": 0, "L3": 0, "noise": 0, "pool": 0}
     )
+    run_report: dict[str, int] = field(
+        default_factory=lambda: {"new": 0, "already": 0, "updated": 0, "expired": 0}
+    )
     cards_done: int = 0
     cards_total: int = 0
     run_dir: str | None = None
@@ -32,6 +35,7 @@ class RunState:
     queue: list[dict[str, Any]] = field(default_factory=list)
     queue_index: int = 0
     log: deque[dict[str, str]] = field(default_factory=lambda: deque(maxlen=100))
+    _expired_baseline: set[str] = field(default_factory=set, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def snapshot(self) -> dict[str, Any]:
@@ -43,6 +47,7 @@ class RunState:
                 "list_n": self.list_n,
                 "list_limit": self.list_limit,
                 "counters": dict(self.counters),
+                "run_report": dict(self.run_report),
                 "cards_done": self.cards_done,
                 "cards_total": self.cards_total,
                 "run_dir": self.run_dir,
@@ -70,6 +75,8 @@ class RunState:
             self.list_n = 0
             self.list_limit = 1000
             self.counters = {"L1": 0, "L2": 0, "L3": 0, "noise": 0, "pool": 0}
+            self.run_report = {"new": 0, "already": 0, "updated": 0, "expired": 0}
+            self._expired_baseline = set()
             self.cards_done = 0
             self.cards_total = 0
             self.run_dir = run_dir
@@ -78,6 +85,32 @@ class RunState:
             self.queue = [dict(item) for item in items]
             self.queue_index = 0
             self.log.clear()
+
+    def set_expired_baseline(self, ids: set[str]) -> None:
+        with self._lock:
+            self._expired_baseline = set(ids)
+
+    def add_run_report(
+        self,
+        *,
+        new: int = 0,
+        already: int = 0,
+        updated: int = 0,
+        expired: int | None = None,
+    ) -> None:
+        with self._lock:
+            self.run_report["new"] = self.run_report.get("new", 0) + int(new)
+            self.run_report["already"] = self.run_report.get("already", 0) + int(already)
+            self.run_report["updated"] = self.run_report.get("updated", 0) + int(updated)
+            if expired is not None:
+                self.run_report["expired"] = int(expired)
+
+    def finalize_expired_report(self, current_expired: set[str]) -> int:
+        with self._lock:
+            newly = current_expired - self._expired_baseline
+            count = len(newly)
+            self.run_report["expired"] = count
+            return count
 
     def set_queue_index(self, index: int) -> None:
         with self._lock:

@@ -17,7 +17,7 @@ from app.worker import tender_pro as tender_pro_worker
 from app.worker.artifacts import write_artifacts
 from app.worker.card_scrape import enrich_cards
 from app.worker.docs import download_docs_enabled, download_inbox_docs
-from app.worker.ingest import ingest_run, redact_db_error
+from app.worker.ingest import ingest_run, redact_db_error, snapshot_expired_tender_ids
 from app.worker.list_scrape import AuthError, scrape_queries
 from app.worker.platform_ids import (
     PLATFORM_ROSTENDER,
@@ -133,7 +133,18 @@ def _ingest_step(
         if result is None:
             STATE.log_msg("Ingest skipped (database unconfigured)", level="warn")
         else:
-            STATE.log_msg(f"Ingest: {result.lot_count} lots (score≥4)")
+            STATE.add_run_report(
+                new=result.new_count,
+                already=result.already_count,
+                updated=result.updated_count,
+            )
+            STATE.log_msg(
+                "Ingest: "
+                f"{result.lot_count} lots (score≥4); "
+                f"новые={result.new_count}, "
+                f"уже были={result.already_count}, "
+                f"обновлено={result.updated_count}"
+            )
     except Exception as exc:  # noqa: BLE001
         ingest_error = f"IngestError: {redact_db_error(exc)}"
         STATE.log_msg(ingest_error, level="error")
@@ -178,6 +189,9 @@ def _download_docs(rows: list[dict], *, platform_id: str) -> None:
 def _run_queue(*, items: list[dict], run_dir: Path) -> None:
     overall = "done"
     try:
+        baseline = snapshot_expired_tender_ids()
+        STATE.set_expired_baseline(baseline)
+        STATE.log_msg(f"Expired baseline: {len(baseline)} lot(s)")
         for index, item in enumerate(items):
             if STATE.should_stop():
                 STATE.cancel_remaining(index)
@@ -198,6 +212,8 @@ def _run_queue(*, items: list[dict], run_dir: Path) -> None:
         else:
             if overall == "done":
                 STATE.log_msg("Queue finished")
+        newly_expired = STATE.finalize_expired_report(snapshot_expired_tender_ids())
+        STATE.log_msg(f"Ушли в просроченные: {newly_expired}")
     except Exception as exc:  # noqa: BLE001
         overall = "error"
         STATE.log_msg(f"{type(exc).__name__}: {exc}", level="error")

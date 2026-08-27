@@ -1,10 +1,10 @@
-"""Smoke: P5.3 ingest upserts lots and leaves lot_state alone."""
+"""Smoke: P5.3 + P9 ingest insert / update-on-diff / skip; preserves lot_state."""
 from __future__ import annotations
 
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.models import Lot, LotState, Run
@@ -23,6 +23,8 @@ def _row(tender_id: str, **overrides: object) -> dict:
         "customer_name": "ООО Smoke",
         "fit_reason": "услуга НК",
         "source_etp": "ТЭК-Торг",
+        "deadline_msk": "2030-01-15",
+        "price_rub": "100000",
     }
     base.update(overrides)
     return base
@@ -48,6 +50,9 @@ def test_ingest_upserts_score_ge_4_and_preserves_lot_state(
         )
         assert first is not None
         assert first.lot_count == 1
+        assert first.new_count == 1
+        assert first.already_count == 0
+        assert first.updated_count == 0
         with smoke_db() as session:
             lot = session.get(Lot, tender_id)
             assert lot is not None
@@ -62,18 +67,33 @@ def test_ingest_upserts_score_ge_4_and_preserves_lot_state(
             )
             session.commit()
 
+        same = ingest_run(
+            query=query,
+            limit_n=10,
+            status="done",
+            rows=[_row(tender_id)],
+        )
+        assert same is not None
+        assert same.new_count == 0
+        assert same.already_count == 1
+        assert same.updated_count == 0
+
         second = ingest_run(
             query=query,
             limit_n=10,
             status="done",
-            rows=[_row(tender_id, title="УЗК обновлён", score=8)],
+            rows=[_row(tender_id, title="УЗК обновлён", score=8, deadline_msk="2030-02-01")],
         )
         assert second is not None
+        assert second.new_count == 0
+        assert second.already_count == 0
+        assert second.updated_count == 1
         with smoke_db() as session:
             lot = session.get(Lot, tender_id)
             assert lot is not None
             assert lot.title == "УЗК обновлён"
             assert lot.score == 8
+            assert lot.deadline_msk == "2030-02-01"
             assert lot.run_id == second.run_id
             n_lots = session.scalar(
                 select(func.count()).select_from(Lot).where(Lot.tender_id == tender_id)
@@ -86,10 +106,8 @@ def test_ingest_upserts_score_ge_4_and_preserves_lot_state(
             n_runs = session.scalar(
                 select(func.count()).select_from(Run).where(Run.query == query)
             )
-            assert n_runs == 2
+            assert n_runs == 3
     finally:
-        from sqlalchemy import delete
-
         with smoke_db() as session:
             session.execute(delete(LotState).where(LotState.tender_id == tender_id))
             session.execute(delete(Lot).where(Lot.tender_id.in_((tender_id, l3_id))))

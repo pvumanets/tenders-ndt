@@ -13,6 +13,7 @@ from app.worker.cli import cmd_artifacts
 from app.worker.ingest import (
     inbox_rows,
     ingest_run,
+    lot_differs,
     lot_values,
     parse_price_rub,
     redact_db_error,
@@ -96,6 +97,67 @@ def test_redact_db_error_strips_dsn(monkeypatch: pytest.MonkeyPatch) -> None:
     text = redact_db_error(RuntimeError(f"connect {dsn} failed"))
     assert "secret" not in text
     assert "DATABASE_URL" in text
+
+
+@pytest.mark.unit
+def test_lot_differs_title_deadline_price_and_docs() -> None:
+    values = lot_values(_row(deadline_msk="2030-01-15", price_rub="100"), run_id=_RUN, ingested_at=_NOW)
+    lot = type("Lot", (), {})()
+    for key, value in values.items():
+        setattr(lot, key, value)
+    assert lot_differs(lot, values, _row(deadline_msk="2030-01-15", price_rub="100")) is False
+    assert lot_differs(
+        lot,
+        lot_values(_row(title="other", deadline_msk="2030-01-15", price_rub="100"), run_id=_RUN, ingested_at=_NOW),
+        _row(title="other", deadline_msk="2030-01-15", price_rub="100"),
+    )
+    assert lot_differs(
+        lot,
+        lot_values(_row(deadline_msk="2030-02-01", price_rub="100"), run_id=_RUN, ingested_at=_NOW),
+        _row(deadline_msk="2030-02-01", price_rub="100"),
+    )
+    assert lot_differs(
+        lot,
+        lot_values(_row(deadline_msk="2030-01-15", price_rub="200"), run_id=_RUN, ingested_at=_NOW),
+        _row(deadline_msk="2030-01-15", price_rub="200"),
+    )
+    with_docs = _row(deadline_msk="2030-01-15", price_rub="100", doc_links=["a.pdf"])
+    assert lot_differs(
+        lot,
+        lot_values(with_docs, run_id=_RUN, ingested_at=_NOW),
+        with_docs,
+    )
+
+
+@pytest.mark.unit
+def test_expired_tender_ids_and_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    from datetime import date
+
+    from app.worker import ingest as ingest_mod
+
+    class _FakeLot:
+        def __init__(self, tender_id: str, deadline_msk: str | None, score: int = 7) -> None:
+            self.tender_id = tender_id
+            self.deadline_msk = deadline_msk
+            self.score = score
+
+    class _FakeSession:
+        def scalars(self, _stmt):  # noqa: ANN001
+            class _R:
+                def all(self_inner):  # noqa: ANN001
+                    return [
+                        _FakeLot("a", "2020-01-01"),
+                        _FakeLot("b", "2099-01-01"),
+                        _FakeLot("c", None),
+                    ]
+
+            return _R()
+
+    ids = ingest_mod.expired_tender_ids(_FakeSession(), today=date(2026, 8, 27))
+    assert ids == {"a"}
+
+    monkeypatch.setattr(ingest_mod, "database_url", lambda: "")
+    assert ingest_mod.snapshot_expired_tender_ids() == set()
 
 
 @pytest.mark.unit
