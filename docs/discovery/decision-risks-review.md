@@ -69,10 +69,10 @@
 
 | | |
 | --- | --- |
-| **Что** | **Канон P12 / 028:** update-on-diff — без изменений на площадке карточку не трогаем; с diff — обновляем; triage не сбрасываем. **AS-IS код:** last-wins `ON CONFLICT DO UPDATE`. |
-| **Evidence** | [`app/worker/ingest.py`](../../app/worker/ingest.py) ~201–210 — AS-IS last-wins. Task [028](../delivery/tasks/028-run-idempotent-report.md); API [`sales-inbox-api.md`](../delivery/sales-inbox-api.md) § Ingest. |
+| **Что** | **Канон P12 / 028:** update-on-diff — без изменений на площадке карточку не трогаем; с diff — обновляем; triage не сбрасываем. **Код P9/028 done.** |
+| **Evidence** | [`app/worker/ingest.py`](../../app/worker/ingest.py) — classify insert/update/skip; Task [028](../delivery/tasks/028-run-idempotent-report.md); API [`sales-inbox-api.md`](../delivery/sales-inbox-api.md) § Ingest. |
 | **Как заметит оператор** | Лот «исчез» с доски после re-run (score упал ниже 4) **или** поля устарели / перезаписались — пока код не на update-on-diff. |
-| **Mitigation** | **Docs closed (P12).** Код — [028](../delivery/tasks/028-run-idempotent-report.md). |
+| **Mitigation** | **Docs closed (P12).** Код **done** — [028](../delivery/tasks/028-run-idempotent-report.md). |
 
 ---
 

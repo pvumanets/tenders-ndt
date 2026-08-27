@@ -150,7 +150,7 @@ ndt-tender-scout/
 **Options:** (A) писать все scored-строки; (B) только score ≥ 4, всегда ON CONFLICT UPDATE; (C) отдельный ingest-сервис; (D) `tier ∈ {L1,L2,L3}` + update-on-diff.  
 **Choice (было P5.3):** **B**.  
 **Choice (lock 2026-08-27 / P12):** **D** — в `lots` строки с `tier ∈ {L1,L2,L3}`; повторный `tender_id`: без diff на площадке → skip UPDATE («Уже были»); с diff → UPDATE полей («Обновлено с площадки»). `lot_state` / AI-флаги **не** трогаем. Реализация: [028](./tasks/028-run-idempotent-report.md) / [029](./tasks/029-tier-rules-and-ai.md).  
-**Consequences:** P5.4 читает пул L1–L3; повторный прогон не сбрасывает viewed/manual_tier. AS-IS до 028/029: score ≥ 4 + всегда UPDATE.
+**Consequences:** P5.4 читает пул L1–L3; повторный прогон не сбрасывает viewed/manual_tier. **P9/028 done** (update-on-diff + `run_report`). AS-IS пул до 029: score ≥ 4.
 
 ### Decision: named searches + queue (2026-08-19)
 
@@ -163,6 +163,6 @@ ndt-tender-scout/
 
 - Rostender cookies протухают; ToS — [../discovery/risks-compliance.md](../discovery/risks-compliance.md). Обрезка limit 1000 — **не** канон продукта (P11/030); AS-IS в коде до 030.  
 - Docs: для лотов на доске (`tier ∈ {L1,L2,L3}`); `DOWNLOAD_DOCS`; стоп при ошибке сессии площадки. AS-IS до 029: score≥4.  
-- Дубли `tender_id`: update-on-diff (целевой); `viewed` не сбрасывается. С 024 ключ = `{platform_id}:{native_id}`. AS-IS до 028: last-wins UPDATE.  
+- Дубли `tender_id`: update-on-diff (**P9/028 done**); `viewed` не сбрасывается. С 024 ключ = `{platform_id}:{native_id}`. Пул score≥4 до 029.  
 - Пароль Scout в git/чат — смена паролей обеих учёток.  
 - Откат UI: AS-IS HTML не публичный `/`; React inbox читает Postgres (P6).
