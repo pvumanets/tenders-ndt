@@ -18,7 +18,7 @@ class RunState:
     running: bool = False
     stop_requested: bool = False
     list_n: int = 0
-    list_limit: int = 1000
+    list_limit: int = 0  # 0 = unknown/unlimited progress total
     counters: dict[str, int] = field(
         default_factory=lambda: {"L1": 0, "L2": 0, "L3": 0, "noise": 0, "pool": 0}
     )
@@ -75,7 +75,7 @@ class RunState:
             self.running = True
             self.stop_requested = False
             self.list_n = 0
-            self.list_limit = 1000
+            self.list_limit = 0
             self.counters = {"L1": 0, "L2": 0, "L3": 0, "noise": 0, "pool": 0}
             self.run_report = {"new": 0, "already": 0, "updated": 0, "expired": 0}
             self.ai_failures = 0

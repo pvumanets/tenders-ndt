@@ -18,7 +18,8 @@ from app.worker.platform_ids import PLATFORM_TENDER_PRO, compose_tender_id
 DEFAULT_BASE = "https://www2.tender.pro"
 VIEW_PATH = "/api/tender/{id}/view_public"
 LIST_PATH = "/api/tenders/list"
-POOL_LIMIT = 1000
+POOL_LIMIT = 0  # 0 = no product cap (P11)
+MAX_PAGES = 500
 _ID_IN_HREF = re.compile(r"/api/tender/(\d+)/view_public", re.I)
 _TOTAL_ROWS = re.compile(r"всего\s+строк\s*:\s*(\d+)", re.I)
 _DEADLINE = re.compile(
@@ -201,7 +202,9 @@ def scrape_queries(
     client: httpx.Client | None = None,
     delay_s: float = 0.15,
 ) -> list[dict]:
-    """Union of good_name searches, deduped by native id, capped at limit."""
+    """Union of good_name searches, deduped by native id; soft-capped only if limit > 0."""
+    cap = None if int(limit or 0) <= 0 else int(limit)
+    progress_total = cap if cap is not None else 0
     combined: list[dict] = []
     seen: set[str] = set()
     own = client is None
@@ -216,10 +219,10 @@ def scrape_queries(
         for query in queries:
             if should_stop and should_stop():
                 break
-            if len(combined) >= limit:
+            if cap is not None and len(combined) >= cap:
                 break
             page = 1
-            while len(combined) < limit:
+            while page <= MAX_PAGES and (cap is None or len(combined) < cap):
                 if should_stop and should_stop():
                     break
                 batch, total = scrape_list_page(
@@ -238,10 +241,10 @@ def scrape_queries(
                     seen.add(tid)
                     combined.append(row)
                     new += 1
-                    if len(combined) >= limit:
+                    if cap is not None and len(combined) >= cap:
                         break
                 if on_progress:
-                    on_progress(len(combined), limit)
+                    on_progress(len(combined), progress_total)
                 if new == 0:
                     break
                 if total is not None and page * 25 >= total:
@@ -251,7 +254,9 @@ def scrape_queries(
                 page += 1
                 if delay_s > 0:
                     time.sleep(delay_s)
-        return combined[:limit]
+        if cap is None:
+            return combined
+        return combined[:cap]
     finally:
         if own:
             client.close()

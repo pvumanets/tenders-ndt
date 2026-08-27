@@ -123,7 +123,7 @@ def _ingest_step(
     try:
         result = ingest_run(
             query=_query_label(item),
-            limit_n=int(item.get("limit_n") or 1000),
+            limit_n=int(item.get("limit_n") or 0),
             status=status,
             rows=rows,
             started_at=started_at,
@@ -280,7 +280,7 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
         return "skipped"
     base = os.getenv("ROSTENDER_BASE_URL", "https://rostender.info")
     queries = [str(q) for q in (item.get("queries") or []) if str(q).strip()]
-    limit = int(item.get("limit_n") or 1000)
+    limit = int(item.get("limit_n") or 0)
     started_at = datetime.now(timezone.utc)
     enriched: list[dict] = []
     summary: dict = {}
@@ -388,7 +388,7 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
 def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
     base = os.getenv("TENDER_PRO_BASE_URL", tender_pro_worker.DEFAULT_BASE)
     queries = [str(q) for q in (item.get("queries") or []) if str(q).strip()]
-    limit = int(item.get("limit_n") or 1000)
+    limit = int(item.get("limit_n") or 0)
     started_at = datetime.now(timezone.utc)
     enriched: list[dict] = []
     summary: dict = {}

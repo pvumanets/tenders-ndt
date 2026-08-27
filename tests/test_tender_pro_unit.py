@@ -113,3 +113,25 @@ def test_scrape_queries_union(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(tender_pro, "scrape_list_page", fake_page)
     rows = tender_pro.scrape_queries(queries=["ВИК", "РК"], limit=10)
     assert [r["tender_id"] for r in rows] == ["1", "2"]
+
+
+@pytest.mark.unit
+def test_scrape_queries_unlimited_past_1000(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_page(*, good_name: str, page: int = 1, **_kw: object):
+        if page > 50:
+            return [], 0
+        # 25 rows per page → 50 pages = 1250 (>1000)
+        start = (page - 1) * 25
+        batch = [
+            {
+                "tender_id": f"{good_name}-{start + i}",
+                "title": f"t{start + i}",
+                "url": f"https://x/{start + i}",
+            }
+            for i in range(25)
+        ]
+        return batch, 1250
+
+    monkeypatch.setattr(tender_pro, "scrape_list_page", fake_page)
+    rows = tender_pro.scrape_queries(queries=["ВИК"], limit=0, delay_s=0)
+    assert len(rows) == 1250

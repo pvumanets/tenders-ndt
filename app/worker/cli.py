@@ -169,7 +169,7 @@ def cmd_artifacts(args: argparse.Namespace) -> int:
     )
     print(f"Artifacts → {out_dir}")
     query = getattr(args, "query", None) or "неразрушающий"
-    limit_n = getattr(args, "limit", None) or 1000
+    limit_n = int(getattr(args, "limit", None) or 0)
     try:
         result = ingest_run(query=query, limit_n=int(limit_n), status="done", rows=rows)
     except Exception as exc:  # noqa: BLE001
@@ -202,7 +202,7 @@ def main(argv: list[str] | None = None) -> int:
     p1.add_argument("--cookies", default=None)
     p1.add_argument("--base", default=None)
     p1.add_argument("--query", default="неразрушающий")
-    p1.add_argument("--limit", type=int, default=1000)
+    p1.add_argument("--limit", type=int, default=0, help="0 = no soft cap")
     p1.add_argument("--out", default=None)
     p1.add_argument("--headed", action="store_true")
     p1.set_defaults(func=cmd_scrape)
@@ -227,7 +227,7 @@ def main(argv: list[str] | None = None) -> int:
     both.add_argument("--cookies", default=None)
     both.add_argument("--base", default=None)
     both.add_argument("--query", default="неразрушающий")
-    both.add_argument("--limit", type=int, default=1000)
+    both.add_argument("--limit", type=int, default=0, help="0 = no soft cap")
     both.add_argument("--out", default=None)
     both.add_argument("--headed", action="store_true")
     both.add_argument("--delay", type=float, default=0.25)

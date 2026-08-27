@@ -77,8 +77,10 @@ def test_searches_crud_unique_empty_queue_conflict(smoke_db: sessionmaker[Sessio
             listing = client.get("/api/searches")
             assert listing.status_code == 200
             names = {item["name"] for item in listing.json()["items"]}
-            assert "РосТендер НК" in names
-            assert "Tender.Pro НК" in names
+            assert "РосТендер — услуги НК" in names
+            assert "РосТендер — страховка" in names
+            assert "Tender.Pro — методы" in names
+            assert "Tender.Pro — страховка" in names
             created = client.post(
                 "/api/searches",
                 json={
