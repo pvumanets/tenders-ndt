@@ -12,7 +12,7 @@
 
 SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /api/health`, `POST /api/auth/login`, `POST /api/auth/logout` — **с сессией Scout**.
 
-**AS-IS runtime (до кода 028/029/030):** ingest/inbox ещё фильтруют **score ≥ 4**; обрезка `limit_n=1000` ещё в коде. Ниже — **целевой** контракт; код догоняет в [028](./tasks/028-run-idempotent-report.md) / [029](./tasks/029-tier-rules-and-ai.md) / [030](./tasks/030-search-coverage.md).
+**AS-IS runtime (после 028, до 029/030):** ingest/inbox ещё фильтруют **score ≥ 4**; обрезка `limit_n=1000` ещё в коде. Update-on-diff + `run_report` — **done** ([028](./tasks/028-run-idempotent-report.md)). Целевой пул `tier ∈ {L1,L2,L3}` — [029](./tasks/029-tier-rules-and-ai.md); снятие лимита — [030](./tasks/030-search-coverage.md).
 
 ---
 
@@ -37,19 +37,19 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 
 `viewed` не сбрасывается новым прогоном. `PUT` пишет в `lot_state`, не в файл прогона.
 
-**Ingest (P5.3 + целевой контракт P9/028):** конец **одного** поиска-шага очереди вызывает `ingest_run`. В `lots` попадают строки с **`tier ∈ {L1, L2, L3}`**.
+**Ingest (P5.3 + P9/028 done):** конец **одного** поиска-шага очереди вызывает `ingest_run`. Runtime пул пока **score ≥ 4**; целевой пул **`tier ∈ {L1, L2, L3}`** — после [029](./tasks/029-tier-rules-and-ai.md).
 
 Повтор того же `tender_id`:
 
-| На площадке | Действие | Счётчик Tech (028) |
+| На площадке | Действие | Счётчик Tech (`run_report`) |
 | --- | --- | --- |
-| Нет изменений (срок, НМЦ, title, docs meta) | **не** UPDATE карточки | «Уже были в системе» |
-| Есть diff | UPDATE полей с площадки | «Обновлено с площадки» |
-| Новый `tender_id` | INSERT | «Новые лоты» |
+| Нет изменений (срок, НМЦ, title, docs meta) | **не** UPDATE карточки | `already` — «Уже были в системе» |
+| Есть diff | UPDATE полей с площадки | `updated` — «Обновлено с площадки» |
+| Новый `tender_id` | INSERT | `new` — «Новые лоты» |
 
 `lot_state` (`viewed`, `manual_tier`, AI-флаги) ingest **не** создаёт и **не** сбрасывает. Без `DATABASE_URL` — skip. Детали: [`../discovery/inbox-lifecycle.md`](../discovery/inbox-lifecycle.md), [028](./tasks/028-run-idempotent-report.md).
 
-AS-IS до 028: `INSERT … ON CONFLICT` всегда обновляет карточку; фильтр score ≥ 4.
+«Ушли в просроченные» (`run_report.expired`): снимок протухших `tender_id` в начале очереди; в конце — текущие протухшие минус снимок (впервые протухшие в окне прогона).
 
 После 024 `tender_id` = `{source_platform_id}:{native_id}`. Числовые rostender-ряды мигрируют на `rostender:{id}`; том docs на диске — `rostender__{id}/` (двоеточие в имени папки нельзя).
 
@@ -219,6 +219,7 @@ AS-IS до 029: download только для score ≥ 4.
 - «Скачать»: same-origin `GET /api/inbox/{id}/documents/{filename}` (cookie как у навигации).
 - `GET /api/status` (as-is): `list_n` / `list_limit` / `phase` / `session` (`ok` \| `expired` \| `missing_cookies` \| `unknown`), без `phase_label`. UI: `list_done=list_n`, `list_total=list_limit`; `missing_cookies` и `unknown` → session `missing`; подпись фазы — из copy.
 - `GET /api/status` (023): плюс текущий поиск, позиция i/N, статусы шагов очереди; cookies **по** `platform_id` (не одно поле rostender).
+- `GET /api/status` (028 / P9): плюс `run_report: { new, already, updated, expired }` (накопительно по очереди; `expired` — впервые протухшие в окне прогона). Tech показывает полные RU-фразы.
 - `POST /api/run/start` после 023: без body настроек; очередь = поиски с `in_queue=true` по `sort_order`. Пусто → 400 `empty_queue`.
 - 401 на `/api/*` после входа → экран логина. Null-поля списка нормализовать в `""` / `[]`.
 

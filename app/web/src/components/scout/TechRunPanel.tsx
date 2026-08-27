@@ -155,6 +155,25 @@ export default function TechRunPanel({
             <Typography variant="body2">noise {status.counters.noise}</Typography>
           </Stack>
         </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            {copy.run_report_legend}
+          </Typography>
+          <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+            <Typography variant="body2">
+              {copy.run_report_new}: {status.run_report.new}
+            </Typography>
+            <Typography variant="body2">
+              {copy.run_report_already}: {status.run_report.already}
+            </Typography>
+            <Typography variant="body2">
+              {copy.run_report_updated}: {status.run_report.updated}
+            </Typography>
+            <Typography variant="body2">
+              {copy.run_report_expired}: {status.run_report.expired}
+            </Typography>
+          </Stack>
+        </Box>
 
         <Box>
           <Stack direction="row" spacing={1} sx={{ mb: 1, alignItems: "center" }}>

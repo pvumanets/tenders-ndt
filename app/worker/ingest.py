@@ -1,15 +1,18 @@
-"""P5.3: upsert runs + lots (score ≥ 4) after a pipeline. Never touches lot_state."""
+"""P5.3 + P9: ingest runs + lots (score ≥ 4). Update-on-diff; never touches lot_state."""
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.orm import Session
 
+from app.deadline import deadline_date, today_msk_date
 from app.db.config import database_url
 from app.db.models import Lot, Run
 from app.db.session import session_factory
@@ -50,6 +53,9 @@ _RAW_KEYS = (
 class IngestResult:
     run_id: UUID
     lot_count: int
+    new_count: int = 0
+    already_count: int = 0
+    updated_count: int = 0
 
 
 def inbox_rows(rows: list[dict]) -> list[dict]:
@@ -122,6 +128,42 @@ def _raw_payload(row: dict) -> dict[str, Any]:
     return payload
 
 
+def _doc_fingerprint(raw: Any) -> tuple[str, ...]:
+    if not isinstance(raw, dict):
+        return ()
+    links = raw.get("doc_links")
+    if not isinstance(links, list):
+        return ()
+    names: list[str] = []
+    for item in links:
+        if isinstance(item, str) and item.strip():
+            names.append(item.strip())
+        elif isinstance(item, dict):
+            for key in ("name", "filename", "url", "href"):
+                val = item.get(key)
+                if isinstance(val, str) and val.strip():
+                    names.append(val.strip())
+                    break
+    return tuple(sorted(names))
+
+
+def lot_differs(existing: Lot, values: dict[str, Any], row: dict) -> bool:
+    """True when platform fields we care about changed (P9 update-on-diff)."""
+    if (existing.title or "") != (values.get("title") or ""):
+        return True
+    if (existing.deadline_msk or None) != (values.get("deadline_msk") or None):
+        return True
+    old_price = existing.price_rub
+    new_price = values.get("price_rub")
+    if old_price is None and new_price is None:
+        pass
+    elif old_price is None or new_price is None or old_price != new_price:
+        return True
+    if _doc_fingerprint(existing.raw) != _doc_fingerprint(_raw_payload(row)):
+        return True
+    return False
+
+
 def lot_values(
     row: dict,
     *,
@@ -157,6 +199,30 @@ def lot_values(
     }
 
 
+def expired_tender_ids(
+    session: Session,
+    *,
+    today: date | None = None,
+) -> set[str]:
+    """Inbox-pool lots whose deadline is strictly before today (MSK)."""
+    today_d = today_msk_date(today)
+    rows = session.scalars(select(Lot).where(Lot.score >= INBOX_MIN_SCORE)).all()
+    out: set[str] = set()
+    for lot in rows:
+        due = deadline_date(lot.deadline_msk)
+        if due is not None and due < today_d:
+            out.add(lot.tender_id)
+    return out
+
+
+def snapshot_expired_tender_ids(*, today: date | None = None) -> set[str]:
+    if not database_url():
+        return set()
+    factory = session_factory()
+    with factory() as session:
+        return expired_tender_ids(session, today=today)
+
+
 def ingest_run(
     *,
     query: str,
@@ -168,7 +234,7 @@ def ingest_run(
     source_platform_id: str = SOURCE_PLATFORM_ID,
     search_id: UUID | None = None,
 ) -> IngestResult | None:
-    """Write one run + upsert inbox lots. None if DATABASE_URL is unset."""
+    """Write one run + insert/update-on-diff inbox lots. None if DATABASE_URL is unset."""
     if not database_url():
         return None
     now = datetime.now(timezone.utc)
@@ -188,8 +254,12 @@ def ingest_run(
         )
         session.add(run)
         session.flush()
+
+        new_count = 0
+        already_count = 0
+        updated_count = 0
         if candidates:
-            values = [
+            values_list = [
                 lot_values(
                     row,
                     run_id=run.id,
@@ -198,18 +268,41 @@ def ingest_run(
                 )
                 for row in candidates
             ]
-            stmt = pg_insert(Lot).values(values)
-            excluded = stmt.excluded
-            update = {
-                column.name: getattr(excluded, column.name)
-                for column in Lot.__table__.columns
-                if column.name != "tender_id"
+            ids = [v["tender_id"] for v in values_list]
+            existing = {
+                lot.tender_id: lot
+                for lot in session.scalars(select(Lot).where(Lot.tender_id.in_(ids))).all()
             }
-            session.execute(
-                stmt.on_conflict_do_update(index_elements=["tender_id"], set_=update)
-            )
+            to_insert: list[dict[str, Any]] = []
+            to_update: list[tuple[dict[str, Any], dict]] = []
+            for row, vals in zip(candidates, values_list, strict=True):
+                old = existing.get(vals["tender_id"])
+                if old is None:
+                    to_insert.append(vals)
+                    new_count += 1
+                elif lot_differs(old, vals, row):
+                    to_update.append((vals, row))
+                    updated_count += 1
+                else:
+                    already_count += 1
+
+            if to_insert:
+                session.execute(pg_insert(Lot).values(to_insert))
+            for vals, _row in to_update:
+                lot = existing[vals["tender_id"]]
+                for key, value in vals.items():
+                    if key == "tender_id":
+                        continue
+                    setattr(lot, key, value)
+
         session.commit()
-        return IngestResult(run_id=run.id, lot_count=len(candidates))
+        return IngestResult(
+            run_id=run.id,
+            lot_count=len(candidates),
+            new_count=new_count,
+            already_count=already_count,
+            updated_count=updated_count,
+        )
 
 
 def redact_db_error(exc: BaseException) -> str:

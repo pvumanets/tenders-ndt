@@ -24,7 +24,7 @@
 | Фаза | Название (просто) | Статус | Задача |
 | --- | --- | --- | --- |
 | **P8** | Доска: просрочка и архив | **done** | [027](./tasks/027-expired-column.md) |
-| **P9** | Прогон: уже был / обновлено | backlog | [028](./tasks/028-run-idempotent-report.md) |
+| **P9** | Прогон: уже был / обновлено | **done** | [028](./tasks/028-run-idempotent-report.md) |
 | **P10** | Тиры + ИИ отдельным шагом | backlog | [029](./tasks/029-tier-rules-and-ai.md) |
 | **P11** | Покрытие поиска (сиды + без лимита) | backlog | [030](./tasks/030-search-coverage.md) |
 | **P12** | Синхрон канона API с lock | **done** | [032](./tasks/032-api-canon-sync.md) |
@@ -90,10 +90,11 @@ P12 (канон API)
 
 | | |
 | --- | --- |
+| **Статус** | **done** (2026-08-27) — [028](./tasks/028-run-idempotent-report.md) |
 | **Вход** | P8 желателен (счётчик «Ушли в просроченные»); **P12** контракт ingest |
-| **Выход / Done** | Diff: без изменений → «Уже были»; с diff → «Обновлено с площадки»; `viewed` / ручной приоритет / AI-флаги живы; Tech — четыре полные фразы |
+| **Выход / Done** | Diff: без изменений → «Уже были»; с diff → «Обновлено с площадки»; `viewed` / ручной приоритет / AI-флаги живы; Tech — четыре полные фразы; `GET /api/status.run_report` |
 | **Задача** | [028](./tasks/028-run-idempotent-report.md) |
-| **Риски** | Код по старому API = last-wins всегда |
+| **Риски** | Пул доски ещё score≥4 до P10 |
 | **Out** | ИИ; keywords |
 
 ---
@@ -193,7 +194,8 @@ P12 (канон API)
 | Tech Start/Stop, поиски, Tender.Pro adapter, customer_name, drawer поиска | **022–026 done** |
 | Discovery lock 2026-08-27 | **docs done** |
 | P12 канон API | **done** ([032](./tasks/032-api-canon-sync.md)) |
-| P8 просрочка + архив | **done** ([027](./tasks/027-expired-column.md)); дальше P9/028 |
+| P8 просрочка + архив | **done** ([027](./tasks/027-expired-column.md)) |
+| P9 update-on-diff + Tech отчёт | **done** ([028](./tasks/028-run-idempotent-report.md)); дальше P10/029 |
 
 ---
 
