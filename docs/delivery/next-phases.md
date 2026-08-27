@@ -28,7 +28,7 @@
 | **P10** | Тиры + ИИ отдельным шагом | **done** | [029](./tasks/029-tier-rules-and-ai.md) |
 | **P11** | Покрытие поиска (сиды + без лимита) | **done** | [030](./tasks/030-search-coverage.md) |
 | **P12** | Синхрон канона API с lock | **done** | [032](./tasks/032-api-canon-sync.md) |
-| **P13** | Wipe прода + чистый прогон | backlog | ops после P8–P11 на `main` |
+| **P13** | Wipe прода + чистый прогон | **done** | ops после P8–P11 на `main` |
 | **P14** | Укрепление скрейпа | backlog | [031](./tasks/031-scrape-hardening.md) |
 | **P15+** | Дальний хвост | backlog | cron, ЭТП, Bitrix, роли, Excel |
 
@@ -152,11 +152,12 @@ P12 (канон API)
 
 | | |
 | --- | --- |
+| **Статус** | **done** (2026-08-27) — wipe + полный Старт A–E на проде после деплоя 030 |
 | **Вход** | P8–P11 **на `main` и задеплоены**; cookies площадок живые |
-| **Выход / Done** | Снесены `lots` + `lot_state` + `documents` + том `docs/`; полный Старт очереди A–E (+ TP); отчёт Tech с счётчиками; доска осмысленна |
-| **Задача** | ops (описание в [`inbox-lifecycle.md`](../discovery/inbox-lifecycle.md)); команда — в execute-плане кода, не здесь |
+| **Выход / Done** | Снесены `lots` + `lot_state` + `documents` + том `docs/`; полный Старт очереди A–E (+ TP если cookies в контейнере); отчёт Tech с счётчиками; доска осмысленна |
+| **Задача** | ops (описание в [`inbox-lifecycle.md`](../discovery/inbox-lifecycle.md)) |
 | **Риски** | Wipe без P11 = снова узкая сеть |
-| **Out** | Точечный «починить старые тиры» |
+| **Out** | Точечный «починить старые тиры»; mount cookies Tender.Pro в compose (отдельно) |
 
 ---
 
@@ -199,7 +200,8 @@ P12 (канон API)
 | P8 просрочка + архив | **done** ([027](./tasks/027-expired-column.md)) |
 | P9 update-on-diff + Tech отчёт | **done** ([028](./tasks/028-run-idempotent-report.md)) |
 | P10 тиры + ИИ | **done** ([029](./tasks/029-tier-rules-and-ai.md)) |
-| P11 сиды A–E + без limit 1000 | **done** ([030](./tasks/030-search-coverage.md)); дальше P13 wipe |
+| P11 сиды A–E + без limit 1000 | **done** ([030](./tasks/030-search-coverage.md)) |
+| P13 wipe + полный прогон | **done** (2026-08-27); дальше P14/031 |
 
 ---
 
