@@ -75,6 +75,8 @@
 | chip_hot | Горячие |
 | chip_strong | Сильные |
 | chip_watch | Смотреть |
+| chip_expired | Просроченные |
+| badge_deadline_expired | Срок подачи вышел |
 | chip_overridden_suffix | вручную |
 
 Не показывать на вкладке Лоты: `L1`, `L2`, `L3`.  
@@ -118,6 +120,8 @@
 | action_mark_viewed | Отметить просмотренным |
 | action_viewed_done | Просмотрено |
 | action_change_priority | Изменить приоритет |
+| action_archive | В архив |
+| action_restore_board | Вернуть на доску |
 | action_bitrix | Отправить в Битрикс |
 | bitrix_soon | Скоро |
 | bitrix_soon_hint | Отправка в Битрикс появится позже |

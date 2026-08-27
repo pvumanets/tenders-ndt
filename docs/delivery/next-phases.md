@@ -23,7 +23,7 @@
 
 | Фаза | Название (просто) | Статус | Задача |
 | --- | --- | --- | --- |
-| **P8** | Доска: просрочка и архив | backlog | [027](./tasks/027-expired-column.md) |
+| **P8** | Доска: просрочка и архив | **done** | [027](./tasks/027-expired-column.md) |
 | **P9** | Прогон: уже был / обновлено | backlog | [028](./tasks/028-run-idempotent-report.md) |
 | **P10** | Тиры + ИИ отдельным шагом | backlog | [029](./tasks/029-tier-rules-and-ai.md) |
 | **P11** | Покрытие поиска (сиды + без лимита) | backlog | [030](./tasks/030-search-coverage.md) |
@@ -75,10 +75,11 @@ P12 (канон API)
 
 | | |
 | --- | --- |
+| **Статус** | **done** (2026-08-27) — [027](./tasks/027-expired-column.md) |
 | **Вход** | Lock lifecycle; доска L1–L3 ещё может быть на старом фильтре score≥4 |
-| **Выход / Done** | Колонка справа; бейдж «Срок подачи вышел»; архив `board_hidden`; правило даты МСК + показ Inbox согласован; тихий суточный шаг **или** read-time filter |
+| **Выход / Done** | Колонка справа; бейдж «Срок подачи вышел»; архив `board_hidden`; правило даты МСК **read-time** |
 | **Задача** | [027](./tasks/027-expired-column.md) |
-| **Риски** | Без read-time просрочка «висит» до cron (S8) |
+| **Риски** | S8 закрыт read-time (без cron) |
 | **Out** | ИИ; сиды; wipe |
 
 ---
@@ -191,7 +192,8 @@ P12 (канон API)
 | P0–P7 платформа + HTTPS | **done** |
 | Tech Start/Stop, поиски, Tender.Pro adapter, customer_name, drawer поиска | **022–026 done** |
 | Discovery lock 2026-08-27 | **docs done** |
-| P12 канон API | **done** ([032](./tasks/032-api-canon-sync.md)); код — фазы P8–P11 |
+| P12 канон API | **done** ([032](./tasks/032-api-canon-sync.md)) |
+| P8 просрочка + архив | **done** ([027](./tasks/027-expired-column.md)); дальше P9/028 |
 
 ---
 

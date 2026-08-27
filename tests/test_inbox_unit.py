@@ -11,7 +11,9 @@ from fastapi.testclient import TestClient
 from app.api.inbox import (
     InboxQueryError,
     deadline_iso,
+    is_deadline_expired,
     list_inbox,
+    parse_board_hidden_body,
     parse_priority_body,
     parse_query_date,
     parse_unread,
@@ -65,6 +67,7 @@ def test_inbox_routes_include_documents() -> None:
     assert "/api/inbox/{tender_id}" in paths
     assert "/api/inbox/{tender_id}/viewed" in paths
     assert "/api/inbox/{tender_id}/priority" in paths
+    assert "/api/inbox/{tender_id}/board-hidden" in paths
     assert "/api/inbox/{tender_id}/documents" in paths
     assert "/api/inbox/{tender_id}/documents/{filename}" in paths
 
@@ -111,9 +114,39 @@ def test_list_inbox_rejects_bad_query_before_db() -> None:
 
 
 @pytest.mark.unit
+def test_is_deadline_expired_msk_today_yesterday() -> None:
+    from datetime import date
+
+    today = date(2026, 8, 27)
+    assert is_deadline_expired("26.08.2026", today) is True
+    assert is_deadline_expired("27.08.2026", today) is False
+    assert is_deadline_expired("27.08.2026 23:59", today) is False
+    assert is_deadline_expired("2026-08-28", today) is False
+    assert is_deadline_expired(None, today) is False
+    assert is_deadline_expired("", today) is False
+
+
+@pytest.mark.unit
+def test_serialize_lot_deadline_expired_and_board_hidden() -> None:
+    from datetime import date
+
+    today = date(2026, 8, 27)
+    live = serialize_lot(_lot(deadline_msk="27.08.2026"), None, today=today)
+    assert live["deadline_expired"] is False
+    assert live["board_hidden"] is False
+    expired = serialize_lot(_lot(deadline_msk="26.08.2026"), None, today=today)
+    assert expired["deadline_expired"] is True
+    state = LotState(tender_id="45289101", board_hidden=True)
+    hidden = serialize_lot(_lot(), state, today=today)
+    assert hidden["board_hidden"] is True
+
+
+@pytest.mark.unit
 def test_serialize_lot_iso_dates_and_effective_tier() -> None:
+    from datetime import date
+
     lot = _lot()
-    item = serialize_lot(lot, None)
+    item = serialize_lot(lot, None, today=date(2026, 8, 1))
     assert item["deadline_msk"] == "2026-08-20"
     assert item["ingested_at"] == "2026-08-12"
     assert item["viewed"] is False
@@ -121,11 +154,12 @@ def test_serialize_lot_iso_dates_and_effective_tier() -> None:
     assert item["effective_tier"] == "L1"
     assert item["price_rub"] == 1850000
     assert item["source_platform_id"] == "rostender"
+    assert item["deadline_expired"] is False
     assert "documents" not in item
     _assert_no_secrets(item)
 
     state = LotState(tender_id=lot.tender_id, viewed=True, manual_tier="L2")
-    card = serialize_lot(lot, state, include_documents=True, documents=[])
+    card = serialize_lot(lot, state, include_documents=True, documents=[], today=date(2026, 8, 1))
     assert card["effective_tier"] == "L2"
     assert card["manual_tier"] == "L2"
     assert card["viewed"] is True
@@ -141,6 +175,10 @@ def test_parse_bodies() -> None:
         parse_viewed_body({"viewed": 1})
     with pytest.raises(InboxQueryError, match="invalid_body"):
         parse_viewed_body({})
+    assert parse_board_hidden_body({"hidden": True}) is True
+    assert parse_board_hidden_body({"hidden": False}) is False
+    with pytest.raises(InboxQueryError, match="invalid_body"):
+        parse_board_hidden_body({})
     assert parse_priority_body({"tier": None}) is None
     assert parse_priority_body({"tier": "L3"}) == "L3"
     with pytest.raises(InboxQueryError, match="invalid_tier"):

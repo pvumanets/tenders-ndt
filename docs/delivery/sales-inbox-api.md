@@ -27,7 +27,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | Что | Где |
 | --- | --- |
 | Карточка лота | `lots` |
-| viewed / manual_tier | `lot_state` (один ряд на `tender_id`, глобально) |
+| viewed / manual_tier / board_hidden | `lot_state` (один ряд на `tender_id`, глобально) |
 | Прогон | `runs` (`query`, `limit_n`, `status`; после 023: `source_platform_id`, `search_id`) |
 | Именованный поиск (023) | `searches` (`name`, `platform_id`, `queries`, `limit_n`, `in_queue`, `sort_order`) |
 | Учётки Scout | `users` (password_hash; bootstrap из `.env`) |
@@ -53,7 +53,14 @@ AS-IS до 028: `INSERT … ON CONFLICT` всегда обновляет кар�
 
 После 024 `tender_id` = `{source_platform_id}:{native_id}`. Числовые rostender-ряды мигрируют на `rostender:{id}`; том docs на диске — `rostender__{id}/` (двоеточие в имени папки нельзя).
 
-Поля `lot_state`: `viewed`, `viewed_at`, `manual_tier` (`L1` \| `L2` \| `L3` \| null = оценка движка), `manual_tier_at` (ISO-8601).
+Поля `lot_state`: `viewed`, `viewed_at`, `manual_tier` (`L1` \| `L2` \| `L3` \| null = оценка движка), `manual_tier_at`, `board_hidden` (bool), `board_hidden_at` (ISO-8601).
+
+## Доска: просрочка и архив (P8 / 027)
+
+- **Read-time:** `deadline_date(deadline_msk) < today_msk` → `deadline_expired: true`; в L1–L3 не рисуем; колонка «Просроченные». Срок **сегодня** — ещё живой. Без разбираемой даты — **вне** доски.
+- Default `GET /api/inbox` не отдаёт `board_hidden=true`. GET one / PUT доступны для архивных (вернуть на доску).
+- Сорт: живые — score DESC, ближайший срок; просроченные — `deadline` DESC (свежие протухшие сверху).
+- Отдельный crontab в P8 **не** вводим: read-time = механизм переноса (закрывает S8).
 
 ## REST — Auth (P5.2)
 
@@ -108,18 +115,19 @@ AS-IS до 028: `INSERT … ON CONFLICT` всегда обновляет кар�
 
 | Метод | Путь | Назначение |
 | --- | --- | --- |
-| `GET` | `/api/inbox` | Список лотов пула L1–L3 из Postgres |
-| `GET` | `/api/inbox/{tender_id}` | Карточка + effective tier + viewed + docs meta |
+| `GET` | `/api/inbox` | Список лотов пула на доске (не `board_hidden`; с датой срока) |
+| `GET` | `/api/inbox/{tender_id}` | Карточка + effective tier + viewed + board_hidden + docs meta |
 | `PUT` | `/api/inbox/{tender_id}/viewed` | body `{ "viewed": true \| false }` |
 | `PUT` | `/api/inbox/{tender_id}/priority` | body `{ "tier": "L1" \| "L2" \| "L3" \| null }` — `null` = сброс к движку |
+| `PUT` | `/api/inbox/{tender_id}/board-hidden` | body `{ "hidden": true \| false }` — архив / вернуть на доску |
 | `GET` | `/api/inbox/{tender_id}/documents` | Список файлов `{ items: [{ name, size_kb, url }] }` |
 | `GET` | `/api/inbox/{tender_id}/documents/{filename}` | Скачивание байтов, `Content-Disposition: attachment`, за сессией |
 
 ### Обёртки ответов
 
 - `GET /api/inbox` → `{ "items": [ <элемент> ], "total": N }` (без `run_dir`).
-- `GET /api/inbox/{tender_id}` и оба `PUT` → **сам объект лота** (поля элемента + `documents`).
-- Сортировка списка: `score` по убыванию, затем ближайший `deadline_msk`, затем `tender_id`.
+- `GET /api/inbox/{tender_id}` и `PUT` (viewed / priority / board-hidden) → **сам объект лота** (поля элемента + `documents`).
+- Сортировка списка: сначала живые (`score` ↓, ближайший `deadline_msk`, `tender_id`), затем просроченные (`deadline_msk` ↓).
 
 ### Query `GET /api/inbox`
 
@@ -149,6 +157,8 @@ AS-IS до 028: `INSERT … ON CONFLICT` всегда обновляет кар�
   "effective_tier": "L1",
   "manual_tier": null,
   "viewed": false,
+  "board_hidden": false,
+  "deadline_expired": false,
   "deadline_msk": "2026-08-20",
   "ingested_at": "2026-08-12",
   "price_rub": null,

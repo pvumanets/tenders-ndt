@@ -71,8 +71,23 @@ export default function LotMiniCard({
               }}
             />
           ) : null}
+          {lot.deadline_expired ? (
+            <Chip
+              size="small"
+              label={copy.badge_deadline_expired}
+              variant="outlined"
+              sx={{
+                alignSelf: "flex-start",
+                mt: hasManual ? 0.5 : 0,
+                height: theme.density.chip.height,
+                fontSize: `${theme.density.chip.fontSize}px`,
+                borderColor: stripe.border,
+                color: stripe.textMuted,
+              }}
+            />
+          ) : null}
 
-          <Box sx={{ mt: hasManual ? `${pmc.headerToBody}px` : 0 }}>
+          <Box sx={{ mt: hasManual || lot.deadline_expired ? `${pmc.headerToBody}px` : 0 }}>
             <Typography
               sx={{
                 fontSize: `${theme.density.font.md}px`,
