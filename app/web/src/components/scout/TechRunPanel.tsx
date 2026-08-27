@@ -71,7 +71,7 @@ export default function TechRunPanel({
         name: draft.name.trim(),
         platform_id: draft.platform_id,
         queries,
-        limit_n: Math.min(1000, Math.max(1, Number(draft.limit_n) || 1)),
+        limit_n: Math.max(0, Number(draft.limit_n) || 0),
         in_queue: draft.in_queue,
         sort_order: draft.sort_order,
       });

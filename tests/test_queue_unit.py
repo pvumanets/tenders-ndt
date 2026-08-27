@@ -30,6 +30,8 @@ def idle_run_state() -> None:
 @pytest.mark.unit
 def test_scrape_queries_union_dedupes_and_caps(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_scrape_list(*, query: str, limit: int, **_kwargs: object) -> list[dict]:
+        if int(limit or 0) <= 0:
+            limit = 10_000
         if query == "a":
             return [{"tender_id": "1", "title": "a1"}, {"tender_id": "2", "title": "a2"}][:limit]
         return [{"tender_id": "2", "title": "b2"}, {"tender_id": "3", "title": "b3"}][:limit]
@@ -39,6 +41,8 @@ def test_scrape_queries_union_dedupes_and_caps(monkeypatch: pytest.MonkeyPatch) 
     assert [row["tender_id"] for row in rows] == ["1", "2", "3"]
     capped = scrape_queries(cookies_path=Path("missing.txt"), queries=["a", "b"], limit=2)
     assert [row["tender_id"] for row in capped] == ["1", "2"]
+    unlimited = scrape_queries(cookies_path=Path("missing.txt"), queries=["a", "b"], limit=0)
+    assert [row["tender_id"] for row in unlimited] == ["1", "2", "3"]
 
 
 @pytest.mark.unit

@@ -340,7 +340,7 @@ function parseSearch(raw: Partial<NamedSearch>): NamedSearch {
     name: text(raw.name),
     platform_id: text(raw.platform_id) || "rostender",
     queries: Array.isArray(raw.queries) ? raw.queries.map((item) => text(item)).filter(Boolean) : [],
-    limit_n: typeof raw.limit_n === "number" ? raw.limit_n : 1000,
+    limit_n: typeof raw.limit_n === "number" ? raw.limit_n : 0,
     in_queue: Boolean(raw.in_queue),
     sort_order: typeof raw.sort_order === "number" ? raw.sort_order : 0,
   };
