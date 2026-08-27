@@ -36,6 +36,8 @@ import {
   putPriority,
   putViewed,
   putBoardHidden,
+  postAiReview,
+  postAiWrong,
   runControlMessage,
   searchControlMessage,
   startRun,
@@ -67,6 +69,7 @@ const idleTech: TechStatus = {
   cards_total: 0,
   counters: { L1: 0, L2: 0, L3: 0, noise: 0 },
   run_report: { new: 0, already: 0, updated: 0, expired: 0 },
+  ai_failures: 0,
   session: "missing",
   run_dir: "",
   queue: [],
@@ -114,6 +117,8 @@ function AppInner() {
   const [lotsState, setLotsState] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [view, setView] = useState<ViewMode>("cards");
   const [unreadOnly, setUnreadOnly] = useState(true);
+  const [aiReviewedOnly, setAiReviewedOnly] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
   const [priority, setPriority] = useState<PriorityFilter>([]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -164,6 +169,7 @@ function AppInner() {
     };
     fetchInbox({
       unread: unreadOnly || undefined,
+      ai_reviewed: aiReviewedOnly || undefined,
       tier: apiTierParam(priority),
       q: debouncedSearch || undefined,
       ...dates,
@@ -187,6 +193,7 @@ function AppInner() {
   }, [
     gate,
     unreadOnly,
+    aiReviewedOnly,
     priority,
     debouncedSearch,
     deadlinePreset,
@@ -394,6 +401,34 @@ function AppInner() {
     }
   }
 
+  async function onAiReview() {
+    setAiBusy(true);
+    try {
+      const result = await postAiReview();
+      if (result.items.length) {
+        setLots((prev) => {
+          const byId = new Map(result.items.map((item) => [item.tender_id, item]));
+          return prev.map((lot) => byId.get(lot.tender_id) ?? lot);
+        });
+      }
+      const status = await fetchStatus();
+      setTech(status);
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) onUnauthorized();
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
+  async function onAiWrong(id: string) {
+    try {
+      replaceLot(await postAiWrong(id));
+      setToast(copy.action_ai_wrong);
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) onUnauthorized();
+    }
+  }
+
   if (gate === "loading") {
     return <Box sx={{ minHeight: "100vh", bgcolor: stripe.surfaceSubtle }} />;
   }
@@ -460,6 +495,10 @@ function AppInner() {
               onIngestedTo={setIngestedTo}
               view={view}
               onView={setView}
+              aiReviewedOnly={aiReviewedOnly}
+              onAiReviewedOnly={setAiReviewedOnly}
+              onAiReview={() => void onAiReview()}
+              aiBusy={aiBusy}
             />
             {lotsState === "error" ? (
               <InboxEmpty kind="error" />
@@ -479,6 +518,7 @@ function AppInner() {
                 onToggleViewed={onToggleViewed}
                 onSetPriority={onSetPriority}
                 onSetBoardHidden={onSetBoardHidden}
+                onAiWrong={(id) => void onAiWrong(id)}
               />
             ) : null}
           </>

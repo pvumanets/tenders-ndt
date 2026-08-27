@@ -144,6 +144,17 @@ class LotState(Base):
     board_hidden_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    rules_tier: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    ai_reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    ai_tier: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    ai_reason_ru: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_wrong_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    ai_wrong_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Document(Base):

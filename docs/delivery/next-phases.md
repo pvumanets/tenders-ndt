@@ -25,7 +25,7 @@
 | --- | --- | --- | --- |
 | **P8** | Доска: просрочка и архив | **done** | [027](./tasks/027-expired-column.md) |
 | **P9** | Прогон: уже был / обновлено | **done** | [028](./tasks/028-run-idempotent-report.md) |
-| **P10** | Тиры + ИИ отдельным шагом | backlog | [029](./tasks/029-tier-rules-and-ai.md) |
+| **P10** | Тиры + ИИ отдельным шагом | **done** | [029](./tasks/029-tier-rules-and-ai.md) |
 | **P11** | Покрытие поиска (сиды + без лимита) | backlog | [030](./tasks/030-search-coverage.md) |
 | **P12** | Синхрон канона API с lock | **done** | [032](./tasks/032-api-canon-sync.md) |
 | **P13** | Wipe прода + чистый прогон | backlog | ops после P8–P11 на `main` |
@@ -105,10 +105,11 @@ P12 (канон API)
 
 | | |
 | --- | --- |
+| **Статус** | **done** (2026-08-27) — [029](./tasks/029-tier-rules-and-ai.md) |
 | **Вход** | fit-tiers + ai-tier-review; P9 стабилен |
-| **Выход / Done** | Ingest/inbox по `tier ∈ {L1,L2,L3}`; жёсткие правила поставка→L3; docs для лотов на доске (не только score≥4); UI раздела ИИ + журнал ошибок + баннер сбоя; эталоны unit/mock |
+| **Выход / Done** | Ingest/inbox/docs по `tier ∈ {L1,L2,L3}`; поставка→L3; Inbox AI + фильтр + `ai_error`; Tech `ai_failures`; эталоны unit/mock |
 | **Задача** | [029](./tasks/029-tier-rules-and-ai.md) |
-| **Риски** | Без P11 широкий мусор ещё не в выдаче — ИИ мало чем «кормить»; G3 |
+| **Риски** | Без P11 широкий мусор E ещё не в выдаче |
 | **Out** | Сиды A–E; снятие limit (это P11) |
 
 ---
@@ -195,7 +196,8 @@ P12 (канон API)
 | Discovery lock 2026-08-27 | **docs done** |
 | P12 канон API | **done** ([032](./tasks/032-api-canon-sync.md)) |
 | P8 просрочка + архив | **done** ([027](./tasks/027-expired-column.md)) |
-| P9 update-on-diff + Tech отчёт | **done** ([028](./tasks/028-run-idempotent-report.md)); дальше P10/029 |
+| P9 update-on-diff + Tech отчёт | **done** ([028](./tasks/028-run-idempotent-report.md)) |
+| P10 тиры + ИИ | **done** ([029](./tasks/029-tier-rules-and-ai.md)); дальше P11/030 до wipe |
 
 ---
 

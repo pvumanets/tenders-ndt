@@ -1,4 +1,4 @@
-"""P5.5: download score≥4 attachments to SCOUT_DOCS_DIR and upsert documents meta."""
+"""P5.5: download L1–L3 attachments to SCOUT_DOCS_DIR and upsert documents meta."""
 from __future__ import annotations
 
 import os
@@ -17,7 +17,7 @@ from app.db.config import database_url
 from app.db.models import Document, Lot
 from app.db.session import session_factory
 from app.worker.cookies import parse_netscape_cookies
-from app.worker.ingest import INBOX_MIN_SCORE
+from app.worker.ingest import INBOX_TIERS
 from app.worker.list_scrape import AuthError, UA
 
 MAX_FILE_BYTES = 50 * 1024 * 1024
@@ -116,7 +116,7 @@ def _persist_document(*, tender_id: str, filename: str, size_bytes: int, relpath
     factory = session_factory()
     with factory() as session:
         lot = session.get(Lot, tender_id)
-        if lot is None or lot.score < INBOX_MIN_SCORE:
+        if lot is None or lot.tier not in INBOX_TIERS:
             return
         stmt = pg_insert(Document).values(
             id=uuid4(),
@@ -138,11 +138,8 @@ def _inbox_candidates(rows: list[dict]) -> list[dict]:
     out: list[dict] = []
     seen: set[str] = set()
     for row in rows:
-        try:
-            score = int(row.get("score") or 0)
-        except (TypeError, ValueError):
-            continue
-        if score < INBOX_MIN_SCORE:
+        tier = str(row.get("tier") or "").strip()
+        if tier not in INBOX_TIERS:
             continue
         tender_id = str(row.get("tender_id") or "").strip()
         if not tender_id or tender_id in seen:
