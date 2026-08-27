@@ -25,6 +25,7 @@ class RunState:
     run_report: dict[str, int] = field(
         default_factory=lambda: {"new": 0, "already": 0, "updated": 0, "expired": 0}
     )
+    ai_failures: int = 0
     cards_done: int = 0
     cards_total: int = 0
     run_dir: str | None = None
@@ -48,6 +49,7 @@ class RunState:
                 "list_limit": self.list_limit,
                 "counters": dict(self.counters),
                 "run_report": dict(self.run_report),
+                "ai_failures": self.ai_failures,
                 "cards_done": self.cards_done,
                 "cards_total": self.cards_total,
                 "run_dir": self.run_dir,
@@ -76,6 +78,7 @@ class RunState:
             self.list_limit = 1000
             self.counters = {"L1": 0, "L2": 0, "L3": 0, "noise": 0, "pool": 0}
             self.run_report = {"new": 0, "already": 0, "updated": 0, "expired": 0}
+            self.ai_failures = 0
             self._expired_baseline = set()
             self.cards_done = 0
             self.cards_total = 0
@@ -111,6 +114,10 @@ class RunState:
             count = len(newly)
             self.run_report["expired"] = count
             return count
+
+    def set_ai_failures(self, count: int) -> None:
+        with self._lock:
+            self.ai_failures = int(count)
 
     def set_queue_index(self, index: int) -> None:
         with self._lock:

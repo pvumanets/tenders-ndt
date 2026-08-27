@@ -34,12 +34,14 @@ export default function TenderDrawer({
   onToggleViewed,
   onSetPriority,
   onSetBoardHidden,
+  onAiWrong,
 }: {
   lot: InboxLot;
   onClose: () => void;
   onToggleViewed: (id: string) => void;
   onSetPriority: (id: string, tier: SalesTier | null) => void;
   onSetBoardHidden: (id: string, hidden: boolean) => void;
+  onAiWrong?: (id: string) => void;
 }) {
   const [menuEl, setMenuEl] = useState<null | HTMLElement>(null);
   const tier = effectiveTier(lot);
@@ -115,7 +117,20 @@ export default function TenderDrawer({
         <Typography sx={{ ...personProfileTokens.fieldLabel, mt: 1, mb: 0.5 }}>
           {copy.section_fit}
         </Typography>
-        <Typography sx={{ mb: 2 }}>{lot.fit_reason}</Typography>
+        <Typography sx={{ mb: 2 }}>{lot.fit_reason || copy.field_empty}</Typography>
+        {lot.ai_reason_ru ? (
+          <>
+            <Typography sx={{ ...personProfileTokens.fieldLabel, mb: 0.5 }}>
+              {copy.section_ai_reason}
+            </Typography>
+            <Typography sx={{ mb: 2 }}>{lot.ai_reason_ru}</Typography>
+          </>
+        ) : null}
+        {lot.ai_error ? (
+          <Typography sx={{ mb: 2 }} color="error">
+            {copy.ai_error_label}: {lot.ai_error}
+          </Typography>
+        ) : null}
 
         <Typography sx={{ ...personProfileTokens.fieldLabel, mb: 0.5 }}>
           {copy.section_contacts}
@@ -183,6 +198,17 @@ export default function TenderDrawer({
         >
           {lot.board_hidden ? copy.action_restore_board : copy.action_archive}
         </Button>
+        {lot.ai_reviewed && onAiWrong ? (
+          <Button
+            size="small"
+            variant="outlined"
+            color="warning"
+            disabled={lot.ai_wrong}
+            onClick={() => onAiWrong(lot.tender_id)}
+          >
+            {copy.action_ai_wrong}
+          </Button>
+        ) : null}
         <Menu anchorEl={menuEl} open={Boolean(menuEl)} onClose={() => setMenuEl(null)}>
           <MenuItem
             onClick={() => {

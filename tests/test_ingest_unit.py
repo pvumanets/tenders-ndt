@@ -41,13 +41,13 @@ def _row(**overrides: object) -> dict:
 
 
 @pytest.mark.unit
-def test_inbox_rows_keeps_score_ge_4_and_dedupes() -> None:
+def test_inbox_rows_keeps_l1_l3_and_dedupes() -> None:
     rows = [
-        _row(tender_id="a", score=3, title="L3", url="https://x/a"),
-        _row(tender_id="b", score=4, title="edge", url="https://x/b"),
-        _row(tender_id="c", score=8, title="first", url="https://x/c"),
-        _row(tender_id="c", score=8, title="last", url="https://x/c"),
-        _row(tender_id="", score=9, title="no-id", url="https://x/z"),
+        _row(tender_id="a", score=3, tier="noise", title="L3", url="https://x/a"),
+        _row(tender_id="b", score=3, tier="L3", title="edge", url="https://x/b"),
+        _row(tender_id="c", score=8, tier="L1", title="first", url="https://x/c"),
+        _row(tender_id="c", score=8, tier="L1", title="last", url="https://x/c"),
+        _row(tender_id="", score=9, tier="L1", title="no-id", url="https://x/z"),
     ]
     kept = inbox_rows(rows)
     ids = [r["tender_id"] for r in kept]

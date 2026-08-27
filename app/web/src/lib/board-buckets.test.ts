@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { InboxLot } from "../types";
+import { effectiveTier } from "./format";
 
 /** Mirrors LotBoard bucketing without mounting MUI. */
 function boardBuckets(lots: InboxLot[]) {
@@ -9,7 +10,7 @@ function boardBuckets(lots: InboxLot[]) {
     .filter((l) => l.deadline_expired)
     .slice()
     .sort((a, b) => b.deadline_msk.localeCompare(a.deadline_msk) || a.tender_id.localeCompare(b.tender_id));
-  const byTier = (tier: string) => live.filter((l) => (l.manual_tier ?? l.tier) === tier);
+  const byTier = (tier: string) => live.filter((l) => effectiveTier(l) === tier);
   return {
     L1: byTier("L1").map((l) => l.tender_id),
     L2: byTier("L2").map((l) => l.tender_id),
@@ -39,6 +40,12 @@ function lot(partial: Partial<InboxLot> & Pick<InboxLot, "tender_id" | "tier">):
     url: "",
     source_platform_id: "rostender",
     documents: [],
+    rules_tier: null,
+    ai_reviewed: false,
+    ai_tier: null,
+    ai_reason_ru: "",
+    ai_error: null,
+    ai_wrong: false,
     ...partial,
   };
 }

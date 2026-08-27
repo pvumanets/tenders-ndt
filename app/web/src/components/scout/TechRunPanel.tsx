@@ -173,6 +173,11 @@ export default function TechRunPanel({
               {copy.run_report_expired}: {status.run_report.expired}
             </Typography>
           </Stack>
+          {status.ai_failures > 0 ? (
+            <Alert severity="warning" sx={{ mt: 1 }}>
+              {copy.ai_banner_failures.replace("{n}", String(status.ai_failures))}
+            </Alert>
+          ) : null}
         </Box>
 
         <Box>

@@ -30,6 +30,12 @@ export type InboxLot = {
   /** slug из docs/discovery/platforms.md */
   source_platform_id: string;
   documents: DocFile[];
+  rules_tier: SalesTier | null;
+  ai_reviewed: boolean;
+  ai_tier: SalesTier | null;
+  ai_reason_ru: string;
+  ai_error: string | null;
+  ai_wrong: boolean;
 };
 
 export type NamedSearch = {
@@ -61,6 +67,7 @@ export type TechStatus = {
   cards_total: number;
   counters: { L1: number; L2: number; L3: number; noise: number };
   run_report: { new: number; already: number; updated: number; expired: number };
+  ai_failures: number;
   session: "ok" | "expired" | "missing";
   sessions?: { rostender?: string; "tender-pro"?: string };
   run_dir: string;

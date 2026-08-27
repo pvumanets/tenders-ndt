@@ -1,4 +1,4 @@
-"""Scoring rules from ndt-buisness-proc relevance-rules / fit-tiers."""
+"""Scoring rules from fit-tiers (P10): services L1/L2; supply → L3 on board."""
 from __future__ import annotations
 
 import re
@@ -13,7 +13,7 @@ RE_SERVICE_NDT = re.compile(
     r"\bвик\b|визуальн\w*\s+и\s+измерительн|капилляр|\bпвк\b|"
     r"дефектоскоп\w*\s+(?:свар|соединен|труб|метал)|"
     r"проведен\w*\s+неразрушающ|оказан\w*\s+услуг\w*\s+.*контрол|"
-    r"контрол\w*\s+сварн)",
+    r"контрол\w*\s+сварн|толщин\w*\s+стенок)",
     re.I,
 )
 RE_RK = re.compile(r"(радиограф|\bрк\b|гаммаграф|рентген\w*\s+контрол|\bцр\b|цифров\w*\s+радиограф)", re.I)
@@ -25,11 +25,11 @@ RE_OBJECT = re.compile(
 )
 RE_SECTOR = re.compile(r"(нефте|газ|энерг|строитель|\bвпк\b|атом|промплощад)", re.I)
 
-# Noise / exclude
+# Supply / equipment → L3 (on board), not noise
 RE_BUY_DEVICE = re.compile(
-    r"(закупк\w*|поставк\w*|приобретен\w*).{0,40}(прибор|дефектоскоп|толщиномер|"
-    r"рентген.?аппарат|панел\w*\s+цр|ультразвуков\w*\s+дефектоскоп)|"
-    r"(прибор|дефектоскоп|толщиномер).{0,40}(закупк|поставк|приобретен)",
+    r"(закупк\w*|поставк\w*|приобретен\w*).{0,60}(прибор|дефектоскоп|толщиномер|"
+    r"оборудован|рентген.?аппарат|панел\w*\s+цр|ультразвуков\w*\s+дефектоскоп)|"
+    r"(прибор|дефектоскоп|толщиномер|оборудован).{0,60}(закупк|поставк|приобретен)",
     re.I,
 )
 RE_DEVICE_ONLY = re.compile(
@@ -48,7 +48,6 @@ def score_title(title: str) -> tuple[int, list[str], bool]:
     reasons: list[str] = []
     uzk_service = False
 
-    # Exclude-first adjustments
     if RE_BUY_DEVICE.search(t):
         score -= 3
         reasons.append("buy_device:-3")
@@ -67,7 +66,6 @@ def score_title(title: str) -> tuple[int, list[str], bool]:
         reasons.append("training:-2")
 
     if RE_UZK.search(t) and not RE_BUY_DEVICE.search(t):
-        # UZK as work if not clearly device purchase
         if not (RE_DEVICE_ONLY.search(t) and re.search(r"(закупк|поставк|приобретен)", t, re.I)):
             score += 4
             uzk_service = True
@@ -76,6 +74,10 @@ def score_title(title: str) -> tuple[int, list[str], bool]:
     if RE_SERVICE_NDT.search(t) or RE_RK.search(t) or RE_VIK_PVK.search(t):
         score += 3
         reasons.append("ndt_service:+3")
+
+    if re.search(r"проведен\w*\s+неразрушающ", t, re.I):
+        score += 2
+        reasons.append("conduct_ndt:+2")
 
     if (RE_RK.search(t) or RE_VIK_PVK.search(t) or RE_UZK.search(t) or RE_SERVICE_NDT.search(t)) and RE_OBJECT.search(
         t
@@ -94,13 +96,32 @@ def score_title(title: str) -> tuple[int, list[str], bool]:
     return score, reasons, uzk_service
 
 
-def is_noise(title: str, score: int, reasons: list[str]) -> bool:
+def is_supply_watch(title: str) -> bool:
+    """Поставка / приборы / калибровка / расходники → L3 Смотреть (на доске)."""
     t = title or ""
     if RE_BUY_DEVICE.search(t):
         return True
     if RE_DEVICE_ONLY.search(t) and not RE_SERVICE_NDT.search(t):
         return True
-    if any(r.startswith(("buy_device", "device_only", "verify_only", "consumable", "training")) for r in reasons):
-        if score < 2:
-            return True
+    if RE_VERIFY.search(t) and not RE_SERVICE_NDT.search(t):
+        return True
+    if RE_CONSUMABLE.search(t) and not RE_SERVICE_NDT.search(t):
+        return True
+    return False
+
+
+def is_noise(title: str, score: int, reasons: list[str]) -> bool:
+    """Только явный оффтоп (обучение и т.п.) — вне доски. Поставка → не noise."""
+    t = title or ""
+    if is_supply_watch(t):
+        return False
+    # Обучение / аттестация как предмет закупки — вне доски (даже если есть слова НК).
+    if RE_TRAINING.search(t) and not re.search(
+        r"проведен\w*\s+неразрушающ|оказан\w*\s+услуг\w*\s+.*контрол|контрол\w*\s+сварн",
+        t,
+        re.I,
+    ):
+        return True
+    if any(r.startswith("training") for r in reasons) and score < 2:
+        return True
     return False
