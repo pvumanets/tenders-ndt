@@ -7,6 +7,7 @@
   "cards_done": 18,
   "cards_total": 18,
   "counters": { "L1": 5, "L2": 7, "L3": 6, "noise": 120 },
+  "run_report": { "new": 3, "already": 12, "updated": 2, "expired": 1 },
   "session": "ok",
   "run_dir": "C:\\\\Users\\\\NDT\\\\Documents\\\\ndt-tender-scout\\\\runs\\\\2026-08-12",
   "log": [
