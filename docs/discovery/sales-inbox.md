@@ -1,7 +1,8 @@
 # Sales Inbox — продукт NEXT (discovery)
 
 **status:** accepted  
-**last-review-date:** 2026-08-19  
+**last-review-date:** 2026-08-27  
+**решения владельца:** [`owner-decisions.md`](./owner-decisions.md)
 **платформа / фазы хвоста:** [`../delivery/platform-phases.md`](../delivery/platform-phases.md)  
 **brief:** [`product-brief.md`](./product-brief.md)  
 **AS-IS UI:** [`../delivery/operator-ui.md`](../delivery/operator-ui.md)  
@@ -30,7 +31,7 @@
 | --- | --- | --- |
 | Первый пользователь | Директор; digital — дев-стенд | fact |
 | Design gate | P5.0 visual **accepted** целиком (2026-08-13) | fact |
-| Пул inbox / непросмотренные | Лоты с **score ≥ 4** (L1∪L2); авто-L3 не в списке | fact |
+| Пул inbox / непросмотренные | **Amendment 2026-08-27:** на доске **L1+L2+L3** (Горячие / Сильные / **Смотреть** — системой, не только вручную). API sync при коде 027–029. До кода AS-IS: score≥4 | fact |
 | Список | Переключатель **Карточки / Таблица** | fact |
 | Детали | Правый overlay-drawer (personal shell ~400px в mock; product note 520px) | fact |
 | Документы | Имена **и файлы** на демо — **must** (`DOWNLOAD_DOCS` для score≥4) | fact |
@@ -46,12 +47,13 @@
 | Порядок кода | [`../delivery/platform-phases.md`](../delivery/platform-phases.md) P5.1→P7 | fact |
 | Фильтры дат | must: **срок подачи** + **`ingested_at`** (пресеты в UI) | fact |
 | Tech вкладка | Статус + Старт/Стоп + поиски/очередь (**023 done**) | fact |
+| ИИ | **Отдельный шаг** после прогона; раздел «Разобрано с помощью ИИ» (lock 2026-08-27) | fact |
 
 ## Facts / Hypotheses / Gaps
 
 | Claim | Tag |
 | --- | --- |
-| Без L1-жаргона в sales-UI; фильтры Горячие/Сильные; Смотреть — ручной приоритет | fact |
+| Без L1-жаргона в sales-UI; фильтры Горячие/Сильные/**Смотреть** (все три — системой) | fact |
 | Excel не daily path | fact |
 | Visual SoT = скопированный kit `ndt-personal` (blurple, BoardColumn, mini-card) | fact |
 | Tasks 004/005/007/008 | Toolbar: FilterTrigger + вертикальный список; даты отдельными меню; карточка без chip приоритета/«новое» | fact |
@@ -69,7 +71,8 @@
 
 1. **Фильтры + поиск**  
    - Непросмотренные  
-   - Приоритет: Горячие / Сильные / Смотреть (map на L1/L2/L3; Смотреть в основном после ручной смены)  
+   - Приоритет: Горячие / Сильные / Смотреть (map на L1/L2/L3; **Смотреть** = системный слабый тир и поставка приборов)  
+   - **Разобрано с помощью ИИ** (фильтр / раздел — lock 2026-08-27)
    - **Срок подачи** (filter/sort)  
    - **Попало к нам** (`ingested_at`)  
    - Текстовый поиск (название, заказчик, id)  

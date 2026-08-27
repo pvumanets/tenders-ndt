@@ -1,7 +1,7 @@
 # Product brief — мониторинг тендеров
 
 **status:** accepted  
-**last-review-date:** 2026-08-19  
+**last-review-date:** 2026-08-27  
 **юрлицо:** ООО СВАРКА  
 **площадка (AS-IS):** rostender.info  
 **код:** `ndt-tender-scout` · обзор [`../delivery/code-phases.md`](../delivery/code-phases.md) · хвост [`../delivery/platform-phases.md`](../delivery/platform-phases.md)  
@@ -25,14 +25,14 @@
 
 Внутренний скоринг остаётся L1/L2/L3 в engine ([`../delivery/fit-tiers.md`](../delivery/fit-tiers.md)). В sales-UI — **человеческие** ярлыки: Горячие / Сильные / Смотреть (не «L1»).
 
-**Пул inbox:** лоты с **score ≥ 4** в Postgres (= L1∪L2 по текущему движку). Авто-L3 в список по умолчанию не входят; ярлык «Смотреть» — для **ручной** смены приоритета.
+**Пул inbox (lock 2026-08-27):** на доске **L1+L2+L3** — Горячие, Сильные, **Смотреть** (системой). ИИ — **отдельный шаг** после прогона по правилам ([`owner-decisions.md`](./owner-decisions.md)). Поиск — без лимита 1000, только открытые лоты ([`search-keywords.md`](./search-keywords.md)).
 
 ## Решение
 
 ### AS-IS (MVP принят)
 
 1. Репо + runtime ПК/Docker.  
-2. Cookies → UI rostender → пул 1000.  
+2. Cookies → UI rostender → **открытые** лоты (без потолка 1000 в целевой модели).  
 3. Score → L1/L2/L3; карточки только у них.  
 4. Excel/MD + static operator HTML (техпанель).  
 5. Docs: флаг; worker download — P5.5.
