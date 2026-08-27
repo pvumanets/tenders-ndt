@@ -85,7 +85,7 @@ Tech (in_queue=true, sort_order)
 ```
 
 - Один поиск в очереди = **один** ряд `runs` (`query` = имя + склеенные строки; плюс `source_platform_id`, `search_id`).
-- Inbox (целевой пул): upsert `lots` по `tender_id`, **tier L1|L2|L3**, `lot_state` не сбрасывается. AS-IS код: score≥4 — см. owner-decisions.
+- Inbox (целевой пул, P12): `lots` по `tender_id`, **tier ∈ {L1,L2,L3}**, update-on-diff ([028](../delivery/tasks/028-run-idempotent-report.md)); `lot_state` не сбрасывается. **AS-IS runtime** до 028/029: score≥4 + всегда UPDATE — [`owner-decisions.md`](./owner-decisions.md).
 - Параллельных воркеров нет. Второй Старт → 409 `already_running`.
 - Пустая очередь (`in_queue` ни у кого) → 400 `empty_queue`.
 - Ошибка шага / нет обязательных cookies: шаг `error` или `skipped`, **очередь идёт дальше**. Стоп — единственный полный обрыв (текущий soft-stop + drop хвоста).
@@ -110,7 +110,7 @@ UI: всё на вкладке **Прогон** (третью вкладку н�
 - `httpx` + BeautifulSoup. **Не** Playwright. **Не** JSON-RPC (`_key` не нужен).
 - Список: `GET /api/tenders/list` с `good_name` + `tender_state=1` + `country=1`.
 - Карточка: `/api/tender/{id}/view_public`.
-- Cookies: `cookies.tender-pro.txt` / `TENDER_PRO_COOKIES_FILE`. Список публичный — шаг списка идёт **без** файла. Файлы score≥4 без сессии ЛК не качаем.
+- Cookies: `cookies.tender-pro.txt` / `TENDER_PRO_COOKIES_FILE`. Список публичный — шаг списка идёт **без** файла. Файлы лотов на доске без сессии ЛК не качаем (AS-IS: score≥4).
 - Перед живым прогоном: свежий Netscape (дамп 13.08 светился в чате). На VPS — `python scripts/vps-bootstrap.py --sync`, не правки `/opt/tenders-ndt`.
 - ИИ не нужен.
 

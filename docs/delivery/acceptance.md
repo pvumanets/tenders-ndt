@@ -1,12 +1,13 @@
 # Acceptance — прогон и ship
 
 **status:** accepted  
-**last-review-date:** 2026-08-19  
+**last-review-date:** 2026-08-27  
 **фазы P0–P5.0:** [`code-phases.md`](./code-phases.md)  
 **фазы P5.1–P7:** [`platform-phases.md`](./platform-phases.md)  
-**inbox API:** [`sales-inbox-api.md`](./sales-inbox-api.md)
+**фазы NEXT+:** [`next-phases.md`](./next-phases.md)  
+**inbox API:** [`sales-inbox-api.md`](./sales-inbox-api.md) (P12: целевой пул L1–L3)
 
-Прогон / продукт: артефакты (P4) → **visual P5.0 accepted** → platform (Postgres, auth, ingest, inbox, docs) → wire → **VPS+TLS**.
+Прогон / продукт: артефакты (P4) → **visual P5.0 accepted** → platform (Postgres, auth, ingest, inbox, docs) → wire → **VPS+TLS**. Lock 2026-08-27 / P12: канон API = L1–L3 + update-on-diff; код 028/029/030.
 
 ---
 
@@ -36,7 +37,7 @@ Owner 2026-08-13: **дизайн ок целиком**.
 
 - [x] Сессия площадки через cookies; владелец не вводил капчу/логин mid-run
 - [x] Поиск `неразрушающий`, «сначала новые», только **приём заявок**, срок ≥ сегодня МСК
-- [x] Пул до **1000** лотов в реестре
+- [x] Пул до **1000** лотов в реестре *(факт P4; обрезка 1000 — **не** канон продукта с 2026-08-27; снятие в 030)*
 - [x] `tenders.md` + табличный реестр с колонкой `tier`
 - [x] Есть **`priority-fit.md`** с секциями L1 / L2 / L3
 - [x] Карточки открывались **только** для L1–L3
@@ -62,18 +63,24 @@ Owner 2026-08-13: **дизайн ок целиком**.
 - [x] выгрузка P4 на томе сохраняется
 - [x] повторный ingest не затирает `lot_state`
 
+*(Выкладка: score≥4 + always UPDATE. Целевой контракт P12: `tier ∈ {L1,L2,L3}` + update-on-diff — код 028/029.)*
+
 ## Must (P5.4 — inbox API) ✅
 
-- [x] `GET /api/inbox` только **score ≥ 4** из Postgres
+- [x] `GET /api/inbox` только **score ≥ 4** из Postgres *(факт выкладки)*
 - [x] viewed и manual_tier переживают перезапуск api
 - [x] сброс приоритета (`tier: null`) возвращает оценку движка
 - [x] поля списка включают `location`, `source_platform_id`, `url`
 
+*(Целевой контракт P12: пул **L1–L3** — код 029.)*
+
 ## Must (P5.5 — документы) ✅
 
-- [x] Для score ≥ 4 файлы на томе `docs/{tender_id}/`
+- [x] Для score ≥ 4 файлы на томе `docs/{tender_id}/` *(факт выкладки)*
 - [x] `GET /api/inbox/{id}/documents` + скачивание за сессией
 - [x] При `DOWNLOAD_DOCS=0` новые файлы не качаются
+
+*(Целевой контракт P12: docs для лотов на доске L1–L3 — код 029.)*
 
 ## Must (P6 — wire) ✅
 
@@ -84,7 +91,7 @@ Owner 2026-08-13: **дизайн ок целиком**.
 
 - [x] HTTPS (валидный сертификат); домен `tenders.ndtexam.ru`
 - [x] логин с другого компьютера
-- [ ] за ≤1 мин видны **непросмотренные** score≥4 **без** жаргона L1/L2/L3
+- [ ] за ≤1 мин видны **непросмотренные** пула L1–L3 **без** жаргона L1/L2/L3 (ярлыки Горячие / Сильные / Смотреть); AS-IS до 029 может ещё score≥4
 - [ ] фильтры: непросмотренные; приоритет; срок; ingested; поиск
 - [ ] Карточки / Таблица; drawer; фирма; **документы с файлами**
 - [ ] отметить просмотренным; сменить приоритет; state в БД

@@ -27,7 +27,7 @@
 | **P9** | Прогон: уже был / обновлено | backlog | [028](./tasks/028-run-idempotent-report.md) |
 | **P10** | Тиры + ИИ отдельным шагом | backlog | [029](./tasks/029-tier-rules-and-ai.md) |
 | **P11** | Покрытие поиска (сиды + без лимита) | backlog | [030](./tasks/030-search-coverage.md) |
-| **P12** | Синхрон канона API с lock | backlog | docs (вместе с P9–P10) |
+| **P12** | Синхрон канона API с lock | **done** | [032](./tasks/032-api-canon-sync.md) |
 | **P13** | Wipe прода + чистый прогон | backlog | ops после P8–P11 на `main` |
 | **P14** | Укрепление скрейпа | backlog | [031](./tasks/031-scrape-hardening.md) |
 | **P15+** | Дальний хвост | backlog | cron, ЭТП, Bitrix, роли, Excel |
@@ -49,7 +49,7 @@ P12 (канон API)
 
 1. Код **027 → 028 → 029** — **по одному PR**, не одним комком.
 2. **P11 (сиды A–E) до wipe-прогона** — иначе чистый прогон снова узкий.
-3. **P12** — переписать accepted API **до или в том же окне**, что P9/P10 (иначе backend возьмёт старый score≥4).
+3. **P12** — **done** ([032](./tasks/032-api-canon-sync.md)); accepted API = lock. Код P9/P10 читает новый канон (не score≥4).
 4. **P14** не блокирует первый чистый прогон, но нужен, чтобы **не пропускать лоты молча**.
 5. Деплой на VPS — только после merge в `main` (`vps-bootstrap.py --deploy`).
 
@@ -60,7 +60,7 @@ P12 (канон API)
 | ID | Узкое место | Закрываем в |
 | --- | --- | --- |
 | **G1** | В коде: один query + лимит 1000; Tender.Pro не в очереди | **P11** |
-| **G2** | Accepted API: score≥4, всегда UPDATE | **P12** + код P9/P10 |
+| **G2** | Accepted API: score≥4, всегда UPDATE | **P12 done** (docs); код P9/P10 |
 | **G3** | Скачивание документов только score≥4 → «Смотреть» без файлов | **P10** |
 | **G4** | Title-only score; обрыв пагинации; cookies «файл есть»; нет retry; soft-stop пустой | **P14** |
 | **G5** | `platforms.md`: tender-pro ещё «backlog» при 024 done | **P11** (docs) |
@@ -133,10 +133,11 @@ P12 (канон API)
 
 | | |
 | --- | --- |
+| **Статус** | **done** (2026-08-27) — [032](./tasks/032-api-canon-sync.md) |
 | **Вход** | Lock 2026-08-27 |
-| **Выход / Done** | Обновлены [`sales-inbox-api.md`](./sales-inbox-api.md) (пул tier L1–L3; ingest update-on-diff; без обязательного limit 1000); Q8/Q12 в discovery; при необходимости `platform-phases` inbox pool |
-| **Задача** | docs-only (в PR рядом с 028/029) |
-| **Риски** | Пропуск P12 → G2 |
+| **Выход / Done** | Обновлены [`sales-inbox-api.md`](./sales-inbox-api.md) (пул tier L1–L3; ingest update-on-diff; без обязательного limit 1000); Q8/Q12; ADR; `platform-phases` целевой пул |
+| **Задача** | [032](./tasks/032-api-canon-sync.md) docs-only |
+| **Риски** | Пропуск был бы G2 — закрыт на стороне docs; код догоняет в 028/029 |
 | **Out** | Реализация worker |
 
 ---
@@ -189,7 +190,8 @@ P12 (канон API)
 | --- | --- |
 | P0–P7 платформа + HTTPS | **done** |
 | Tech Start/Stop, поиски, Tender.Pro adapter, customer_name, drawer поиска | **022–026 done** |
-| Discovery lock 2026-08-27 | **docs done**; код — фазы выше |
+| Discovery lock 2026-08-27 | **docs done** |
+| P12 канон API | **done** ([032](./tasks/032-api-canon-sync.md)); код — фазы P8–P11 |
 
 ---
 

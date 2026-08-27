@@ -20,13 +20,13 @@
 
 | # | Что ломается | Почему это больно |
 | --- | --- | --- |
-| 1 | Inbox = `score ≥ 4` → авто-L3 (2–3) **никогда** не на доске | Tech MD показывает «нашли L3», Sales Inbox — нет |
+| 1 | Inbox = `score ≥ 4` → авто-L3 (2–3) **никогда** не на доске | Tech MD показывает «нашли L3», Sales Inbox — нет. **Канон P12:** пул L1–L3; **код** до 029 ещё score≥4 |
 | 2 | Живой скрейп ≈ rostender + «неразрушающий»; Tender.Pro off; 11 ЭТП без адаптеров | Тихий пропуск целых площадок и формулировок |
-| 3 | Canon clash: accepted last-wins ingest vs draft 028 «не трогать живые» | Backend не знает, какой SoT править |
+| 3 | AS-IS last-wins ingest vs целевой 028 update-on-diff | Backend: код ещё last-wins; **канон P12** = update-on-diff |
 | 4 | AS-IS: поставка приборов → `noise`; дыра «Поставка **оборудования**…» → L1 | Железо в Горячих или вне доски — оба плохо |
 | 5 | Wipe после 027–029 сносит `viewed` / `manual_tier` | Единственная «память» директора исчезает |
 
-**Рекомендация до кода 027–029:** закрыть P0 как owner lock (ответы на вопросы в конце), обновить accepted-доки (`sales-inbox-api`, Q10–12), затем код по порядку 027 → 028 → 029.
+**Рекомендация:** owner lock 2026-08-27 закрыт; **P12** ([032](../delivery/tasks/032-api-canon-sync.md)) синхронизировал accepted API. Дальше код 027 → 028 → 029.
 
 ---
 
@@ -47,10 +47,10 @@
 
 | | |
 | --- | --- |
-| **Что** | Ingest и `/api/inbox` держат только `score ≥ 4`. Тир L3 по [`tiers.py`](../../app/scoring/tiers.py) = score **2–3**. Draft [`fit-tiers.md`](../delivery/fit-tiers.md) и lifecycle: колонка **«Смотреть» (L3)** на доске. Accepted [`sales-inbox.md`](./sales-inbox.md): «авто-L3 не в списке». |
-| **Evidence** | `INBOX_MIN_SCORE = 4` в [`app/worker/ingest.py`](../../app/worker/ingest.py); фильтр в [`app/api/inbox.py`](../../app/api/inbox.py). Пример: `runs/2026-08-13/tenders.md` — много строк score=3 tier=L3, на доску не попадут. |
+| **Что** | **AS-IS код:** ingest и `/api/inbox` держат только `score ≥ 4`. Тир L3 по [`tiers.py`](../../app/scoring/tiers.py) = score **2–3**. **Канон P12:** колонка «Смотреть» (L3) на доске; ingest/inbox по `tier ∈ {L1,L2,L3}`. |
+| **Evidence** | `INBOX_MIN_SCORE = 4` в [`app/worker/ingest.py`](../../app/worker/ingest.py); фильтр в [`app/api/inbox.py`](../../app/api/inbox.py). Пример: `runs/2026-08-13/tenders.md` — много строк score=3 tier=L3, на доску не попадут. Канон: [`sales-inbox-api.md`](../delivery/sales-inbox-api.md). |
 | **Как заметит оператор** | Почти не заметит: Tech `priority-fit.md` / `tenders.md` показывают L3; Sales Inbox — нет. «Мало лотов» вместо «фильтр съел Смотреть». |
-| **Mitigation (high-level)** | Owner lock: доска после 029 = L1+L2+L3 (score≥4 после AI) **или** по-прежнему auto-L3 out. Обновить accepted Q10–12 + API. Если L3 на доске — ingest/inbox по `tier ∈ {L1,L2,L3}`, не только score≥4. |
+| **Mitigation (high-level)** | **Docs closed (P12):** пул L1+L2+L3. Код — [029](../delivery/tasks/029-tier-rules-and-ai.md). |
 
 ---
 
@@ -69,10 +69,10 @@
 
 | | |
 | --- | --- |
-| **Что** | **Accepted:** [`sales-inbox-api.md`](../delivery/sales-inbox-api.md) L18–19, L38 — повторный ingest **обновляет** карточку (`ON CONFLICT DO UPDATE`). **Draft:** [`inbox-lifecycle.md`](./inbox-lifecycle.md) § повторный прогон — живую карточку **не трогаем** (ни срок, ни НМЦ, ни тир). |
-| **Evidence** | [`app/worker/ingest.py`](../../app/worker/ingest.py) ~201–210 — AS-IS last-wins. Task [028](../delivery/tasks/028-run-idempotent-report.md) — skip update if exists + live. |
-| **Как заметит оператор** | Лот «исчез» с доски после re-run (score упал ниже 4) **или** поля устарели (freeze) / перезаписались (last-wins) — в зависимости от того, что ship. |
-| **Mitigation** | Owner lock: freeze **или** last-wins. Переписать accepted `sales-inbox-api` + platform-phases **до** кода 028. Исключения (deadline-only refresh?) — явно в lock. |
+| **Что** | **Канон P12 / 028:** update-on-diff — без изменений на площадке карточку не трогаем; с diff — обновляем; triage не сбрасываем. **AS-IS код:** last-wins `ON CONFLICT DO UPDATE`. |
+| **Evidence** | [`app/worker/ingest.py`](../../app/worker/ingest.py) ~201–210 — AS-IS last-wins. Task [028](../delivery/tasks/028-run-idempotent-report.md); API [`sales-inbox-api.md`](../delivery/sales-inbox-api.md) § Ingest. |
+| **Как заметит оператор** | Лот «исчез» с доски после re-run (score упал ниже 4) **или** поля устарели / перезаписались — пока код не на update-on-diff. |
+| **Mitigation** | **Docs closed (P12).** Код — [028](../delivery/tasks/028-run-idempotent-report.md). |
 
 ---
 
@@ -183,8 +183,8 @@
 
 | Тема | Документ A (accepted) | Документ B (draft / код) | AS-IS код | Нужен owner lock |
 | --- | --- | --- | --- | --- |
-| Пул inbox | sales-inbox: score≥4, auto-L3 out | fit-tiers + lifecycle: L3 на доске | ingest/inbox score≥4 | **Да** |
-| Re-ingest | sales-inbox-api: last-wins update | lifecycle + 028: freeze living | ON CONFLICT UPDATE all | **Да** |
+| Пул inbox | sales-inbox-api P12: L1–L3 | fit-tiers + lifecycle: L3 на доске | ingest/inbox score≥4 | **Lock closed**; код 029 |
+| Re-ingest | sales-inbox-api P12: update-on-diff | lifecycle + 028 | ON CONFLICT UPDATE all | **Lock closed**; код 028 |
 | Поставка приборов | relevance-rules: exclude → noise | fit-tiers: L3 «Смотреть» | is_noise → вне доски | **Да** (029) |
 | ИИ на каждый новый | — | ai-tier-review + 029 | не реализовано | accept draft перед кодом |
 | Tender.Pro live | platforms: backlog | 024 done, adapter in code | seed off-queue | enable + fix platforms.md |

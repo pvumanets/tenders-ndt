@@ -8,10 +8,10 @@ Code and product rules live **in this repo**. Do not duplicate scoring/scope rul
 | --- | --- |
 | Code phases P0–P5.0 (обзор) | [delivery/code-phases.md](./delivery/code-phases.md) |
 | Фазы P5.1–P7 (подробно) | [delivery/platform-phases.md](./delivery/platform-phases.md) (`accepted`; P5.1–P7 **done**) |
-| Фазы NEXT+ (P8–P14) | [delivery/next-phases.md](./delivery/next-phases.md) (`draft`; после lock 2026-08-27) |
+| Фазы NEXT+ (P8–P14) | [delivery/next-phases.md](./delivery/next-phases.md) (`draft`; P12 **done**; после lock 2026-08-27) |
 | Dev stand (compose db+api) | [delivery/dev-stand.md](./delivery/dev-stand.md) · `scripts/dev-up.ps1` |
 | Architecture / stack | [delivery/tech-architecture.md](./delivery/tech-architecture.md) |
-| Sales Inbox API (Postgres + auth) | [delivery/sales-inbox-api.md](./delivery/sales-inbox-api.md) |
+| Sales Inbox API (Postgres + auth) | [delivery/sales-inbox-api.md](./delivery/sales-inbox-api.md) (`accepted`; **P12** sync lock 2026-08-27 — пул L1–L3, update-on-diff) |
 | React UI (P5.0 accepted; в image с P5.1; **P6 done**) | `app/web/` (`theme/`, `vendor/personal/`, `components/scout/`) |
 | Fit L1–L3 | [delivery/fit-tiers.md](./delivery/fit-tiers.md) (`draft` v0.2; услуги vs поставка; эталоны владельца) |
 | ИИ подтверждение тира (provod.ai) | [delivery/ai-tier-review.md](./delivery/ai-tier-review.md) (`draft`; **отдельный шаг** после прогона; ключ только `.env`) |

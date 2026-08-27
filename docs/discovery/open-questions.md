@@ -15,11 +15,11 @@
 | Q5 | Частота | **closed** — разово до P7; **NEXT+** — cron (Q16) |
 | Q6 | Consumer кроме выгрузки | **closed** — Sales Inbox + Tech из **Postgres**; Bitrix — later |
 | Q7 | Предфильтр региона/НМЦ | **closed** — вся РФ |
-| Q8 | Docs download | **closed** — демо **must**; том + `DOWNLOAD_DOCS` для **score ≥ 4** (P5.5) |
+| Q8 | Docs download | **amended 2026-08-27 / P12** — демо **must**; том + `DOWNLOAD_DOCS` для лотов **на доске** (`tier ∈ {L1,L2,L3}`). AS-IS код до 029: score ≥ 4 |
 | Q9 | Где код / runtime | **closed** — **VPS + Docker** (прод); ПК = тот же compose (дев); Cursor не runner |
 | Q10 | Уровни fit | **closed** — L1/L2/L3 в engine; карточки только у них |
 | Q11 | Ярлыки sales-UI | **closed** — Горячие / Сильные / Смотреть |
-| Q12 | Непросмотренные | **amended 2026-08-27** — must; пул **L1+L2+L3** на доске (Горячие / Сильные / **Смотреть** системой); `lot_state` в Postgres. API sync при коде 027–029 |
+| Q12 | Непросмотренные | **amended 2026-08-27 / P12** — must; пул **L1+L2+L3** на доске (Горячие / Сильные / **Смотреть** системой); `lot_state` в Postgres. Канон API синхронизирован ([032](../delivery/tasks/032-api-canon-sync.md)); код 028/029 |
 | Q13 | Ручная смена приоритета | **closed** — must; L1/L2/L3 + «вручную»; сброс к движку; тот же `lot_state` |
 | Q14 | Bitrix в UI | **closed** — не в демо; default responsible когда API = **N071** |
 | Q15 | Excel / CSV daily | **closed** — не daily; вкладка Excel = **NEXT+** |
@@ -43,4 +43,4 @@
 | Q34 | Усечения в keywords | **closed 2026-08-27** — `дефект.`, `нераз.`, `ультр.` и т.п. **вместе** с полными словами |
 | Q35 | Четыре контроля в поиске | **closed 2026-08-27** — принимающий / приёмочный / входной / строительный — пакет D в очереди |
 
-Закрытые ответы отражены в [`../delivery/`](../delivery/) (tech-architecture, sales-inbox-api, platform-phases, acceptance). Решения 2026-08-27 **важнее** старых строк accepted API до синхронизации кода.
+Закрытые ответы отражены в [`../delivery/`](../delivery/) (tech-architecture, sales-inbox-api, platform-phases, acceptance). Lock 2026-08-27 + P12 ([032](../delivery/tasks/032-api-canon-sync.md)): accepted API = целевой контракт; AS-IS runtime score≥4 / limit 1000 до кода 028/029/030.
