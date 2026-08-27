@@ -258,6 +258,14 @@ def api_inbox_priority(tender_id: str, body: dict):
         _inbox_http(exc)
 
 
+@app.put("/api/inbox/{tender_id}/board-hidden")
+def api_inbox_board_hidden(tender_id: str, body: dict):
+    try:
+        return inbox.set_board_hidden(tender_id, body)
+    except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
+        _inbox_http(exc)
+
+
 @app.get("/api/inbox/{tender_id}/documents")
 def api_inbox_documents(tender_id: str):
     try:

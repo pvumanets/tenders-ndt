@@ -34,6 +34,10 @@ export const copy = {
   chip_hot: "Горячие",
   chip_strong: "Сильные",
   chip_watch: "Смотреть",
+  chip_expired: "Просроченные",
+  badge_deadline_expired: "Срок подачи вышел",
+  action_archive: "В архив",
+  action_restore_board: "Вернуть на доску",
   chip_overridden_suffix: "вручную",
   col_priority: "Приоритет",
   col_title: "Название",
@@ -66,6 +70,7 @@ export const copy = {
   empty_no_unread_body: "Снимите фильтр «Непросмотренные», чтобы увидеть все.",
   empty_no_data_title: "Пока нет подходящих лотов",
   empty_no_data_body: "Запустите прогон на вкладке «Прогон» или дождитесь окончания текущего.",
+  empty_board_column: "Нет лотов",
   error_load_title: "Не удалось загрузить лоты",
   error_load_body:
     "Обновите страницу. Если ошибка повторяется — проверьте прогон на вкладке «Прогон».",

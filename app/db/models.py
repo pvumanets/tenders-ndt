@@ -138,6 +138,12 @@ class LotState(Base):
     viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     manual_tier: Mapped[str | None] = mapped_column(String(8), nullable=True)
     manual_tier_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    board_hidden: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    board_hidden_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class Document(Base):

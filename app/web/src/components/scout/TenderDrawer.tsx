@@ -33,11 +33,13 @@ export default function TenderDrawer({
   onClose,
   onToggleViewed,
   onSetPriority,
+  onSetBoardHidden,
 }: {
   lot: InboxLot;
   onClose: () => void;
   onToggleViewed: (id: string) => void;
   onSetPriority: (id: string, tier: SalesTier | null) => void;
+  onSetBoardHidden: (id: string, hidden: boolean) => void;
 }) {
   const [menuEl, setMenuEl] = useState<null | HTMLElement>(null);
   const tier = effectiveTier(lot);
@@ -62,6 +64,7 @@ export default function TenderDrawer({
             <Typography variant="caption" color="text.secondary">
               {tierLabel(tier)}
               {lot.manual_tier != null ? ` · ${copy.chip_overridden_suffix}` : ""}
+              {lot.deadline_expired ? ` · ${copy.badge_deadline_expired}` : ""}
             </Typography>
             <Typography component="h2" sx={{ ...personProfileTokens.sectionTitle, mt: 0.5 }}>
               {lot.title}
@@ -97,7 +100,10 @@ export default function TenderDrawer({
           <Typography>{formatPrice(lot.price_rub)}</Typography>
         </FieldRow>
         <FieldRow label={copy.field_deadline}>
-          <Typography>{formatDate(lot.deadline_msk)}</Typography>
+          <Typography>
+            {formatDate(lot.deadline_msk)}
+            {lot.deadline_expired ? ` · ${copy.badge_deadline_expired}` : ""}
+          </Typography>
         </FieldRow>
         <FieldRow label={copy.field_region}>
           <Typography>{lot.location || copy.field_empty}</Typography>
@@ -169,6 +175,13 @@ export default function TenderDrawer({
         />
         <Button size="small" variant="outlined" onClick={(e) => setMenuEl(e.currentTarget)}>
           {copy.action_change_priority}
+        </Button>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => onSetBoardHidden(lot.tender_id, !lot.board_hidden)}
+        >
+          {lot.board_hidden ? copy.action_restore_board : copy.action_archive}
         </Button>
         <Menu anchorEl={menuEl} open={Boolean(menuEl)} onClose={() => setMenuEl(null)}>
           <MenuItem
