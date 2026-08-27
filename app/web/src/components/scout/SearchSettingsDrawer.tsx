@@ -30,7 +30,7 @@ export function emptySearchDraft(sortOrder: number): SearchDraft {
     name: "",
     platform_id: "rostender",
     queriesText: "",
-    limit_n: 1000,
+    limit_n: 0,
     in_queue: false,
     sort_order: sortOrder,
   };
@@ -144,7 +144,8 @@ export default function SearchSettingsDrawer({
             label={copy.searches_limit}
             value={draft.limit_n}
             onChange={(e) => onChange({ ...draft, limit_n: Number(e.target.value) })}
-            slotProps={{ htmlInput: { min: 1, max: 1000 } }}
+            helperText={copy.searches_limit_hint}
+            slotProps={{ htmlInput: { min: 0 } }}
             fullWidth
           />
           <FormControlLabel

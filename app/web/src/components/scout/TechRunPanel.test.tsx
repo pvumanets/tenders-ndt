@@ -32,22 +32,22 @@ const idle: TechStatus = {
 
 const rostender: NamedSearch = {
   id: "s-rt",
-  name: "РосТендер НК",
+  name: "РосТендер — услуги НК",
   platform_id: "rostender",
   queries: ["неразрушающий"],
-  limit_n: 1000,
+  limit_n: 0,
   in_queue: true,
-  sort_order: 0,
+  sort_order: 1,
 };
 
 const tenderPro: NamedSearch = {
   id: "s-tp",
-  name: "Tender.Pro НК",
+  name: "Tender.Pro — методы",
   platform_id: "tender-pro",
   queries: ["ВИК", "ПВК"],
-  limit_n: 1000,
+  limit_n: 0,
   in_queue: false,
-  sort_order: 1,
+  sort_order: 10,
 };
 
 function renderPanel(

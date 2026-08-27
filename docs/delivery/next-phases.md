@@ -26,7 +26,7 @@
 | **P8** | Доска: просрочка и архив | **done** | [027](./tasks/027-expired-column.md) |
 | **P9** | Прогон: уже был / обновлено | **done** | [028](./tasks/028-run-idempotent-report.md) |
 | **P10** | Тиры + ИИ отдельным шагом | **done** | [029](./tasks/029-tier-rules-and-ai.md) |
-| **P11** | Покрытие поиска (сиды + без лимита) | backlog | [030](./tasks/030-search-coverage.md) |
+| **P11** | Покрытие поиска (сиды + без лимита) | **done** | [030](./tasks/030-search-coverage.md) |
 | **P12** | Синхрон канона API с lock | **done** | [032](./tasks/032-api-canon-sync.md) |
 | **P13** | Wipe прода + чистый прогон | backlog | ops после P8–P11 на `main` |
 | **P14** | Укрепление скрейпа | backlog | [031](./tasks/031-scrape-hardening.md) |
@@ -59,11 +59,11 @@ P12 (канон API)
 
 | ID | Узкое место | Закрываем в |
 | --- | --- | --- |
-| **G1** | В коде: один query + лимит 1000; Tender.Pro не в очереди | **P11** |
+| **G1** | В коде: один query + лимит 1000; Tender.Pro не в очереди | **P11 done** |
 | **G2** | Accepted API: score≥4, всегда UPDATE | **P12 done** (docs); код P9/P10 |
 | **G3** | Скачивание документов только score≥4 → «Смотреть» без файлов | **P10** |
 | **G4** | Title-only score; обрыв пагинации; cookies «файл есть»; нет retry; soft-stop пустой | **P14** |
-| **G5** | `platforms.md`: tender-pro ещё «backlog» при 024 done | **P11** (docs) |
+| **G5** | `platforms.md`: tender-pro ещё «backlog» при 024 done | **P11 done** |
 
 Подробности: [`decision-risks-review.md`](../discovery/decision-risks-review.md). Закрытые lock’ами M1/M3/M5 — там же.
 
@@ -120,6 +120,7 @@ P12 (канон API)
 
 | | |
 | --- | --- |
+| **Статус** | **done** (2026-08-27) — [030](./tasks/030-search-coverage.md) |
 | **Вход** | [`search-keywords.md`](../discovery/search-keywords.md); можно после P9 (форма API поисков) |
 | **Выход / Done** | `limit_n` снят в продукте/коде; сиды rostender A–E + TP пакеты; `in_queue` для TP при валидных cookies; `platforms.md` tender-pro ≠ backlog |
 | **Задача** | [030](./tasks/030-search-coverage.md) |
@@ -197,7 +198,8 @@ P12 (канон API)
 | P12 канон API | **done** ([032](./tasks/032-api-canon-sync.md)) |
 | P8 просрочка + архив | **done** ([027](./tasks/027-expired-column.md)) |
 | P9 update-on-diff + Tech отчёт | **done** ([028](./tasks/028-run-idempotent-report.md)) |
-| P10 тиры + ИИ | **done** ([029](./tasks/029-tier-rules-and-ai.md)); дальше P11/030 до wipe |
+| P10 тиры + ИИ | **done** ([029](./tasks/029-tier-rules-and-ai.md)) |
+| P11 сиды A–E + без limit 1000 | **done** ([030](./tasks/030-search-coverage.md)); дальше P13 wipe |
 
 ---
 
