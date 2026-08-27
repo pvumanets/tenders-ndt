@@ -127,6 +127,8 @@ def test_inbox_pool_viewed_priority_persist(smoke_db: sessionmaker[Session]) -> 
             assert hot["ingested_at"] == "2026-08-12"
             assert hot["effective_tier"] == "L1"
             assert hot["viewed"] is False
+            assert hot["deadline_expired"] is True
+            assert hot["board_hidden"] is False
             assert "documents" not in hot
             blob = json.dumps(body).lower()
             assert "password" not in blob
@@ -146,6 +148,19 @@ def test_inbox_pool_viewed_priority_persist(smoke_db: sessionmaker[Session]) -> 
             assert prio.json()["manual_tier"] == "L2"
             assert prio.json()["effective_tier"] == "L2"
             assert client.put(f"/api/inbox/{low_id}/viewed", json={"viewed": True}).status_code == 404
+
+            archived = client.put(f"/api/inbox/{hot_id}/board-hidden", json={"hidden": True})
+            assert archived.status_code == 200
+            assert archived.json()["board_hidden"] is True
+            listing_hidden = client.get("/api/inbox")
+            assert hot_id not in [row["tender_id"] for row in listing_hidden.json()["items"]]
+            still = client.get(f"/api/inbox/{hot_id}")
+            assert still.status_code == 200
+            assert still.json()["board_hidden"] is True
+            restored = client.put(f"/api/inbox/{hot_id}/board-hidden", json={"hidden": False})
+            assert restored.status_code == 200
+            assert restored.json()["board_hidden"] is False
+            assert hot_id in [row["tender_id"] for row in client.get("/api/inbox").json()["items"]]
 
         with _client() as client:
             login = client.post(

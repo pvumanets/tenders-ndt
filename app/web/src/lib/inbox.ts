@@ -96,6 +96,8 @@ export function normalizeLot(raw: ApiLot): InboxLot {
     tier,
     manual_tier: manual,
     viewed: Boolean(raw.viewed),
+    board_hidden: Boolean(raw.board_hidden),
+    deadline_expired: Boolean(raw.deadline_expired),
     deadline_msk: text(raw.deadline_msk),
     ingested_at: text(raw.ingested_at),
     price_rub: typeof raw.price_rub === "number" ? raw.price_rub : null,
@@ -160,6 +162,16 @@ export async function putPriority(tenderId: string, tier: SalesTier | null): Pro
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ tier }),
+  });
+  if (!res.ok) throw new Error("inbox_write_failed");
+  return normalizeLot((await res.json()) as ApiLot);
+}
+
+export async function putBoardHidden(tenderId: string, hidden: boolean): Promise<InboxLot> {
+  const res = await apiFetch(`/api/inbox/${encodeURIComponent(tenderId)}/board-hidden`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ hidden }),
   });
   if (!res.ok) throw new Error("inbox_write_failed");
   return normalizeLot((await res.json()) as ApiLot);
