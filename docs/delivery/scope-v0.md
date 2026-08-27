@@ -1,9 +1,9 @@
 # Scope v0 / ship — UI-прототип rostender + платформа
 
 **status:** accepted  
-**last-review-date:** 2026-08-19  
+**last-review-date:** 2026-08-27  
 **Sales Inbox:** [`../discovery/sales-inbox.md`](../discovery/sales-inbox.md) · [`sales-inbox-api.md`](./sales-inbox-api.md)  
-**фазы хвоста:** [`platform-phases.md`](./platform-phases.md)
+**фазы хвоста:** [`platform-phases.md`](./platform-phases.md) · [`next-phases.md`](./next-phases.md)
 
 ## In scope (MVP P0–P5) — сделано
 
@@ -15,7 +15,7 @@
 | Код | репо `ndt-tender-scout` |
 | Auth площадки | Netscape cookies-файл |
 | Запрос | `неразрушающий`, сортировка новые, **только приём заявок**, срок ≥ сегодня МСК |
-| Пул | до **1000** открытых (не архив / не закрытые) |
+| Пул | до **1000** открытых (не архив / не закрытые) *(факт MVP; с 2026-08-27 обрезка 1000 не канон — 030)* |
 | География | вся РФ |
 | Fit | **L1 / L2 / L3** ([fit-tiers](./fit-tiers.md)); карточки только у них |
 | Выходы | реестр 1000 + `priority-fit.md` |
@@ -29,10 +29,10 @@
 | UI visual | React mock **accepted** (`app/web/`) |
 | Runtime prod | **VPS + Docker** |
 | Runtime dev | тот же compose на ПК |
-| Inbox | score ≥ 4 в **Postgres** |
+| Inbox | **`tier ∈ {L1,L2,L3}`** в **Postgres** (P12 канон; AS-IS код до 029: score ≥ 4) |
 | State | `lot_state` (не JSON-файл) |
 | Вход | две учётки, без ролей, session cookie |
-| Документы | **must** на демо (score ≥ 4, том) |
+| Документы | **must** на демо (лоты на доске L1–L3, том; AS-IS до 029: score ≥ 4) |
 | Директор | любой ПК, **HTTPS** (P7 **done**) |
 | Bitrix / cron / роли | **не** этот ship (NEXT+) |
 | Поиски / Tender.Pro | lock [`../discovery/named-searches.md`](../discovery/named-searches.md); код 023/024 |

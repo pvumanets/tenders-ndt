@@ -1,9 +1,10 @@
 # Фазы платформы — VPS + Docker + Postgres + вход
 
 **status:** accepted  
-**last-review-date:** 2026-08-19  
+**last-review-date:** 2026-08-27  
 **owner lock:** 2026-08-13 (дизайн P5.0 accepted; runtime VPS+Docker; Postgres; две учётки без ролей)  
 **owner OK:** 2026-08-13 (запрос «делаем P5.1»)  
+**P12 канон API:** lock 2026-08-27 — целевой пул `tier ∈ {L1,L2,L3}`; см. [`sales-inbox-api.md`](./sales-inbox-api.md) · [032](./tasks/032-api-canon-sync.md)  
 **обзор P0–P5.0:** [`code-phases.md`](./code-phases.md)  
 **архитектура:** [`tech-architecture.md`](./tech-architecture.md)  
 **API:** [`sales-inbox-api.md`](./sales-inbox-api.md)  
@@ -67,9 +68,9 @@ Director browser  --HTTPS--> Caddy (prod) --> FastAPI (+ собранный Reac
 Digital PC        --HTTP---> api:8765 (dev, без Caddy)
 
 FastAPI  --> Postgres (users, runs, lots, lot_state, documents meta)
-         --> том docs_data  (байты файлов score ≥ 4)
+         --> том docs_data  (байты файлов лотов на доске, tier L1–L3)
 Worker   --> rostender.info (httpx + cookies.rostender.txt)
-         --> Postgres upsert
+         --> Postgres upsert (update-on-diff после 028)
          --> том выгрузки P4 (tenders.md, priority-fit.md)
 ```
 
@@ -99,11 +100,11 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 | `lot_state` | PK `tender_id`; `viewed`, `viewed_at`, `manual_tier`, `manual_tier_at` — **глобально** по лоту |
 | `documents` | метаданные файла (имя, size, путь на томе); байты не в БД |
 
-Дубли `tender_id`: карточка = **последний** ingest. `viewed` не сбрасывается новым прогоном.
+Дубли `tender_id`: при update-on-diff (целевой контракт P9) без изменений карточку не переписываем; с diff — поля с площадки. `viewed` не сбрасывается новым прогоном. AS-IS до 028: last-wins UPDATE.
 
 Эффективный приоритет: `manual_tier` если задан, иначе `tier` движка.
 
-Пул inbox: **score ≥ 4**. Авто-L3 в список не входят.
+Пул inbox (норма с 2026-08-27 / P12): **`tier ∈ {L1, L2, L3}`** — Горячие / Сильные / Смотреть системой. AS-IS код до 029: score ≥ 4 (авто-L3 out).
 
 ---
 
@@ -214,6 +215,8 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 - [x] MD/CSV прогона лежат на томе
 - [x] `viewed` / `manual_tier` после повторного ingest на месте
 
+*(Факт выкладки P5.3. Норма с 2026-08-27 / P12: ingest `tier ∈ {L1,L2,L3}` + update-on-diff — код 028/029.)*
+
 **Owner OK:** нет отдельного гейта; digital — один прогон на дев-стенде (нужны живые rostender cookies).
 
 **Файлы:** `app/worker/ingest.py`, `app/api/runner.py`, `app/worker/cli.py`.
@@ -228,7 +231,7 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 **Вход:** контракт [`sales-inbox-api.md`](./sales-inbox-api.md)  
 **Выход:** `GET/PUT /api/inbox*` читают/пишут Postgres, не `operator-state.json` и не `scored-list.json`.
 
-**Контур:** пул score≥4; query `unread`, `tier`, `q`, `deadline_from/to`, `ingested_from/to`. Пресеты дат («≤7 дней», «сегодня») — **в UI**; API — абсолютные даты ISO `YYYY-MM-DD`. Поля списка как mock: `location`, `source_platform_id`, `url`, контакты, `fit_reason`. `PUT viewed` / `PUT priority` (`null` = сброс к движку) в `lot_state`.
+**Контур:** целевой пул `tier ∈ {L1,L2,L3}` (P12); AS-IS выкладка — score≥4. Query `unread`, `tier`, `q`, `deadline_from/to`, `ingested_from/to`. Пресеты дат («≤7 дней», «сегодня») — **в UI**; API — абсолютные даты ISO `YYYY-MM-DD`. Поля списка как mock: `location`, `source_platform_id`, `url`, контакты, `fit_reason`. `PUT viewed` / `PUT priority` (`null` = сброс к движку) в `lot_state`.
 
 **Не делать:** новый UI доски; Bitrix; снятие моков (P6); docs download (P5.5, meta может быть пустой).
 
@@ -238,6 +241,8 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 - [x] viewed и manual_tier переживают перезапуск api/db
 - [x] сброс `tier: null` возвращает оценку движка
 - [x] 404 вне пула; 400 валидация; секреты не в JSON
+
+*(Факт выкладки P5.4. Норма с 2026-08-27 / P12: `GET /api/inbox` = пул L1–L3 — код 029.)*
 
 **Owner OK:** curl/httpie с cookie сессии.
 
@@ -250,12 +255,12 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 **Статус:** **done** (2026-08-13)  
 **Зависит от:** P5.4  
 **Таск:** [016](./tasks/016-docs-volume.md)  
-**Вход:** score≥4, `DOWNLOAD_DOCS`  
+**Вход:** лоты на доске (`tier ∈ {L1,L2,L3}`); AS-IS выкладка — score≥4; `DOWNLOAD_DOCS`  
 **Выход:** файлы в томе `{SCOUT_DOCS_DIR}/{tender_id}/`; метаданные в `documents`; `GET /api/inbox/{id}/documents` + скачивание (за сессией).
 
 **Контур:** httpx download после ingest; путь — том `SCOUT_DOCS_DIR` (compose `/data/docs`), не папка прогона. `DOWNLOAD_DOCS=0` — не качать новые. Ссылки файлов снимает P3 (`doc_links`).
 
-**Не делать:** качать весь пул 1000; класть байты в Postgres; публичные URL без сессии; wire React (P6).
+**Не делать:** класть байты в Postgres; публичные URL без сессии; wire React (P6). Обрезка «пул 1000» — не канон продукта (P11).
 
 **Done:**
 
@@ -263,6 +268,8 @@ Worker   --> rostender.info (httpx + cookies.rostender.txt)
 - [x] список + download в API работают
 - [x] флаг 0 — новые файлы не появляются
 - [x] 401 без сессии
+
+*(Факт выкладки P5.5. Норма с 2026-08-27 / P12: docs для лотов на доске L1–L3 — код 029.)*
 
 **Owner OK:** API документов **done**; React drawer качает файлы (P6 **done**). Digital: `DOWNLOAD_DOCS=1` и прогон на дев-стенде (нужны живые rostender cookies).
 

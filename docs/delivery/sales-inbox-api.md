@@ -1,23 +1,25 @@
 # Sales Inbox — API и storage
 
 **status:** accepted  
-**last-review-date:** 2026-08-26  
+**last-review-date:** 2026-08-27  
+**канон:** lock [`../discovery/owner-decisions.md`](../discovery/owner-decisions.md) 2026-08-27; P12 [032](./tasks/032-api-canon-sync.md)  
 **продукт:** [`../discovery/sales-inbox.md`](../discovery/sales-inbox.md)  
 **поиски / очередь:** [`../discovery/named-searches.md`](../discovery/named-searches.md)  
 **архитектура:** [`tech-architecture.md`](./tech-architecture.md)  
-**фазы:** [`platform-phases.md`](./platform-phases.md) — P5.2–P7 **done**; поиски [023](./tasks/023-named-searches.md) **done**; Tender.Pro [024](./tasks/024-tender-pro-adapter.md) **done**
+**фазы:** [`platform-phases.md`](./platform-phases.md) — P5.2–P7 **done**; поиски [023](./tasks/023-named-searches.md) **done**; Tender.Pro [024](./tasks/024-tender-pro-adapter.md) **done**; NEXT+ [`next-phases.md`](./next-phases.md)
 
 Термины для владельца: **просмотренность**, **ручная смена приоритета**. Ключи JSON/API — на английском.
 
 SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /api/health`, `POST /api/auth/login`, `POST /api/auth/logout` — **с сессией Scout**.
 
+**AS-IS runtime (до кода 028/029/030):** ingest/inbox ещё фильтруют **score ≥ 4**; обрезка `limit_n=1000` ещё в коде. Ниже — **целевой** контракт; код догоняет в [028](./tasks/028-run-idempotent-report.md) / [029](./tasks/029-tier-rules-and-ai.md) / [030](./tasks/030-search-coverage.md).
+
 ---
 
 ## Пул inbox
 
-- Кандидаты: лоты с **score ≥ 4** в таблице `lots` (после ingest всех прогонов).
-- При повторном ingest того же `tender_id` — поля карточки из **последнего** прогона.
-- Авто-L3 (score 2–3) в список **не** входят.
+- Кандидаты: лоты с **`tier ∈ {L1, L2, L3}`** в таблице `lots` (после ingest всех прогонов). Колонка «Смотреть» = **системный** L3, не только ручной перенос.
+- При повторном ingest того же `tender_id` — см. § Ingest (update-on-diff); без изменений на площадке карточку **не** переписываем.
 - Эффективный приоритет для UI: `manual_tier` из `lot_state`, иначе `tier` движка.
 
 ## Storage
@@ -35,7 +37,19 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 
 `viewed` не сбрасывается новым прогоном. `PUT` пишет в `lot_state`, не в файл прогона.
 
-**Ingest (P5.3):** конец **одного** поиска-шага очереди вызывает `ingest_run`. В `lots` попадают только строки **score ≥ 4**. Повтор того же `tender_id` — `INSERT … ON CONFLICT` (карточка обновляется). `lot_state` ingest не создаёт и не обновляет. Без `DATABASE_URL` — skip.
+**Ingest (P5.3 + целевой контракт P9/028):** конец **одного** поиска-шага очереди вызывает `ingest_run`. В `lots` попадают строки с **`tier ∈ {L1, L2, L3}`**.
+
+Повтор того же `tender_id`:
+
+| На площадке | Действие | Счётчик Tech (028) |
+| --- | --- | --- |
+| Нет изменений (срок, НМЦ, title, docs meta) | **не** UPDATE карточки | «Уже были в системе» |
+| Есть diff | UPDATE полей с площадки | «Обновлено с площадки» |
+| Новый `tender_id` | INSERT | «Новые лоты» |
+
+`lot_state` (`viewed`, `manual_tier`, AI-флаги) ingest **не** создаёт и **не** сбрасывает. Без `DATABASE_URL` — skip. Детали: [`../discovery/inbox-lifecycle.md`](../discovery/inbox-lifecycle.md), [028](./tasks/028-run-idempotent-report.md).
+
+AS-IS до 028: `INSERT … ON CONFLICT` всегда обновляет карточку; фильтр score ≥ 4.
 
 После 024 `tender_id` = `{source_platform_id}:{native_id}`. Числовые rostender-ряды мигрируют на `rostender:{id}`; том docs на диске — `rostender__{id}/` (двоеточие в имени папки нельзя).
 
@@ -78,7 +92,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
   "name": "РосТендер НК",
   "platform_id": "rostender",
   "queries": ["неразрушающий"],
-  "limit_n": 1000,
+  "limit_n": null,
   "in_queue": true,
   "sort_order": 0
 }
@@ -86,13 +100,15 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 
 `platform_id` сейчас: `rostender` \| `tender-pro`. `queries` — непустой массив строк. Имя уникально. Сиды — [`../discovery/named-searches.md`](../discovery/named-searches.md).
 
+**`limit_n`:** поле в схеме/API может оставаться; **обрезка выдачи до 1000 — не канон продукта** (lock 2026-08-27). Целевое поведение: без продуктового потолка; снятие в коде — [030](./tasks/030-search-coverage.md). AS-IS до 030: в сидах/коде ещё встречается `1000`.
+
 Очередь: `POST /api/run/start` без настроек в body. Один шаг очереди = один `runs` (`search_id`, `source_platform_id`). Ошибка шага → `skipped`/`error`, очередь дальше. Стоп рвёт хвост. Пусто → `empty_queue`.
 
 ## REST — Sales Inbox (P5.4)
 
 | Метод | Путь | Назначение |
 | --- | --- | --- |
-| `GET` | `/api/inbox` | Список score≥4 из Postgres |
+| `GET` | `/api/inbox` | Список лотов пула L1–L3 из Postgres |
 | `GET` | `/api/inbox/{tender_id}` | Карточка + effective tier + viewed + docs meta |
 | `PUT` | `/api/inbox/{tender_id}/viewed` | body `{ "viewed": true \| false }` |
 | `PUT` | `/api/inbox/{tender_id}/priority` | body `{ "tier": "L1" \| "L2" \| "L3" \| null }` — `null` = сброс к движку |
@@ -110,7 +126,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | Param | Смысл |
 | --- | --- |
 | `unread` | `true` — только непросмотренные (нет `lot_state` или `viewed=false`) |
-| `tier` | `L1` \| `L2` \| `L3` \| `fit` (default `fit` = весь пул score≥4). `L1`/`L2`/`L3` — по **effective** тиру |
+| `tier` | `L1` \| `L2` \| `L3` \| `fit` (default `fit` = весь пул L1–L3). `L1`/`L2`/`L3` — по **effective** тиру |
 | `q` | поиск title / customer / id / location |
 | `deadline_from` / `deadline_to` | срок подачи, ISO `YYYY-MM-DD`, границы включительно (пресеты — в UI) |
 | `ingested_from` / `ingested_to` | попало к нам, ISO `YYYY-MM-DD`, границы включительно |
@@ -157,22 +173,24 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | --- | --- |
 | `400` | валидация body/query / `filename` (`..`, `/`, `\`) / `empty_queue` |
 | `401` | нет / протухла сессия Scout |
-| `404` | лот не найден в пуле score≥4; файла нет в `documents` или на томе; поиск не найден |
+| `404` | лот не найден в пуле L1–L3; файла нет в `documents` или на томе; поиск не найден |
 | `409` | конфликт run (`already_running`) |
 
 Секреты, cookie values площадки, пароли Scout в ответах **запрещены**.
 
-## Документы (P5.5)
+## Документы (P5.5 + целевой контракт P10/029)
 
 - Байты: `{SCOUT_DOCS_DIR}/{volume_dir}/{filename}` где `volume_dir` = `tender_id` с `:` → `__` (compose: `/data/docs/…`). **Не** `runs/YYYY-MM-DD/docs/` — это не SoT inbox.
 - Мета: таблица `documents`; `volume_path` = относительный `{volume_dir}/{filename}`. Байты в Postgres **не** кладём.
-- Worker: ссылки файлов снимает с HTML карточки (P3, `doc_links`); качает **после ingest** только score ≥ 4. Нет отдельных файлов — «Скачать одним архивом» как `{tender_id}-docs.zip`. Пул 1000 не качаем.
+- Worker: ссылки файлов снимает с HTML карточки (P3, `doc_links`); качает **после ingest** для лотов **на доске** (`tier ∈ {L1, L2, L3}`). Нет отдельных файлов — «Скачать одним архивом» как `{tender_id}-docs.zip`.
 - `DOWNLOAD_DOCS=1`/`true`/`yes` — качать новые. Иначе (в т.ч. `0` и unset) — новые файлы не появляются; уже лежащие на томе и в `documents` остаются.
-- Повтор: тот же `{tender_id, filename}` не качаем заново, если файл на томе есть; мета upsert. Старые файлы прогон не удаляет.
+- Повтор: тот же `{tender_id, filename}` не качаем заново, если файл на томе есть; мета upsert. Старые файлы прогон не удаляет. При **update-on-diff** с новыми docs на площадке — докачать недостающие (028/029).
 - Имя файла: basename, без `..` / `/` / `\`; ответ download не выходит за `SCOUT_DOCS_DIR`.
 - Потолок одного файла: 50 МиБ (больше — skip, не 500).
 - Стоп при `AuthError` сессии площадки (как карточки). Soft-stop между файлами.
 - Публичных URL без сессии нет: байты только `GET /api/inbox/{id}/documents/{filename}`.
+
+AS-IS до 029: download только для score ≥ 4.
 
 ## UI (P6) — зоны vs API
 

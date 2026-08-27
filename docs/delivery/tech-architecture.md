@@ -1,13 +1,14 @@
 # Техархитектура — ndt-tender-scout
 
 **status:** accepted  
-**last-review-date:** 2026-08-19  
+**last-review-date:** 2026-08-27  
 **код + канон:** этот репозиторий (`docs/`)  
-**Sales Inbox API:** [`sales-inbox-api.md`](./sales-inbox-api.md)  
+**Sales Inbox API:** [`sales-inbox-api.md`](./sales-inbox-api.md) (P12 sync lock 2026-08-27)  
 **Фазы P0–P5.0:** [`code-phases.md`](./code-phases.md)  
-**Фазы P5.1–P7:** [`platform-phases.md`](./platform-phases.md) (`accepted`; P5.1–P7 **done**)
+**Фазы P5.1–P7:** [`platform-phases.md`](./platform-phases.md) (`accepted`; P5.1–P7 **done**)  
+**Фазы NEXT+:** [`next-phases.md`](./next-phases.md)
 
-Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**; ПК = тот же compose; SoT inbox = **Postgres**; две учётки без ролей. P5.1–P7 **done**. Именованные поиски ([023](./tasks/023-named-searches.md)) и Tender.Pro ([024](./tasks/024-tender-pro-adapter.md)) **done**.
+Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**; ПК = тот же compose; SoT inbox = **Postgres**; две учётки без ролей. P5.1–P7 **done**. Именованные поиски ([023](./tasks/023-named-searches.md)) и Tender.Pro ([024](./tasks/024-tender-pro-adapter.md)) **done**. Lock 2026-08-27: пул доски L1–L3, update-on-diff, без must limit 1000 — канон API [032](./tasks/032-api-canon-sync.md); код 028/029/030.
 
 ---
 
@@ -30,7 +31,7 @@ Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**;
 | Язык | Python 3.12 |
 | Сбор списка (P1) | **httpx + BeautifulSoup**; адаптер по `platform_id` поиска (023/024). Playwright — WAF 403 на rostender; Tender.Pro список без Playwright |
 | Карточки (P3+) | httpx + BeautifulSoup |
-| Документы (P5.5) | httpx download → том `docs/{tender_id}/` для **score ≥ 4**; метаданные в Postgres |
+| Документы (P5.5) | httpx download → том `docs/{tender_id}/` для лотов **на доске** (`tier ∈ {L1,L2,L3}`); метаданные в Postgres. AS-IS до 029: score ≥ 4 |
 | SoT inbox | **Postgres 16** (`lots`, `lot_state`, `runs`, `users`, `sessions`, `documents`; 023: `searches`) |
 | API | FastAPI (`/api/auth*`, `/api/status`, `/api/run/*`, `/api/searches*` (023), `/api/results*`, `/api/inbox*`) |
 | Экран оператора **AS-IS** | static HTML (`app/static/`) — не корень `/`; hotfix / legacy на деве |
@@ -60,16 +61,16 @@ Owner lock 2026-08-13: дизайн P5.0 **accepted**; runtime **VPS + Docker**;
 ```text
 cookies.{platform}.txt         # Netscape; rostender обязателен; tender-pro список публичный
     → httpx worker (адаптер по platform_id поиска)
-        → список ≤limit, score, карточки L1–L3
-        → upsert Postgres (runs, lots)
-        → docs download score≥4 → том + documents meta
+        → список (без must limit 1000), score, карточки L1–L3
+        → ingest Postgres (runs, lots) — tier ∈ {L1,L2,L3}; update-on-diff
+        → docs download для лотов на доске → том + documents meta
         → выгрузка P4 на том (tenders.md, priority-fit.md)
     ← FastAPI (session Scout)
         /api/auth/*             (логин двух учёток)
         /api/searches*          (именованные поиски, 023)
         /api/status, /api/run/* (очередь in_queue; Стоп рвёт хвост)
         /api/results*           (legacy HTML на деве)
-        /api/inbox*             (Sales Inbox ← Postgres)
+        /api/inbox*             (Sales Inbox ← Postgres, пул L1–L3)
 
 Director  --HTTPS--> Caddy --> React+API
 Digital   --HTTP---> compose на ПК
@@ -109,12 +110,13 @@ ndt-tender-scout/
 
 ## Decisions (lightweight ADR)
 
-### Decision: inbox score ≥ 4
+### Decision: inbox pool = tier L1∪L2∪L3 (amended 2026-08-27)
 
-**Context:** Нужен канон пула «непросмотренных» / Sales Inbox без размытия на весь L3.  
-**Options:** (A) L1∪L2∪L3; (B) score ≥ 6; (C) score ≥ 4.  
-**Choice:** **C** — score ≥ 4 (= L1∪L2 по текущему движку). Авто-L3 не в inbox; ярлык «Смотреть» для ручной смены приоритета.  
-**Consequences:** Фильтр inbox и docs download согласованы на score≥4.
+**Context:** Нужен канон пула Sales Inbox / «непросмотренных». Было: score ≥ 4 (= L1∪L2), авто-L3 out.  
+**Options:** (A) L1∪L2∪L3 по `tier`; (B) score ≥ 6; (C) score ≥ 4.  
+**Choice (было 2026-08-13):** **C**.  
+**Choice (lock 2026-08-27 / P12):** **A** — на доске Горячие / Сильные / **Смотреть** заполняет система (`tier ∈ {L1,L2,L3}`).  
+**Consequences:** Ingest, `/api/inbox` и docs download согласованы на пул доски. Код догоняет в 028/029. ADR supersedes «inbox score ≥ 4».
 
 ### Decision: Postgres is inbox SoT (замена operator-state.json)
 
@@ -142,12 +144,13 @@ ndt-tender-scout/
 **Choice:** **B**. `DOWNLOAD_DOCS=0` — kill switch (новые не качать). Имена файлов — basename без traversal. Потолок 50 МиБ.  
 **Consequences:** [`sales-inbox-api.md`](./sales-inbox-api.md) § Документы; drawer бьёт в `/api/inbox/{id}/documents*`.
 
-### Decision: P5.3 ingest = score ≥ 4 upsert at end of run
+### Decision: P5.3 ingest = tier L1–L3 + update-on-diff (amended 2026-08-27)
 
 **Context:** Inbox SoT = Postgres. Worker P1–P4 остаётся; файлы прогона — выгрузка, не inbox. `lot_state` глобален по `tender_id`.  
-**Options:** (A) писать все scored-строки; (B) только score ≥ 4; (C) отдельный ingest-сервис.  
-**Choice:** **B**, один вызов в конце прогона (`app/worker/ingest.py`): insert `runs` + upsert `lots` по PK `tender_id`. Карточка = последний прогон (`run_id`, `ingested_at`, поля). `lot_state` **не** трогаем. `source_platform_id` = `rostender` (Ship A scrape); `source_etp` остаётся в `raw`. Нет `DATABASE_URL` — ingest skip, P4-файлы всё равно пишутся. Ошибка ingest не откатывает MD/CSV (сначала том, потом БД).  
-**Consequences:** P5.4 читает только `lots`; авто-L3 в inbox не попадают; повторный прогон не сбрасывает viewed/manual_tier.
+**Options:** (A) писать все scored-строки; (B) только score ≥ 4, всегда ON CONFLICT UPDATE; (C) отдельный ingest-сервис; (D) `tier ∈ {L1,L2,L3}` + update-on-diff.  
+**Choice (было P5.3):** **B**.  
+**Choice (lock 2026-08-27 / P12):** **D** — в `lots` строки с `tier ∈ {L1,L2,L3}`; повторный `tender_id`: без diff на площадке → skip UPDATE («Уже были»); с diff → UPDATE полей («Обновлено с площадки»). `lot_state` / AI-флаги **не** трогаем. Реализация: [028](./tasks/028-run-idempotent-report.md) / [029](./tasks/029-tier-rules-and-ai.md).  
+**Consequences:** P5.4 читает пул L1–L3; повторный прогон не сбрасывает viewed/manual_tier. AS-IS до 028/029: score ≥ 4 + всегда UPDATE.
 
 ### Decision: named searches + queue (2026-08-19)
 
@@ -158,8 +161,8 @@ ndt-tender-scout/
 
 ## Риски / откат
 
-- Rostender cookies протухают; ToS; пул 1000 — [../discovery/risks-compliance.md](../discovery/risks-compliance.md).  
-- Docs: лимит score≥4; `DOWNLOAD_DOCS`; стоп при ошибке сессии площадки.  
-- Дубли `tender_id`: последний ingest = карточка; `viewed` не сбрасывается. С 024 ключ = `{platform_id}:{native_id}`.  
+- Rostender cookies протухают; ToS — [../discovery/risks-compliance.md](../discovery/risks-compliance.md). Обрезка limit 1000 — **не** канон продукта (P11/030); AS-IS в коде до 030.  
+- Docs: для лотов на доске (`tier ∈ {L1,L2,L3}`); `DOWNLOAD_DOCS`; стоп при ошибке сессии площадки. AS-IS до 029: score≥4.  
+- Дубли `tender_id`: update-on-diff (целевой); `viewed` не сбрасывается. С 024 ключ = `{platform_id}:{native_id}`. AS-IS до 028: last-wins UPDATE.  
 - Пароль Scout в git/чат — смена паролей обеих учёток.  
 - Откат UI: AS-IS HTML не публичный `/`; React inbox читает Postgres (P6).

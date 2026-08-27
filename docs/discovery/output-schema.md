@@ -1,12 +1,12 @@
 # Схема выходных артефактов прогона
 
 **status:** accepted  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-27  
 **тиры:** [`../delivery/fit-tiers.md`](../delivery/fit-tiers.md)  
-**inbox SoT:** Postgres — [`../delivery/sales-inbox-api.md`](../delivery/sales-inbox-api.md)  
+**inbox SoT:** Postgres — [`../delivery/sales-inbox-api.md`](../delivery/sales-inbox-api.md) (P12: пул L1–L3)  
 **фазы:** [`../delivery/platform-phases.md`](../delivery/platform-phases.md)
 
-Inbox **не** читает файлы прогона. Файлы = выгрузка P4 + том документов. Конец прогона (P5.3) пишет `runs` + `lots` (score ≥ 4) в Postgres.
+Inbox **не** читает файлы прогона. Файлы = выгрузка P4 + том документов. Конец прогона пишет `runs` + `lots` (`tier ∈ {L1,L2,L3}`) в Postgres. **AS-IS** до 029: score ≥ 4.
 
 ---
 
@@ -15,7 +15,7 @@ Inbox **не** читает файлы прогона. Файлы = выгруз
 | Данные | Где |
 | --- | --- |
 | Лоты inbox, viewed, manual_tier | Postgres (`lots`, `lot_state`, `runs`) |
-| Файлы документов score≥4 | том `{SCOUT_DOCS_DIR}/{tender_id}/` (compose `/data/docs`) + таблица `documents` |
+| Файлы документов (лоты на доске) | том `{SCOUT_DOCS_DIR}/{tender_id}/` (compose `/data/docs`) + таблица `documents`. AS-IS до 029: score≥4 |
 | Реестр / priority-fit для людей и приёмки P4 | том прогона (ниже) |
 
 Путь тома на деве может выглядеть как `runs/YYYY-MM-DD/` на ПК. На VPS это **том сервера**, не продукт «папка на ноутбуке».
@@ -55,14 +55,14 @@ runs/YYYY-MM-DD/          # или эквивалент на томе
 
 ## Markdown
 
-- `tenders.md` — таблица пула 1000.
+- `tenders.md` — таблица scored-пула прогона (обрезка limit 1000 — **не** канон продукта; снятие в 030).
 - `priority-fit.md` — секции L1 / L2 / L3; см. fit-tiers.
 
 ## Документы
 
-Скачивание **must** для **score ≥ 4** в `{SCOUT_DOCS_DIR}/{tender_id}/` на томе.  
+Скачивание **must** для лотов **на доске** (`tier ∈ {L1,L2,L3}`) в `{SCOUT_DOCS_DIR}/{tender_id}/` на томе.  
 `DOWNLOAD_DOCS=1`/`true`/`yes` — качать новые; иначе (в т.ч. `0`) — kill switch.  
-Карточки P3 — только L1–L3; docs — подмножество score≥4.
+Карточки P3 — только L1–L3; docs — тот же пул доски. AS-IS до 029: docs = score≥4.
 
 ## Operator state
 
