@@ -161,6 +161,19 @@
 - [x] Wipe после 027–030 сносит lots + lot_state + documents + том docs; затем полный прогон. (P13)
 - [x] Wipe #2 после 033 (P15): тот же набор таблиц/тома; полный прогон A–E; без ИИ. (2026-08-28)
 - [x] Wipe #3 (P16): wipe + RT-only прогон + cookies admin956. (034)
+- [x] Wipe #4 (P17 / 036): после deploy 036; RT-only; без ИИ. (2026-08-28)
+- [ ] Wipe #5 (P18 / 037): supply exclude + score fix; RT-only; без ИИ.
+
+## Ops после выкладки 037 (P18 wipe #5)
+
+**Owner lock 2026-08-28:** wipe #5 → deploy **037** → прогон **только Rostender A–E** (TP `in_queue=false`). Poll статуса короткими запросами (не один долгий exec).
+
+| Что сносим | Что оставляем |
+| --- | --- |
+| Таблица `lots` | История `runs` |
+| Таблица `lot_state` | Учётки Scout / sessions |
+| Таблица `documents` | Именованные поиски `searches` (exclude обновит `0012`) |
+| Том файлов `docs/` | |
 
 ## Out of scope (этот discovery)
 

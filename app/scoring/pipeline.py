@@ -15,9 +15,7 @@ def rescore_text(row: dict) -> str:
     title = str(row.get("title") or "").strip()
     if title:
         parts.append(title)
-    methods = row.get("methods")
-    if methods:
-        parts.append(str(methods))
+    # methods — display only; do not score (037: no HTML inject into tier)
     for key in ("description", "fit_extra"):
         val = row.get(key)
         if val:

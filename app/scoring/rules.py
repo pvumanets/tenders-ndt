@@ -12,18 +12,19 @@ RE_SERVICE_NDT = re.compile(
     r"(неразрушающ\w*\s+контрол|\bнк\b|радиограф|рентген|цифров\w*\s+радиограф|\bцр\b|"
     r"\bвик\b|визуальн\w*\s+и\s+измерительн|капилляр|\bпвк\b|"
     r"дефектоскоп\w*\s+(?:свар|соединен|труб|метал)|"
-    r"проведен\w*\s+неразрушающ|оказан\w*\s+услуг\w*\s+.*контрол|"
+    r"проведен\w*\s+неразрушающ|"
     r"контрол\w*\s+сварн|толщин\w*\s+стенок)",
     re.I,
 )
 RE_RK = re.compile(r"(радиограф|рентген|гаммаграф|\bцр\b|цифров\w*\s+радиограф)", re.I)
 RE_VIK_PVK = re.compile(r"(\bвик\b|визуальн\w*\s+и\s+измерительн|\bпвк\b|капиллярн|проникающ\w*\s+веществ)", re.I)
+_RE_ENERGY = r"энергетическ|нефтеэнерг|энергоблок|энергосбыт"
 RE_OBJECT = re.compile(
-    r"(сварн\w*\s+соединен|гидрокрекинг|нефте|газ|энерг|трубопровод|резервуар|"
+    rf"(сварн\w*\s+соединен|гидрокрекинг|нефте|газ|{_RE_ENERGY}|трубопровод|резервуар|"
     r"строитель|объект|секци|комплекс)",
     re.I,
 )
-RE_SECTOR = re.compile(r"(нефте|газ|энерг|строитель|\bвпк\b|атом|промплощад)", re.I)
+RE_SECTOR = re.compile(rf"(нефте|газ|{_RE_ENERGY}|строитель|\bвпк\b|атом|промплощад)", re.I)
 
 # Supply / equipment → L3 (on board), not noise
 RE_BUY_DEVICE = re.compile(
@@ -39,6 +40,7 @@ RE_DEVICE_ONLY = re.compile(
 RE_VERIFY = re.compile(r"(поверк\w*|калибровк\w*|ремонт\w*\s+(прибор|средств\w*\s+измерен))", re.I)
 RE_CONSUMABLE = re.compile(r"(плёнк|пленк|химия\s+пвк|реактив|расходн)", re.I)
 RE_TRAINING = re.compile(r"(обучен\w*|аттестац\w*\s+персонал|повышен\w*\s+квалификац)", re.I)
+RE_SUPPLY_GENERIC = re.compile(r"(поставк|закупк|\bприбор)", re.I)
 
 
 def score_title(title: str) -> tuple[int, list[str], bool]:
@@ -99,9 +101,11 @@ def score_title(title: str) -> tuple[int, list[str], bool]:
 def is_supply_watch(title: str) -> bool:
     """Поставка / приборы / калибровка / расходники → L3 Смотреть (на доске)."""
     t = title or ""
+    if RE_SUPPLY_GENERIC.search(t):
+        return True
     if RE_BUY_DEVICE.search(t):
         return True
-    if RE_DEVICE_ONLY.search(t) and not RE_SERVICE_NDT.search(t):
+    if RE_DEVICE_ONLY.search(t):
         return True
     if RE_VERIFY.search(t) and not RE_SERVICE_NDT.search(t):
         return True
@@ -117,7 +121,7 @@ def is_noise(title: str, score: int, reasons: list[str]) -> bool:
         return False
     # Обучение / аттестация как предмет закупки — вне доски (даже если есть слова НК).
     if RE_TRAINING.search(t) and not re.search(
-        r"проведен\w*\s+неразрушающ|оказан\w*\s+услуг\w*\s+.*контрол|контрол\w*\s+сварн",
+        r"проведен\w*\s+неразрушающ|контрол\w*\s+сварн",
         t,
         re.I,
     ):
