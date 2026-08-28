@@ -36,6 +36,7 @@ const rostender: NamedSearch = {
   name: "РосТендер — услуги НК",
   platform_id: "rostender",
   queries: ["неразрушающий"],
+  exclude: [],
   limit_n: 0,
   in_queue: true,
   sort_order: 1,
@@ -46,6 +47,7 @@ const tenderPro: NamedSearch = {
   name: "Tender.Pro — методы",
   platform_id: "tender-pro",
   queries: ["ВИК", "ПВК"],
+  exclude: [],
   limit_n: 0,
   in_queue: false,
   sort_order: 10,
@@ -87,6 +89,28 @@ describe("TechRunPanel", () => {
     expect(screen.getByText(copy.searches_drawer_title)).toBeInTheDocument();
     expect(screen.getByLabelText(copy.searches_name)).toHaveValue(rostender.name);
     expect(screen.getByLabelText(copy.searches_queries)).toHaveValue("неразрушающий");
+    expect(screen.getByLabelText(copy.searches_exclude)).toHaveValue("");
+  });
+
+  it("saves draft with minus phrases", async () => {
+    const user = userEvent.setup();
+    const { onSaveSearch } = renderPanel(idle, {
+      searches: [{ ...rostender, exclude: ["кровля"] }],
+    });
+    await user.click(screen.getAllByRole("button", { name: copy.searches_edit })[0]);
+    expect(screen.getByLabelText(copy.searches_exclude)).toHaveValue("кровля");
+    await user.clear(screen.getByLabelText(copy.searches_exclude));
+    await user.type(screen.getByLabelText(copy.searches_exclude), "ЗАГС\nшкола");
+    await user.click(screen.getByRole("button", { name: copy.searches_save }));
+    expect(onSaveSearch).toHaveBeenCalledWith("s-rt", {
+      name: rostender.name,
+      platform_id: "rostender",
+      queries: ["неразрушающий"],
+      exclude: ["ЗАГС", "школа"],
+      limit_n: 0,
+      in_queue: true,
+      sort_order: 1,
+    });
   });
 
   it("enables start when a search is queued, even without cookies", async () => {

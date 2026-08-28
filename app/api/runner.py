@@ -125,6 +125,7 @@ def start_run() -> None:
                 "name": row.name,
                 "platform_id": row.platform_id,
                 "queries": list(row.queries or []),
+                "exclude": list(row.exclude or []),
                 "limit_n": row.limit_n,
                 "status": "pending",
             }
@@ -333,6 +334,7 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
         )
         return "skipped"
     queries = [str(q) for q in (item.get("queries") or []) if str(q).strip()]
+    exclude = [str(x) for x in (item.get("exclude") or []) if str(x).strip()]
     limit = int(item.get("limit_n") or 0)
     started_at = datetime.now(timezone.utc)
     enriched: list[dict] = []
@@ -345,6 +347,7 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
             base_url=base,
             queries=queries,
             limit=limit,
+            exclude=exclude,
             should_stop=STATE.should_stop,
             on_retry=_http_retry_callback,
             on_progress=lambda n, lim: STATE.set_list_progress(n, lim),
@@ -478,6 +481,7 @@ def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
         )
         return "skipped"
     queries = [str(q) for q in (item.get("queries") or []) if str(q).strip()]
+    exclude = [str(x) for x in (item.get("exclude") or []) if str(x).strip()]
     limit = int(item.get("limit_n") or 0)
     started_at = datetime.now(timezone.utc)
     enriched: list[dict] = []
@@ -489,6 +493,7 @@ def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
             queries=queries,
             limit=limit,
             base_url=base,
+            exclude=exclude,
             should_stop=STATE.should_stop,
             on_retry=_http_retry_callback,
             on_progress=lambda n, lim: STATE.set_list_progress(n, lim),

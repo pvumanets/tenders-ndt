@@ -1,4 +1,4 @@
-"""Canonical named-search seeds for P11 / task 030 (search-keywords.md)."""
+"""Canonical named-search seeds (search-keywords + search-system-v2)."""
 from __future__ import annotations
 
 from typing import Any
@@ -26,6 +26,22 @@ LEGACY_SEARCH_IDS = (
 # limit_n=0 → no product cap (soft unlimited)
 _DEFAULT_LIMIT = 0
 
+# Package D minus (search-system-v2)
+_RT_D_EXCLUDE = [
+    "жилой",
+    "жилых",
+    "ЖК",
+    "кровля",
+    "крыша",
+    "ЗАГС",
+    "школа",
+    "детсад",
+    "поликлиника",
+    "фасад",
+    "благоустройство",
+    "дороги",
+]
+
 
 def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any]]:
     """Rostender A–E in queue; Tender.Pro packages (queue gated by cookies)."""
@@ -38,6 +54,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
                 "неразрушающий контроль",
                 "дефектоскопия",
             ],
+            "exclude": [],
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": True,
             "sort_order": 1,
@@ -54,6 +71,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
                 "гаммаграфический контроль",
                 "толщинометрия ультразвуковая",
             ],
+            "exclude": [],
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": True,
             "sort_order": 2,
@@ -63,6 +81,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
             "name": "РосТендер — аббревиатуры",
             "platform_id": "rostender",
             "queries": ["ВИК"],
+            "exclude": [],
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": True,
             "sort_order": 3,
@@ -75,7 +94,9 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
                 "принимающий контроль",
                 "приёмочный контроль",
                 "входной контроль",
+                "строительный контроль",
             ],
+            "exclude": list(_RT_D_EXCLUDE),
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": True,
             "sort_order": 4,
@@ -88,6 +109,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
                 "контроль сварных соединений",
                 "сварных соединений",
             ],
+            "exclude": [],
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": True,
             "sort_order": 5,
@@ -104,6 +126,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
                 "капиллярный",
                 "радиографический",
             ],
+            "exclude": [],
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": tender_pro_in_queue,
             "sort_order": 10,
@@ -113,6 +136,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
             "name": "Tender.Pro — аббревиатуры",
             "platform_id": "tender-pro",
             "queries": ["ВИК", "ПВК", "УЗК", "НК"],
+            "exclude": [],
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": tender_pro_in_queue,
             "sort_order": 11,
@@ -126,6 +150,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
                 "приёмочный контроль",
                 "входной контроль",
             ],
+            "exclude": [],
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": tender_pro_in_queue,
             "sort_order": 12,
@@ -135,6 +160,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
             "name": "Tender.Pro — страховка",
             "platform_id": "tender-pro",
             "queries": ["контроль сварн", "диагностирование"],
+            "exclude": [],
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": tender_pro_in_queue,
             "sort_order": 13,

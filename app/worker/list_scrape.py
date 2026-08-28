@@ -354,8 +354,11 @@ def scrape_queries(
     should_stop=None,
     on_progress=None,
     on_retry=None,
+    exclude: list[str] | None = None,
 ) -> list[dict]:
     """Union of keyword searches, deduped by tender_id; soft-capped only if limit > 0."""
+    from app.worker.exclude_filter import filter_rows_by_exclude
+
     cap = None if int(limit or 0) <= 0 else int(limit)
     progress_total = cap if cap is not None else 0
     combined: list[dict] = []
@@ -390,6 +393,8 @@ def scrape_queries(
         if on_progress:
             on_progress(len(combined), progress_total)
     if cap is None:
-        return combined
-    return combined[:cap]
+        out = combined
+    else:
+        out = combined[:cap]
+    return filter_rows_by_exclude(out, exclude)
 

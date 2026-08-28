@@ -126,7 +126,10 @@ export const copy = {
   searches_delete: "Удалить",
   searches_name: "Имя",
   searches_platform: "Площадка",
-  searches_queries: "Запросы (по одному на строку)",
+  searches_queries: "Плюс — запросы (по одному на строку)",
+  searches_exclude: "Минус — отсечь по заголовку",
+  searches_exclude_hint:
+    "Минус отсекает строки списка этого поиска до доски. На другие поиски не действует.",
   searches_limit: "Лимит",
   searches_limit_hint: "0 — без потолка; иначе мягкая остановка на этом числе",
   searches_empty: "Нет сохранённых поисков",

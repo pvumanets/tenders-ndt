@@ -1,7 +1,7 @@
 """Map score → L1|L2|L3|noise|pool. Supply/equipment forced to L3 (P10)."""
 from __future__ import annotations
 
-from app.scoring.rules import is_construction_watch, is_noise, is_supply_watch, score_title
+from app.scoring.rules import is_noise, is_supply_watch, score_title
 
 
 def assign_tier(title: str) -> tuple[str, int, str, bool]:
@@ -11,11 +11,6 @@ def assign_tier(title: str) -> tuple[str, int, str, bool]:
     if is_supply_watch(title):
         if "supply_l3" not in reason_s:
             reason_s = f"{reason_s}; supply_l3" if reason_s != "none" else "supply_l3"
-        return "L3", score, reason_s, uzk
-
-    if is_construction_watch(title):
-        if "build_ctrl_l3" not in reason_s:
-            reason_s = f"{reason_s}; build_ctrl_l3" if reason_s != "none" else "build_ctrl_l3"
         return "L3", score, reason_s, uzk
 
     if is_noise(title, score, reasons):
