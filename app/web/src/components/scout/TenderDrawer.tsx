@@ -19,7 +19,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import type { InboxLot, SalesTier } from "../../types";
 import { copy } from "../../copy";
-import { aiBoardTier, rulesBoardTier, tierLabel, tierMoved } from "../../lib/format";
+import { aiBoardTier, formatDate, formatPrice, rulesBoardTier, tierLabel, tierMoved } from "../../lib/format";
 import { personProfileTokens } from "../../theme/person-profile";
 import { stripe } from "../../theme/palette";
 import DetailDrawerShell from "../../vendor/personal/people/DetailDrawerShell";

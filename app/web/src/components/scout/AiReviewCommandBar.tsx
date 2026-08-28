@@ -28,7 +28,9 @@ export default function AiReviewCommandBar({
           mb: 1,
         }}
       >
-        <ViewCommandBar.Start sx={{ flex: 1, minWidth: 0 }} />
+        <ViewCommandBar.Start sx={{ flex: 1, minWidth: 0 }}>
+          <span />
+        </ViewCommandBar.Start>
         <ViewCommandBar.End sx={{ width: { xs: "100%", md: "auto" }, justifyContent: "flex-end", gap: 1 }}>
           <ToggleButtonGroup
             exclusive
