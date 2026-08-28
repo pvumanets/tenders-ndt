@@ -53,5 +53,5 @@ def test_abbr_seeds_no_uk_rk() -> None:
     tp = next(r for r in rows if r["name"] == "Tender.Pro — аббревиатуры")
     for q in rt["queries"] + tp["queries"]:
         assert q.upper() not in {"УК", "РК"}
-    assert "УЗК" in rt["queries"]
+    assert rt["queries"] == ["ВИК"]
     assert "УЗК" in tp["queries"]
