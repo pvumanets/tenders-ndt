@@ -21,7 +21,7 @@ import type {
 } from "./types";
 import { copy } from "./copy";
 import { deadlineQuery, ingestedQuery, mskTodayIso } from "./lib/date-filters";
-import { effectiveTier } from "./lib/format";
+import { aiBoardTier, rulesBoardTier, tierMoved } from "./lib/format";
 import {
   RunControlError,
   SearchControlError,
@@ -48,6 +48,7 @@ import {
 import { stripe } from "./theme/palette";
 import ThemeRegistry from "./theme/ThemeRegistry";
 import InboxCommandBar from "./components/scout/InboxCommandBar";
+import AiReviewCommandBar from "./components/scout/AiReviewCommandBar";
 import LotBoard from "./components/scout/LotBoard";
 import LotTable from "./components/scout/LotTable";
 import TenderDrawer from "./components/scout/TenderDrawer";
@@ -82,8 +83,12 @@ const idleTech: TechStatus = {
 
 function InboxEmpty({
   kind,
+  onAction,
+  actionLabel,
 }: {
-  kind: "no-data" | "no-match" | "no-unread" | "error";
+  kind: "no-data" | "no-match" | "no-unread" | "no-ai" | "error";
+  onAction?: () => void;
+  actionLabel?: string;
 }) {
   const title =
     kind === "error"
@@ -92,7 +97,9 @@ function InboxEmpty({
         ? copy.empty_no_unread_title
         : kind === "no-match"
           ? copy.empty_no_match_title
-          : copy.empty_no_data_title;
+          : kind === "no-ai"
+            ? copy.empty_no_ai_title
+            : copy.empty_no_data_title;
   const body =
     kind === "error"
       ? copy.error_load_body
@@ -100,13 +107,20 @@ function InboxEmpty({
         ? copy.empty_no_unread_body
         : kind === "no-match"
           ? copy.empty_no_match_body
-          : copy.empty_no_data_body;
+          : kind === "no-ai"
+            ? copy.empty_no_ai_body
+            : copy.empty_no_data_body;
   return (
     <Box sx={{ textAlign: "center", py: 6, px: 2 }}>
       <Typography variant="h2" sx={{ mb: 0.5 }}>
         {title}
       </Typography>
       <Typography color="text.secondary">{body}</Typography>
+      {onAction && actionLabel ? (
+        <Box sx={{ mt: 2 }}>
+          <CardTextButton onClick={onAction}>{actionLabel}</CardTextButton>
+        </Box>
+      ) : null}
     </Box>
   );
 }
@@ -118,7 +132,6 @@ function AppInner() {
   const [lotsState, setLotsState] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [view, setView] = useState<ViewMode>("cards");
   const [unreadOnly, setUnreadOnly] = useState(true);
-  const [aiReviewedOnly, setAiReviewedOnly] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const [priority, setPriority] = useState<PriorityFilter>([]);
   const [search, setSearch] = useState("");
@@ -161,6 +174,7 @@ function AppInner() {
 
   useEffect(() => {
     if (gate !== "in") return;
+    if (tab !== "lots" && tab !== "ai") return;
     let cancelled = false;
     setLotsState((prev) => (prev === "ok" ? prev : "loading"));
     const today = mskTodayIso();
@@ -169,8 +183,8 @@ function AppInner() {
       ...ingestedQuery(ingestedPreset, ingestedFrom, ingestedTo, today),
     };
     fetchInbox({
-      unread: unreadOnly || undefined,
-      ai_reviewed: aiReviewedOnly || undefined,
+      unread: tab === "lots" && unreadOnly ? true : undefined,
+      ai_reviewed: tab === "ai" ? true : undefined,
       tier: apiTierParam(priority),
       q: debouncedSearch || undefined,
       ...dates,
@@ -193,8 +207,8 @@ function AppInner() {
     };
   }, [
     gate,
+    tab,
     unreadOnly,
-    aiReviewedOnly,
     priority,
     debouncedSearch,
     deadlinePreset,
@@ -356,20 +370,24 @@ function AppInner() {
     }
   }
 
+  const boardTierFn = tab === "ai" ? aiBoardTier : rulesBoardTier;
+
   const filtered = useMemo(() => {
     const visible = lots.filter((lot) => !lot.board_hidden);
     if (priority.length < 2) return visible;
-    return visible.filter((lot) => priority.includes(effectiveTier(lot)));
-  }, [lots, priority]);
+    return visible.filter((lot) => priority.includes(boardTierFn(lot)));
+  }, [lots, priority, boardTierFn]);
 
   const selected = lots.find((l) => l.tender_id === selectedId) ?? null;
   const emptyKind =
     lotsState === "error"
       ? "error"
       : lots.filter((l) => !l.board_hidden).length === 0
-        ? unreadOnly && !debouncedSearch && deadlinePreset === "any" && ingestedPreset === "any"
-          ? "no-unread"
-          : "no-data"
+        ? tab === "ai"
+          ? "no-ai"
+          : unreadOnly && !debouncedSearch && deadlinePreset === "any" && ingestedPreset === "any"
+            ? "no-unread"
+            : "no-data"
         : "no-match";
 
   function replaceLot(next: InboxLot) {
@@ -403,16 +421,38 @@ function AppInner() {
     }
   }
 
+  async function reloadInbox() {
+    const today = mskTodayIso();
+    const dates = {
+      ...deadlineQuery(deadlinePreset, deadlineFrom, deadlineTo, today),
+      ...ingestedQuery(ingestedPreset, ingestedFrom, ingestedTo, today),
+    };
+    const items = await fetchInbox({
+      unread: tab === "lots" && unreadOnly ? true : undefined,
+      ai_reviewed: tab === "ai" ? true : undefined,
+      tier: apiTierParam(priority),
+      q: debouncedSearch || undefined,
+      ...dates,
+    });
+    setLots(items);
+    setLotsState("ok");
+    return items;
+  }
+
   async function onAiReview() {
     setAiBusy(true);
     try {
       const result = await postAiReview();
-      if (result.items.length) {
+      const moved = result.items.filter((item) => tierMoved(item)).length;
+      if (tab === "ai") {
+        await reloadInbox();
+      } else if (result.items.length) {
         setLots((prev) => {
           const byId = new Map(result.items.map((item) => [item.tender_id, item]));
           return prev.map((lot) => byId.get(lot.tender_id) ?? lot);
         });
       }
+      setToast(copy.ai_review_toast.replace("{n}", String(result.processed)).replace("{m}", String(moved)));
       const status = await fetchStatus();
       setTech(status);
     } catch (err: unknown) {
@@ -465,10 +505,14 @@ function AppInner() {
         </Toolbar>
         <Tabs
           value={tab}
-          onChange={(_, v: AppTab) => setTab(v)}
+          onChange={(_, v: AppTab) => {
+            setTab(v);
+            setSelectedId(null);
+          }}
           sx={{ px: 2, minHeight: 32 }}
         >
           <Tab label={copy.tab_lots} value="lots" />
+          <Tab label={copy.tab_ai_reviewed} value="ai" />
           <Tab label={copy.tab_run} value="run" />
         </Tabs>
       </AppBar>
@@ -497,10 +541,6 @@ function AppInner() {
               onIngestedTo={setIngestedTo}
               view={view}
               onView={setView}
-              aiReviewedOnly={aiReviewedOnly}
-              onAiReviewedOnly={setAiReviewedOnly}
-              onAiReview={() => void onAiReview()}
-              aiBusy={aiBusy}
             />
             {lotsState === "error" ? (
               <InboxEmpty kind="error" />
@@ -509,13 +549,67 @@ function AppInner() {
             ) : filtered.length === 0 ? (
               <InboxEmpty kind={emptyKind} />
             ) : view === "cards" ? (
-              <LotBoard lots={filtered} selectedId={selectedId} onOpen={setSelectedId} />
+              <LotBoard
+                lots={filtered}
+                selectedId={selectedId}
+                onOpen={setSelectedId}
+                boardTier={rulesBoardTier}
+                showAiHint
+              />
             ) : (
-              <LotTable lots={filtered} selectedId={selectedId} onOpen={setSelectedId} />
+              <LotTable lots={filtered} selectedId={selectedId} onOpen={setSelectedId} boardTier={rulesBoardTier} />
             )}
             {selected ? (
               <TenderDrawer
                 lot={selected}
+                drawerMode="rules"
+                onClose={() => setSelectedId(null)}
+                onToggleViewed={onToggleViewed}
+                onSetPriority={onSetPriority}
+                onSetBoardHidden={onSetBoardHidden}
+                onAiWrong={(id) => void onAiWrong(id)}
+              />
+            ) : null}
+          </>
+        ) : tab === "ai" ? (
+          <>
+            <AiReviewCommandBar
+              view={view}
+              onView={setView}
+              onAiReview={() => void onAiReview()}
+              aiBusy={aiBusy}
+            />
+            {lotsState === "error" ? (
+              <InboxEmpty kind="error" />
+            ) : lotsLoading ? (
+              <Box sx={{ flex: 1, bgcolor: stripe.surfaceSubtle }} />
+            ) : filtered.length === 0 ? (
+              <InboxEmpty
+                kind={emptyKind}
+                onAction={() => void onAiReview()}
+                actionLabel={aiBusy ? copy.action_ai_review_busy : copy.action_ai_review}
+              />
+            ) : view === "cards" ? (
+              <LotBoard
+                lots={filtered}
+                selectedId={selectedId}
+                onOpen={setSelectedId}
+                boardTier={aiBoardTier}
+                showTierMove
+              />
+            ) : (
+              <LotTable
+                lots={filtered}
+                selectedId={selectedId}
+                onOpen={setSelectedId}
+                boardTier={aiBoardTier}
+                showTierMove
+              />
+            )}
+            {selected ? (
+              <TenderDrawer
+                lot={selected}
+                drawerMode="ai"
                 onClose={() => setSelectedId(null)}
                 onToggleViewed={onToggleViewed}
                 onSetPriority={onSetPriority}

@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { InboxLot } from "../types";
-import { effectiveTier } from "./format";
+import { aiBoardTier, rulesBoardTier, tierMoved } from "./format";
 
 /** Mirrors LotBoard bucketing without mounting MUI. */
-function boardBuckets(lots: InboxLot[]) {
+function boardBuckets(lots: InboxLot[], boardTier: (lot: InboxLot) => string) {
   const visible = lots.filter((l) => !l.board_hidden);
   const live = visible.filter((l) => !l.deadline_expired);
   const expired = visible
     .filter((l) => l.deadline_expired)
     .slice()
     .sort((a, b) => b.deadline_msk.localeCompare(a.deadline_msk) || a.tender_id.localeCompare(b.tender_id));
-  const byTier = (tier: string) => live.filter((l) => effectiveTier(l) === tier);
+  const byTier = (tier: string) => live.filter((l) => boardTier(l) === tier);
   return {
     L1: byTier("L1").map((l) => l.tender_id),
     L2: byTier("L2").map((l) => l.tender_id),
@@ -52,24 +52,54 @@ function lot(partial: Partial<InboxLot> & Pick<InboxLot, "tender_id" | "tier">):
 
 describe("boardBuckets P8", () => {
   it("keeps expired out of live columns and sorts freshest first", () => {
-    const buckets = boardBuckets([
-      lot({ tender_id: "live", tier: "L1", deadline_msk: "2026-08-28" }),
-      lot({
-        tender_id: "old",
-        tier: "L1",
-        deadline_expired: true,
-        deadline_msk: "2026-08-20",
-      }),
-      lot({
-        tender_id: "fresh",
-        tier: "L2",
-        deadline_expired: true,
-        deadline_msk: "2026-08-26",
-      }),
-      lot({ tender_id: "hidden", tier: "L1", board_hidden: true }),
-    ]);
+    const buckets = boardBuckets(
+      [
+        lot({ tender_id: "live", tier: "L1", deadline_msk: "2026-08-28" }),
+        lot({
+          tender_id: "old",
+          tier: "L1",
+          deadline_expired: true,
+          deadline_msk: "2026-08-20",
+        }),
+        lot({
+          tender_id: "fresh",
+          tier: "L2",
+          deadline_expired: true,
+          deadline_msk: "2026-08-26",
+        }),
+        lot({ tender_id: "hidden", tier: "L1", board_hidden: true }),
+      ],
+      rulesBoardTier,
+    );
     expect(buckets.L1).toEqual(["live"]);
     expect(buckets.L2).toEqual([]);
     expect(buckets.expired).toEqual(["fresh", "old"]);
+  });
+});
+
+describe("rules vs ai board tiers", () => {
+  const moved = lot({
+    tender_id: "moved",
+    tier: "L1",
+    rules_tier: "L1",
+    ai_reviewed: true,
+    ai_tier: "L3",
+  });
+
+  it("rules board keeps L1 after AI demoted to L3", () => {
+    const buckets = boardBuckets([moved], rulesBoardTier);
+    expect(buckets.L1).toEqual(["moved"]);
+    expect(buckets.L3).toEqual([]);
+  });
+
+  it("ai board shows L3 after AI review", () => {
+    const buckets = boardBuckets([moved], aiBoardTier);
+    expect(buckets.L1).toEqual([]);
+    expect(buckets.L3).toEqual(["moved"]);
+  });
+
+  it("tierMoved detects change", () => {
+    expect(tierMoved(moved)).toBe(true);
+    expect(tierMoved(lot({ tender_id: "same", tier: "L2", ai_reviewed: true, ai_tier: "L2" }))).toBe(false);
   });
 });

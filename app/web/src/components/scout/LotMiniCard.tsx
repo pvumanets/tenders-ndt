@@ -3,7 +3,7 @@ import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import type { InboxLot } from "../../types";
 import { copy } from "../../copy";
-import { formatDate, formatPrice } from "../../lib/format";
+import { formatDate, formatPrice, formatTierMove, rulesBoardTier, tierLabel, tierMoved } from "../../lib/format";
 import { stripe } from "../../theme/palette";
 import { stripeShadows } from "../../theme/shadows";
 import CardTextButton from "../../vendor/personal/dispatch/CardTextButton";
@@ -17,14 +17,25 @@ export default function LotMiniCard({
   lot,
   selected,
   onOpen,
+  showTierMove = false,
+  showAiHint = false,
 }: {
   lot: InboxLot;
   selected?: boolean;
   onOpen: (id: string) => void;
+  showTierMove?: boolean;
+  showAiHint?: boolean;
 }) {
   const theme = useTheme();
   const pmc = theme.density.personMiniCard;
   const hasManual = lot.manual_tier != null;
+  const rules = rulesBoardTier(lot);
+  const moveLabel =
+    showTierMove && tierMoved(lot) && lot.ai_tier ? formatTierMove(rules, lot.ai_tier) : null;
+  const aiHint =
+    showAiHint && tierMoved(lot) && lot.ai_tier
+      ? copy.chip_ai_tier_hint.replace("{tier}", lot.ai_tier)
+      : null;
 
   return (
     <Paper
@@ -71,6 +82,36 @@ export default function LotMiniCard({
               }}
             />
           ) : null}
+          {moveLabel ? (
+            <Chip
+              size="small"
+              label={moveLabel}
+              variant="outlined"
+              sx={{
+                alignSelf: "flex-start",
+                mt: hasManual ? 0.5 : 0,
+                height: theme.density.chip.height,
+                fontSize: `${theme.density.chip.fontSize}px`,
+                borderColor: stripe.blurple,
+                color: stripe.blurple,
+              }}
+            />
+          ) : null}
+          {aiHint ? (
+            <Chip
+              size="small"
+              label={aiHint}
+              variant="outlined"
+              sx={{
+                alignSelf: "flex-start",
+                mt: hasManual || moveLabel ? 0.5 : 0,
+                height: theme.density.chip.height,
+                fontSize: `${theme.density.chip.fontSize}px`,
+                borderColor: stripe.border,
+                color: stripe.textMuted,
+              }}
+            />
+          ) : null}
           {lot.deadline_expired ? (
             <Chip
               size="small"
@@ -87,7 +128,7 @@ export default function LotMiniCard({
             />
           ) : null}
 
-          <Box sx={{ mt: hasManual || lot.deadline_expired ? `${pmc.headerToBody}px` : 0 }}>
+          <Box sx={{ mt: hasManual || moveLabel || aiHint || lot.deadline_expired ? `${pmc.headerToBody}px` : 0 }}>
             <Typography
               sx={{
                 fontSize: `${theme.density.font.md}px`,

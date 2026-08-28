@@ -19,7 +19,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import type { InboxLot, SalesTier } from "../../types";
 import { copy } from "../../copy";
-import { effectiveTier, formatDate, formatPrice, tierLabel } from "../../lib/format";
+import { aiBoardTier, rulesBoardTier, tierLabel, tierMoved } from "../../lib/format";
 import { personProfileTokens } from "../../theme/person-profile";
 import { stripe } from "../../theme/palette";
 import DetailDrawerShell from "../../vendor/personal/people/DetailDrawerShell";
@@ -35,6 +35,7 @@ export default function TenderDrawer({
   onSetPriority,
   onSetBoardHidden,
   onAiWrong,
+  drawerMode = "rules",
 }: {
   lot: InboxLot;
   onClose: () => void;
@@ -42,9 +43,11 @@ export default function TenderDrawer({
   onSetPriority: (id: string, tier: SalesTier | null) => void;
   onSetBoardHidden: (id: string, hidden: boolean) => void;
   onAiWrong?: (id: string) => void;
+  drawerMode?: "rules" | "ai";
 }) {
   const [menuEl, setMenuEl] = useState<null | HTMLElement>(null);
-  const tier = effectiveTier(lot);
+  const tier = drawerMode === "ai" ? aiBoardTier(lot) : rulesBoardTier(lot);
+  const rulesTier = lot.rules_tier ?? lot.tier;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -68,6 +71,18 @@ export default function TenderDrawer({
               {lot.manual_tier != null ? ` · ${copy.chip_overridden_suffix}` : ""}
               {lot.deadline_expired ? ` · ${copy.badge_deadline_expired}` : ""}
             </Typography>
+            {drawerMode === "rules" && lot.ai_reviewed && lot.ai_tier && tierMoved(lot) ? (
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+                {copy.drawer_ai_suggested
+                  .replace("{ai}", tierLabel(lot.ai_tier))
+                  .replace("{rules}", tierLabel(rulesTier))}
+              </Typography>
+            ) : null}
+            {drawerMode === "ai" && lot.ai_reviewed ? (
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
+                {copy.drawer_rules_was.replace("{tier}", tierLabel(rulesTier))}
+              </Typography>
+            ) : null}
             <Typography component="h2" sx={{ ...personProfileTokens.sectionTitle, mt: 0.5 }}>
               {lot.title}
             </Typography>
