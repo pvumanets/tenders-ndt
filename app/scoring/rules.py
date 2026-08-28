@@ -39,6 +39,8 @@ RE_DEVICE_ONLY = re.compile(
 RE_VERIFY = re.compile(r"(поверк\w*|калибровк\w*|ремонт\w*\s+(прибор|средств\w*\s+измерен))", re.I)
 RE_CONSUMABLE = re.compile(r"(плёнк|пленк|химия\s+пвк|реактив|расходн)", re.I)
 RE_TRAINING = re.compile(r"(обучен\w*|аттестац\w*\s+персонал|повышен\w*\s+квалификац)", re.I)
+# Стройнадзор / СК — не услуги НК (owner 2026-08-28)
+RE_BUILD_CTRL = re.compile(r"строительн\w*\s+контрол", re.I)
 
 
 def score_title(title: str) -> tuple[int, list[str], bool]:
@@ -110,10 +112,15 @@ def is_supply_watch(title: str) -> bool:
     return False
 
 
+def is_construction_watch(title: str) -> bool:
+    """Строительный контроль (надзор) → L3 Смотреть, не Горячие."""
+    return bool(RE_BUILD_CTRL.search(title or ""))
+
+
 def is_noise(title: str, score: int, reasons: list[str]) -> bool:
     """Только явный оффтоп (обучение и т.п.) — вне доски. Поставка → не noise."""
     t = title or ""
-    if is_supply_watch(t):
+    if is_supply_watch(t) or is_construction_watch(t):
         return False
     # Обучение / аттестация как предмет закупки — вне доски (даже если есть слова НК).
     if RE_TRAINING.search(t) and not re.search(
