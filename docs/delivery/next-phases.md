@@ -32,7 +32,8 @@
 | **P14** | Укрепление скрейпа | **done** | [031](./tasks/031-scrape-hardening.md) |
 | **P15** | Без УК/РК + wipe #2 | **done** | [033](./tasks/033-no-uk-rk-keywords.md) |
 | **P16** | Полные keywords + только ВИК + cookies admin956 | **done** | [034](./tasks/034-full-keywords-vik-only.md) |
-| **P16+** | Дальний хвост | backlog | cron, ЭТП, Bitrix, rоли, Excel |
+| **P17** | Поиск v2: плюс/минус (docs) | **docs ready** | [036](./tasks/036-search-plus-minus.md) · [`search-system-v2.md`](../discovery/search-system-v2.md) |
+| **P17+** | Дальний хвост | backlog | cron, ЭТП, Bitrix, роли, Excel |
 
 ```text
 P12 (канон API)
@@ -48,7 +49,9 @@ P12 (канон API)
                          ↓
                     P16 (034) + wipe #3 + RT-only
                          ↓
-                    P16+ …
+                    P17 (036) search v2 docs → code
+                         ↓
+                    P17+ …
 ```
 
 ### Жёсткие правила

@@ -1,9 +1,9 @@
 # Именованные поиски и очередь прогонов
 
 **status:** accepted  
-**last-review-date:** 2026-08-27  
-**owner lock:** 2026-08-19 (имена поисков + очередь Старта; первая чужая ЭТП = Tender.Pro) · **2026-08-27** (без лимита 1000; пакеты ключевых слов — [`search-keywords.md`](./search-keywords.md))  
-**код:** [023](../delivery/tasks/023-named-searches.md) **done** → [024](../delivery/tasks/024-tender-pro-adapter.md) **done**. Этот файл — решения.  
+**last-review-date:** 2026-08-28  
+**owner lock:** 2026-08-19 (имена поисков + очередь Старта; первая чужая ЭТП = Tender.Pro) · **2026-08-27** (без лимита 1000; пакеты — [`search-keywords.md`](./search-keywords.md)) · **2026-08-28** (плюс/минус — [`search-system-v2.md`](./search-system-v2.md))  
+**код:** [023](../delivery/tasks/023-named-searches.md) **done** → [024](../delivery/tasks/024-tender-pro-adapter.md) **done**. Поле `exclude` — [036](../delivery/tasks/036-search-plus-minus.md) (docs ready; код follow-up).  
 **зонд Tender.Pro:** [`tender-pro-probe.md`](./tender-pro-probe.md)  
 **реестр ЭТП:** [`platforms.md`](./platforms.md)  
 **API:** [`../delivery/sales-inbox-api.md`](../delivery/sales-inbox-api.md)
@@ -43,7 +43,8 @@
 | `id` | UUID |
 | `name` | человеческое; уникально в инстансе |
 | `platform_id` | ровно одна ЭТП: сейчас `rostender` \| `tender-pro`; позже slug из [`platforms.md`](./platforms.md) |
-| `queries` | массив строк, минимум 1; порядок **слож → прост** (см. search-keywords) |
+| `queries` | массив строк, минимум 1; порядок **слож → прост** (плюс; [`search-keywords.md`](./search-keywords.md)) |
+| **`exclude`** | **целевой (v2):** массив минус-фраз; может быть `[]`; режет title **на списке** до скоринга ([`search-system-v2.md`](./search-system-v2.md)). **AS-IS код:** поля ещё нет |
 | `limit_n` | optional soft stop; **`0` = без потолка** ([030](../delivery/tasks/030-search-coverage.md) done) |
 | `in_queue` | попадет в следующий Старт |
 | `sort_order` | порядок в очереди |
@@ -55,25 +56,17 @@
 - **rostender** — каждая строка = `keywords` (канон: [`search-keywords.md`](./search-keywords.md))
 - **tender-pro** — каждая строка = `good_name` (уровни B→C из search-keywords)
 
-Внутри одного поиска: все query → union → дедуп по native id площадки → **без обрезки limit** (lock 2026-08-27) → скоринг L1–L3 → ingest **tier ∈ {L1,L2,L3}** (не только score≥4).
+Внутри одного поиска (целевой v2): все query → union → дедуп → **`exclude` по title** → без обрезки limit → скоринг L1–L3 → ingest **tier ∈ {L1,L2,L3}**.  
+**AS-IS runtime:** без `exclude`; после union сразу скоринг.
 
-Q25 **держим:** query и limit живут в карточке поиска, не на кнопке Старт. `POST /api/run/start` не принимает ad-hoc `query`/`limit` как способ настройки (после 023 body настроек игнорируется / убирается).
+`exclude[]` действует **только** на выдачу **этого** поиска; другие поиски в очереди не наследуют минусы (детсад+радиограф через пакет B сохраняется).
 
-### Сиды (целевые после sync кода)
+Q25 **держим:** query, exclude и limit живут в карточке поиска, не на кнопке Старт. `POST /api/run/start` не принимает ad-hoc настройки.
 
-См. таблицы в [`search-keywords.md`](./search-keywords.md). Кратко очередь РосТендер:
+### Сиды
 
-1. **услуги НК** (A, + усечения)
-2. **методы** (B, + усечения)
-3. **аббревиатуры** (C)
-4. **контроли** (D: принимающий / приёмочный / входной / строительный)
-5. **страховка** (E: широкие — мусор чистит ИИ)
-
-Tender.Pro: методы / аббревиатуры / контроли / страховка — включить в очередь когда cookies OK.
-
-**Сиды (030 done):** A–E на rostender в очереди; Tender.Pro пакеты — `in_queue` при живых cookies (см. migration `0007_search_coverage` + sync при старте API).
-
----
+Плюс A–E: [`search-keywords.md`](./search-keywords.md). Минус по пакетам: [`search-system-v2.md`](./search-system-v2.md).  
+**Сиды (030 done):** A–E на rostender в очереди; Tender.Pro — `in_queue` при cookies.
 
 ## Очередь и прогон
 

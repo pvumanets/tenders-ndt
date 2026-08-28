@@ -2,7 +2,7 @@
 
 **status:** active  
 **last-review-date:** 2026-08-28  
-**P16:** [034](./034-full-keywords-vik-only.md)  
+**P17:** [036](./036-search-plus-minus.md) (docs)  
 
 Владелец смотрит **эту таблицу**. Карточка = детали и acceptance. Cursor Plans ≠ канон.
 
@@ -55,6 +55,7 @@
 | 033 | Без УК/РК в keywords и scoring + wipe #2 | task | done | NEXT+ | P15 | [033-no-uk-rk-keywords.md](./033-no-uk-rk-keywords.md) |
 | 034 | Полные keywords Rostender + только ВИК | task | done | NEXT+ | P16 | [034-full-keywords-vik-only.md](./034-full-keywords-vik-only.md) |
 | 035 | Строительный контроль не в Горячих | task | done | NEXT+ | | [035-no-build-control-hot.md](./035-no-build-control-hot.md) |
+| 036 | Поиск v2: плюс/минус по пакетам | task | ready | NEXT+ | P17 | [036-search-plus-minus.md](./036-search-plus-minus.md) |
 
 ### Очередь
 
@@ -65,5 +66,6 @@
 - **031** — P14 hardening скрейпа — **done**.
 - **033** — P15 без УК/РК + wipe #2 — **done** (2026-08-28).
 - **034** — P16 полные keywords + ВИК + cookies admin956 — **done** (2026-08-28).
-- **035** — строительный контроль → L3, убрать из сидов — **doing**.
+- **035** — строительный контроль → L3, убрать из сидов — **done** (2026-08-28); **deprecated** при коде 036 — см. [`search-system-v2.md`](../../discovery/search-system-v2.md).
+- **036** — поиск v2 плюс/минус — **ready** (docs); код после owner OK.
 - Порядок фаз: [`../next-phases.md`](../next-phases.md). **P13 wipe + полный прогон** — **done** (2026-08-27).
