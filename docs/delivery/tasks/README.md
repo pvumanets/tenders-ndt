@@ -53,7 +53,7 @@
 | 031 | Укрепление скрейпа: меньше тихих пропусков | task | done | NEXT+ | P14 | [031-scrape-hardening.md](./031-scrape-hardening.md) |
 | 032 | P12: синхрон канона API с lock | task | done | NEXT+ | P12 | [032-api-canon-sync.md](./032-api-canon-sync.md) |
 | 033 | Без УК/РК в keywords и scoring + wipe #2 | task | done | NEXT+ | P15 | [033-no-uk-rk-keywords.md](./033-no-uk-rk-keywords.md) |
-| 034 | Полные keywords Rostender + только ВИК | task | doing | NEXT+ | P16 | [034-full-keywords-vik-only.md](./034-full-keywords-vik-only.md) |
+| 034 | Полные keywords Rostender + только ВИК | task | done | NEXT+ | P16 | [034-full-keywords-vik-only.md](./034-full-keywords-vik-only.md) |
 
 ### Очередь
 
@@ -63,5 +63,5 @@
 - **027** — P8 просрочка + архив **done**. **028** — P9 update-on-diff + Tech отчёт **done**. **029** — P10 тиры + ИИ **done**. **030** — P11 покрытие поиска (сиды A–E, без лимита) **done**.
 - **031** — P14 hardening скрейпа — **done**.
 - **033** — P15 без УК/РК + wipe #2 — **done** (2026-08-28).
-- **034** — P16 полные keywords + ВИК + cookies admin956 — **doing**.
+- **034** — P16 полные keywords + ВИК + cookies admin956 — **done** (2026-08-28).
 - Порядок фаз: [`../next-phases.md`](../next-phases.md). **P13 wipe + полный прогон** — **done** (2026-08-27).

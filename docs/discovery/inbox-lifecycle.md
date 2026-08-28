@@ -160,7 +160,7 @@
 - [x] Свежие протухшие в «Просроченных» сверху. (027)
 - [x] Wipe после 027–030 сносит lots + lot_state + documents + том docs; затем полный прогон. (P13)
 - [x] Wipe #2 после 033 (P15): тот же набор таблиц/тома; полный прогон A–E; без ИИ. (2026-08-28)
-- [ ] Wipe #3 (P16): wipe + RT-only прогон + cookies admin956. (034)
+- [x] Wipe #3 (P16): wipe + RT-only прогон + cookies admin956. (034)
 
 ## Out of scope (этот discovery)
 

@@ -1,7 +1,7 @@
 ---
 id: "034"
 type: task
-status: doing
+status: done
 phase: NEXT+
 title: "Полные keywords Rostender + только ВИК + cookies admin956"
 was: ""
@@ -32,9 +32,9 @@ was: ""
 ## Acceptance
 
 - [x] Unit: нет усечений/аббрев (кроме ВИК) в RT seeds
-- [ ] Deploy + миграция 0009 на prod
-- [ ] Wipe #3 + cookies admin956 + RT-only прогон
-- [ ] Sanity: `customer_name` на выборке L1
+- [x] Deploy + миграция 0009 на prod
+- [x] Wipe #3 + cookies admin956 + RT-only прогон
+- [x] Sanity: `customer_name` на выборке L1 (196/196)
 
 ## Out of scope
 
