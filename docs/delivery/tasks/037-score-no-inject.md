@@ -1,7 +1,7 @@
 ---
 id: "037"
 type: task
-status: doing
+status: done
 phase: NEXT+
 title: "Скоринг: supply-минусы + без впрыска methods + wipe #5"
 was: ""
@@ -26,7 +26,9 @@ was: ""
 
 ## Acceptance (ops)
 
-- [ ] Deploy + wipe #5 + RT run + sanity
+- [x] Deploy `5304269` + wipe #5 + RT run + sanity (2026-08-28)
+- session `ok`; L1 **3** (was ~191 до 037); L2 **5**, L3 **27**
+- `customer_name` на всех L1; 1 L1 с подстрокой «поверк» в длинном заголовке услуг НК (не supply-мусор)
 
 ## Out of scope
 

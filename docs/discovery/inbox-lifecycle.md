@@ -162,7 +162,7 @@
 - [x] Wipe #2 после 033 (P15): тот же набор таблиц/тома; полный прогон A–E; без ИИ. (2026-08-28)
 - [x] Wipe #3 (P16): wipe + RT-only прогон + cookies admin956. (034)
 - [x] Wipe #4 (P17 / 036): после deploy 036; RT-only; без ИИ. (2026-08-28)
-- [ ] Wipe #5 (P18 / 037): supply exclude + score fix; RT-only; без ИИ.
+- [x] Wipe #5 (P18 / 037): supply exclude + score fix; RT-only; L1=3; session ok. (2026-08-28)
 
 ## Ops после выкладки 037 (P18 wipe #5)
 
