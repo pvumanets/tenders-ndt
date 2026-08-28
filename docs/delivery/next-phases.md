@@ -30,7 +30,7 @@
 | **P12** | Синхрон канона API с lock | **done** | [032](./tasks/032-api-canon-sync.md) |
 | **P13** | Wipe прода + чистый прогон | **done** | ops после P8–P11 на `main` |
 | **P14** | Укрепление скрейпа | **done** | [031](./tasks/031-scrape-hardening.md) |
-| **P15** | Без УК/РК + wipe #2 | **doing** | [033](./tasks/033-no-uk-rk-keywords.md) |
+| **P15** | Без УК/РК + wipe #2 | **done** | [033](./tasks/033-no-uk-rk-keywords.md) |
 | **P15+** | Дальний хвост | backlog | cron, ЭТП, Bitrix, роли, Excel |
 
 ```text

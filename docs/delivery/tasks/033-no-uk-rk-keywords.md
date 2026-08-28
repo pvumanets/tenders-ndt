@@ -1,7 +1,7 @@
 ---
 id: "033"
 type: task
-status: doing
+status: done
 phase: NEXT+
 title: "Без УК/РК в keywords и scoring + wipe #2"
 was: ""
@@ -35,8 +35,8 @@ was: ""
 - [x] «УЗК сварных швов» → fit-tier сохранён
 - [x] «радиографический контроль» → сигнал есть; «…РК» в госномере без radiograph → нет RK
 - [x] В abbr seeds нет УК/РК; есть УЗК
-- [ ] Deploy на prod + alembic 0008
-- [ ] P15 wipe + прогон; sanity: нет СМР Воронеж в Горячих
+- [x] Deploy на prod + alembic 0008
+- [x] P15 wipe + прогон; sanity: нет СМР Воронеж в Горячих (0 L1 с РОСВОДОКАНАЛ)
 
 ## Файлы
 
