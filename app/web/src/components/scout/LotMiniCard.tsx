@@ -3,7 +3,7 @@ import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import type { InboxLot } from "../../types";
 import { copy } from "../../copy";
-import { formatDate, formatPrice, formatTierMove, rulesBoardTier, tierLabel, tierMoved } from "../../lib/format";
+import { formatDate, formatPrice, formatTierMove, rulesBoardTier, tierMoved } from "../../lib/format";
 import { stripe } from "../../theme/palette";
 import { stripeShadows } from "../../theme/shadows";
 import CardTextButton from "../../vendor/personal/dispatch/CardTextButton";
