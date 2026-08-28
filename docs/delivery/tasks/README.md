@@ -54,7 +54,7 @@
 | 032 | P12: синхрон канона API с lock | task | done | NEXT+ | P12 | [032-api-canon-sync.md](./032-api-canon-sync.md) |
 | 033 | Без УК/РК в keywords и scoring + wipe #2 | task | done | NEXT+ | P15 | [033-no-uk-rk-keywords.md](./033-no-uk-rk-keywords.md) |
 | 034 | Полные keywords Rostender + только ВИК | task | done | NEXT+ | P16 | [034-full-keywords-vik-only.md](./034-full-keywords-vik-only.md) |
-| 035 | Строительный контроль не в Горячих | task | doing | NEXT+ | | [035-no-build-control-hot.md](./035-no-build-control-hot.md) |
+| 035 | Строительный контроль не в Горячих | task | done | NEXT+ | | [035-no-build-control-hot.md](./035-no-build-control-hot.md) |
 
 ### Очередь
 
