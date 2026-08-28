@@ -29,7 +29,7 @@
 | **P11** | Покрытие поиска (сиды + без лимита) | **done** | [030](./tasks/030-search-coverage.md) |
 | **P12** | Синхрон канона API с lock | **done** | [032](./tasks/032-api-canon-sync.md) |
 | **P13** | Wipe прода + чистый прогон | **done** | ops после P8–P11 на `main` |
-| **P14** | Укрепление скрейпа | backlog | [031](./tasks/031-scrape-hardening.md) |
+| **P14** | Укрепление скрейпа | **done** | [031](./tasks/031-scrape-hardening.md) |
 | **P15+** | Дальний хвост | backlog | cron, ЭТП, Bitrix, роли, Excel |
 
 ```text
@@ -62,7 +62,7 @@ P12 (канон API)
 | **G1** | В коде: один query + лимит 1000; Tender.Pro не в очереди | **P11 done** |
 | **G2** | Accepted API: score≥4, всегда UPDATE | **P12 done** (docs); код P9/P10 |
 | **G3** | Скачивание документов только score≥4 → «Смотреть» без файлов | **P10** |
-| **G4** | Title-only score; обрыв пагинации; cookies «файл есть»; нет retry; soft-stop пустой | **P14** |
+| **G4** | Title-only score; обрыв пагинации; cookies «файл есть»; нет retry; soft-stop пустой | **P14 done** |
 | **G5** | `platforms.md`: tender-pro ещё «backlog» при 024 done | **P11 done** |
 
 Подробности: [`decision-risks-review.md`](../discovery/decision-risks-review.md). Закрытые lock’ами M1/M3/M5 — там же.
@@ -201,7 +201,8 @@ P12 (канон API)
 | P9 update-on-diff + Tech отчёт | **done** ([028](./tasks/028-run-idempotent-report.md)) |
 | P10 тиры + ИИ | **done** ([029](./tasks/029-tier-rules-and-ai.md)) |
 | P11 сиды A–E + без limit 1000 | **done** ([030](./tasks/030-search-coverage.md)) |
-| P13 wipe + полный прогон | **done** (2026-08-27); дальше P14/031 |
+| P13 wipe + полный прогон | **done** (2026-08-27) |
+| P14 scrape hardening | **done** ([031](./tasks/031-scrape-hardening.md), 2026-08-28) |
 
 ---
 

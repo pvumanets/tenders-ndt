@@ -12,7 +12,8 @@ from urllib.parse import urljoin
 import httpx
 from bs4 import BeautifulSoup
 
-from app.worker.list_scrape import UA
+from app.worker.http_retry import request_with_retry
+from app.worker.list_scrape import AuthError, UA
 from app.worker.platform_ids import PLATFORM_TENDER_PRO, compose_tender_id
 
 DEFAULT_BASE = "https://www2.tender.pro"
@@ -165,6 +166,38 @@ def parse_card_html(html: str, *, title_hint: str = "") -> dict[str, Any]:
     }
 
 
+def probe_tender_pro_cookies(
+    path: Path | None = None,
+    base_url: str = DEFAULT_BASE,
+    *,
+    on_retry=None,
+) -> str:
+    """ok | missing | expired — list endpoint probe (P14)."""
+    cookies_file = path or cookies_path()
+    if not cookies_file.is_file():
+        return "missing"
+    try:
+        with httpx.Client(
+            headers={"User-Agent": UA, "Accept-Language": "ru-RU,ru;q=0.9"},
+            follow_redirects=True,
+            timeout=60.0,
+        ) as client:
+            url = urljoin(base_url, LIST_PATH)
+            response = request_with_retry(
+                client,
+                "GET",
+                url,
+                params=list_query_params("probe", page=1, by=1),
+                on_retry=on_retry,
+            )
+            if response.status_code == 403:
+                return "expired"
+            response.raise_for_status()
+        return "ok"
+    except Exception:  # noqa: BLE001
+        return "expired"
+
+
 def scrape_list_page(
     *,
     good_name: str,
@@ -172,6 +205,7 @@ def scrape_list_page(
     page: int = 1,
     by: int = 25,
     client: httpx.Client | None = None,
+    on_retry=None,
 ) -> tuple[list[dict], int | None]:
     own = client is None
     if own:
@@ -183,8 +217,13 @@ def scrape_list_page(
     assert client is not None
     try:
         url = urljoin(base_url, LIST_PATH)
-        response = client.get(url, params=list_query_params(good_name, page=page, by=by))
-        response.raise_for_status()
+        response = request_with_retry(
+            client,
+            "GET",
+            url,
+            params=list_query_params(good_name, page=page, by=by),
+            on_retry=on_retry,
+        )
         rows, total = parse_list_html(response.text, base_url=base_url)
         return [asdict(r) for r in rows], total
     finally:
@@ -199,6 +238,7 @@ def scrape_queries(
     base_url: str = DEFAULT_BASE,
     should_stop=None,
     on_progress=None,
+    on_retry=None,
     client: httpx.Client | None = None,
     delay_s: float = 0.15,
 ) -> list[dict]:
@@ -230,6 +270,7 @@ def scrape_queries(
                     base_url=base_url,
                     page=page,
                     client=client,
+                    on_retry=on_retry,
                 )
                 if not batch:
                     break
@@ -270,6 +311,7 @@ def enrich_cards(
     delay_s: float = 0.2,
     should_stop=None,
     on_progress=None,
+    on_retry=None,
     client: httpx.Client | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Fetch public cards for L1–L3. card_ids may be prefixed or native."""
@@ -314,7 +356,7 @@ def enrich_cards(
             native = key.split(":", 1)[-1]
             url = str(row.get("url") or urljoin(base_url, VIEW_PATH.format(id=native)))
             try:
-                response = client.get(url)
+                response = request_with_retry(client, "GET", url, on_retry=on_retry)
                 if response.status_code == 403:
                     errors.append({"tender_id": key, "error": "http_403"})
                     row["card_error"] = "http_403"

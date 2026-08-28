@@ -68,6 +68,7 @@ export type TechStatus = {
   counters: { L1: number; L2: number; L3: number; noise: number };
   run_report: { new: number; already: number; updated: number; expired: number };
   ai_failures: number;
+  http_retries: number;
   session: "ok" | "expired" | "missing";
   sessions?: { rostender?: string; "tender-pro"?: string };
   run_dir: string;

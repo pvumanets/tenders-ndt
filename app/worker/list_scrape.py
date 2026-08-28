@@ -20,11 +20,13 @@ from bs4 import BeautifulSoup
 
 from app.worker.cookies import parse_netscape_cookies
 from app.worker.customer_name import clean_customer_name
+from app.worker.http_retry import request_with_retry
 
 DEFAULT_BASE = "https://rostender.info"
 SEARCH_QUERY = "неразрушающий"
 POOL_LIMIT = 0  # 0 = no product cap (P11); soft stop only when caller passes limit > 0
 MAX_PAGES = 500
+MAX_FILTERED_EMPTY_PAGES = 3  # P14: filtered-empty pages before stop
 MSK = ZoneInfo("Europe/Moscow")
 OPEN_STATE = "10"  # Приём заявок
 SORT_NEWEST = "0"
@@ -140,10 +142,9 @@ def is_open_upcoming(art, *, now: datetime | None = None) -> bool:
     return parsed.date() >= day
 
 
-def _start_search(client: httpx.Client, query: str) -> str:
+def _start_search(client: httpx.Client, query: str, *, on_retry=None) -> str:
     """POST advanced search: open lots only, deadline from today, newest first."""
-    r = client.get("/extsearch/advanced")
-    r.raise_for_status()
+    r = request_with_retry(client, "GET", "/extsearch/advanced", on_retry=on_retry)
     _assert_authorized(r.text, str(r.url))
     soup = BeautifulSoup(r.text, "lxml")
     form = soup.select_one("#tenders-search-form")
@@ -164,8 +165,13 @@ def _start_search(client: httpx.Client, query: str) -> str:
         "sort_alias": "new-first",
         "open_data": "1",
     }
-    r2 = client.post("/search/tenders", data=data)
-    r2.raise_for_status()
+    r2 = request_with_retry(
+        client,
+        "POST",
+        "/search/tenders",
+        data=data,
+        on_retry=on_retry,
+    )
     _assert_authorized(r2.text, str(r2.url))
     return str(r2.url)
 
@@ -180,11 +186,16 @@ def _parse_customer(art) -> str | None:
     return clean_customer_name(raw)
 
 
-def _parse_rows(html: str, base_url: str, *, now: datetime | None = None) -> list[TenderRow]:
+def _parse_rows_meta(
+    html: str, base_url: str, *, now: datetime | None = None
+) -> tuple[list[TenderRow], int]:
+    """Return (open/upcoming rows, raw article.tender-row count in HTML)."""
     soup = BeautifulSoup(html, "lxml")
+    articles = soup.select("article.tender-row")
+    raw_count = len(articles)
     rows: list[TenderRow] = []
     seen: set[str] = set()
-    for art in soup.select("article.tender-row"):
+    for art in articles:
         a = art.select_one('a[href*="-tender-"]')
         if not a:
             continue
@@ -227,7 +238,39 @@ def _parse_rows(html: str, base_url: str, *, now: datetime | None = None) -> lis
                 status=status,
             )
         )
+    return rows, raw_count
+
+
+def _parse_rows(html: str, base_url: str, *, now: datetime | None = None) -> list[TenderRow]:
+    rows, _ = _parse_rows_meta(html, base_url, now=now)
     return rows
+
+
+def probe_rostender_cookies(
+    cookies_path: Path,
+    base_url: str = DEFAULT_BASE,
+    *,
+    on_retry=None,
+) -> str:
+    """ok | missing | expired — live session probe (P14)."""
+    if not cookies_path.is_file():
+        return "missing"
+    if not _cookie_dict(cookies_path):
+        return "missing"
+    try:
+        with _client(cookies_path, base_url) as client:
+            r = request_with_retry(
+                client,
+                "GET",
+                "/extsearch/advanced",
+                on_retry=on_retry,
+            )
+            _assert_authorized(r.text, str(r.url))
+        return "ok"
+    except AuthError:
+        return "expired"
+    except Exception:  # noqa: BLE001
+        return "expired"
 
 
 def scrape_list(
@@ -239,6 +282,7 @@ def scrape_list(
     headless: bool = True,  # kept for CLI compat; unused (HTTP transport)
     should_stop=None,
     on_progress=None,
+    on_retry=None,
 ) -> list[dict]:
     del headless  # noqa: ARG001 — CLI flag retained
     if not cookies_path.is_file():
@@ -252,22 +296,34 @@ def scrape_list(
     seen: set[str] = set()
 
     with _client(cookies_path, base_url) as client:
-        results_url = _start_search(client, query)
+        results_url = _start_search(client, query, on_retry=on_retry)
         page_num = 1
+        filtered_empty_streak = 0
         while page_num <= MAX_PAGES and (cap is None or len(results) < cap):
             if should_stop and should_stop():
                 break
             if page_num == 1:
-                r = client.get(results_url)
+                r = request_with_retry(client, "GET", results_url, on_retry=on_retry)
             else:
                 sep = "&" if "?" in results_url else "?"
                 base_q = re.sub(r"([&?])page=\d+", r"\1", results_url).rstrip("&?")
-                r = client.get(f"{base_q}{sep}page={page_num}")
-            r.raise_for_status()
+                r = request_with_retry(
+                    client,
+                    "GET",
+                    f"{base_q}{sep}page={page_num}",
+                    on_retry=on_retry,
+                )
             _assert_authorized(r.text, str(r.url))
-            batch = _parse_rows(r.text, base_url)
-            if not batch:
+            batch, raw_count = _parse_rows_meta(r.text, base_url)
+            if raw_count == 0:
                 break
+            if not batch:
+                filtered_empty_streak += 1
+                if filtered_empty_streak >= MAX_FILTERED_EMPTY_PAGES:
+                    break
+                page_num += 1
+                continue
+            filtered_empty_streak = 0
             new = 0
             for row in batch:
                 if row.tender_id in seen:
@@ -280,7 +336,8 @@ def scrape_list(
             if on_progress:
                 on_progress(len(results), progress_total)
             if new == 0:
-                break
+                page_num += 1
+                continue
             page_num += 1
 
     if cap is None:
@@ -296,6 +353,7 @@ def scrape_queries(
     base_url: str = DEFAULT_BASE,
     should_stop=None,
     on_progress=None,
+    on_retry=None,
 ) -> list[dict]:
     """Union of keyword searches, deduped by tender_id; soft-capped only if limit > 0."""
     cap = None if int(limit or 0) <= 0 else int(limit)
@@ -314,6 +372,7 @@ def scrape_queries(
             query=query,
             limit=remaining,
             should_stop=should_stop,
+            on_retry=on_retry,
             on_progress=lambda n, _lim, offset=len(combined): on_progress(
                 offset + n, progress_total
             )

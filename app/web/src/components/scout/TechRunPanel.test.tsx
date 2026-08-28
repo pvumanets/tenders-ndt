@@ -21,6 +21,7 @@ const idle: TechStatus = {
   counters: { L1: 0, L2: 0, L3: 0, noise: 0 },
   run_report: { new: 0, already: 0, updated: 0, expired: 0 },
   ai_failures: 0,
+  http_retries: 0,
   session: "ok",
   run_dir: "",
   queue: [],

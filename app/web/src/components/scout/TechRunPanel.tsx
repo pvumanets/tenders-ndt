@@ -142,6 +142,9 @@ export default function TechRunPanel({
           <Typography variant="body2" color="text.secondary">
             Список: {status.list_done} / {status.list_total} · Карточки: {status.cards_done} /{" "}
             {status.cards_total}
+            {status.http_retries > 0
+              ? ` · ${copy.http_retries_label}: ${status.http_retries}`
+              : ""}
           </Typography>
         </Box>
         <Box>

@@ -105,7 +105,7 @@
 - **Что:** [`pipeline.py`](../../app/scoring/pipeline.py) — `assign_tier(title)` только. Карточки (P3) для L1–L3; после enrich **нет** повторного score.
 - **Риск:** Tender.Pro: title «Мебель», ВИК в goods — остаётся pool/noise. Rostender: слабый title, сильное описание — не спасается.
 - **Evidence:** [`tender_pro.py`](../../app/worker/tender_pro.py) enrich; probe [`tender-pro-probe.md`](./tender-pro-probe.md).
-- **Mitigation:** Re-score после card/goods; или fetch cards для borderline pool; ИИ (029) частично закрывает, но только score≥4 **новые**.
+- **Mitigation:** Re-score после card/goods — **done** (031/P14). ИИ (029) — отдельный контур.
 
 ### S2. Cap 1000 + multi-query starvation
 
@@ -117,24 +117,24 @@
 
 - **Что:** Если после фильтра open/upcoming страница дала 0 строк — цикл **прерывается**, хотя дальше могут быть открытые лоты.
 - **Evidence:** [`list_scrape.py`](../../app/worker/list_scrape.py) ~266–280.
-- **Mitigation:** Различать «нет HTML» vs «все отфильтрованы»; N пустых filtered pages перед stop.
+- **Mitigation:** Различать «нет HTML» vs «все отфильтрованы»; N пустых filtered pages перед stop — **done** (031/P14).
 
 ### S4. Cookies: file exists ≠ session OK
 
 - **Что:** Missing rostender cookies → step **`skipped`**, queue continues. `refresh_session()` проверяет **наличие файла**, не живую сессию. Overall run часто **`done`** после step errors.
 - **Evidence:** [`runner.py`](../../app/api/runner.py) L253–264; [`auth-cookies.md`](../delivery/auth-cookies.md).
-- **Mitigation:** Probe HTTP перед queue; fail-closed option; overall `partial` при skip/error.
+- **Mitigation:** Probe HTTP перед queue; overall `partial` при skip/error — **done** (031/P14).
 
 ### S5. Нет HTTP retry 429/5xx
 
 - **Что:** `raise_for_status()`; delays 0.15–0.25s; transient blip → пустой/partial list.
-- **Mitigation:** Bounded retries; счётчик в Tech.
+- **Mitigation:** Bounded retries; счётчик в Tech — **done** (031/P14).
 
 ### S6. Soft stop до P3 → пустой ingest
 
 - **Что:** Stop after P1/P2 → ingest `stopped` с **пустыми** rows; scored pool выбрасывается.
 - **Evidence:** [`runner.py`](../../app/api/runner.py) L288–291, L308–310.
-- **Mitigation:** Ingest score≥4 из scored list даже при stop после P2.
+- **Mitigation:** Ingest L1–L3 из scored list при stop после P2 — **done** (031/P14).
 
 ### S7. ИИ (план 029): fail-open в L3
 
