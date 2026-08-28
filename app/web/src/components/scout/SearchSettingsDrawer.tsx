@@ -127,6 +127,7 @@ export default function SearchSettingsDrawer({
           >
             <MenuItem value="rostender">{copy.platform_rostender}</MenuItem>
             <MenuItem value="tender-pro">{copy.platform_tender_pro}</MenuItem>
+            <MenuItem value="roseltorg">{copy.platform_roseltorg}</MenuItem>
           </TextField>
           <TextField
             size="small"
@@ -150,6 +151,11 @@ export default function SearchSettingsDrawer({
           {draft.platform_id === "tender-pro" ? (
             <Typography variant="caption" color="text.secondary">
               {copy.searches_tender_pro_docs}
+            </Typography>
+          ) : null}
+          {draft.platform_id === "roseltorg" ? (
+            <Typography variant="caption" color="text.secondary">
+              {copy.searches_roseltorg_docs}
             </Typography>
           ) : null}
           <TextField

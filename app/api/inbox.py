@@ -131,7 +131,10 @@ def _effective_tier(lot: Lot, state: LotState | None) -> str:
 
 
 def _in_pool(lot: Lot) -> bool:
-    return lot.tier in INBOX_TIERS
+    if lot.tier not in INBOX_TIERS:
+        return False
+    # Align with list_inbox: undated lots are not on the operator surface.
+    return deadline_date(lot.deadline_msk) is not None
 
 
 def _in_date_range(value: date | None, start: date | None, end: date | None) -> bool:

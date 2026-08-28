@@ -47,9 +47,13 @@ async def lifespan(_app: FastAPI):
     runner.refresh_session()
     bootstrap_users()
     try:
-        from app.api.search_queue_sync import sync_tender_pro_queue_from_cookies
+        from app.api.search_queue_sync import (
+            sync_roseltorg_queue_from_credentials,
+            sync_tender_pro_queue_from_cookies,
+        )
 
         sync_tender_pro_queue_from_cookies()
+        sync_roseltorg_queue_from_credentials()
     except Exception:  # noqa: BLE001 — startup must not die on optional sync
         pass
     yield
@@ -123,7 +127,7 @@ def api_health():
 
 @app.get("/api/status")
 def api_status():
-    runner.refresh_session()
+    runner.refresh_session(probe_roseltorg_live=False)
     return STATE.snapshot()
 
 

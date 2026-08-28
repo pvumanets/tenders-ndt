@@ -5,6 +5,7 @@ from pathlib import Path
 
 PLATFORM_ROSTENDER = "rostender"
 PLATFORM_TENDER_PRO = "tender-pro"
+PLATFORM_ROSELTORG = "roseltorg"
 
 _VOLUME_SEP = "__"
 

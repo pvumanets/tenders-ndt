@@ -281,6 +281,7 @@ function parseQueue(raw: QueueStep[] | undefined): QueueStep[] {
 export function platformLabel(platformId: string): string {
   if (platformId === "tender-pro") return copy.platform_tender_pro;
   if (platformId === "rostender") return copy.platform_rostender;
+  if (platformId === "roseltorg") return copy.platform_roseltorg;
   return platformId;
 }
 
@@ -311,6 +312,17 @@ export function rostenderSessionCopy(session: TechStatus["session"]): string {
   if (session === "ok") return copy.session_rostender_ok;
   if (session === "expired") return copy.session_rostender_expired;
   return copy.session_rostender_missing;
+}
+
+export function roseltorgSessionCopy(
+  session: string | undefined,
+): string {
+  if (session === "ok") return copy.session_roseltorg_ok;
+  if (session === "expired") return copy.session_roseltorg_expired;
+  if (session === "missing_cookies" || session === "missing") {
+    return copy.session_roseltorg_missing;
+  }
+  return copy.session_roseltorg;
 }
 
 export type SearchWrite = {

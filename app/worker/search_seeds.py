@@ -15,6 +15,10 @@ _SEED_IDS = {
     "tp-abbr": UUID("aaaaaaaa-bbbb-4ccc-8ddd-0000000000b2"),
     "tp-ctrl": UUID("aaaaaaaa-bbbb-4ccc-8ddd-0000000000b3"),
     "tp-insure": UUID("aaaaaaaa-bbbb-4ccc-8ddd-0000000000b4"),
+    "re-methods": UUID("aaaaaaaa-bbbb-4ccc-8ddd-0000000000c1"),
+    "re-abbr": UUID("aaaaaaaa-bbbb-4ccc-8ddd-0000000000c2"),
+    "re-ctrl": UUID("aaaaaaaa-bbbb-4ccc-8ddd-0000000000c3"),
+    "re-insure": UUID("aaaaaaaa-bbbb-4ccc-8ddd-0000000000c4"),
 }
 
 # Legacy rows from 0003_searches
@@ -58,8 +62,12 @@ def _exclude_d_full() -> list[str]:
     return out
 
 
-def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any]]:
-    """Rostender A–E in queue; Tender.Pro packages (queue gated by cookies)."""
+def search_seed_rows(
+    *,
+    tender_pro_in_queue: bool = False,
+    roseltorg_in_queue: bool = False,
+) -> list[dict[str, Any]]:
+    """Rostender A–E in queue; Tender.Pro / Росэлторг packages gated by session."""
     rostender = [
         {
             "id": _SEED_IDS["rt-a"],
@@ -181,4 +189,55 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
             "sort_order": 13,
         },
     ]
-    return rostender + tender_pro
+    roseltorg = [
+        {
+            "id": _SEED_IDS["re-methods"],
+            "name": "Росэлторг — методы",
+            "platform_id": "roseltorg",
+            "queries": [
+                "ультразвуковой контроль",
+                "визуально-измерительный",
+                "капиллярный",
+                "радиографический",
+            ],
+            "exclude": _exclude_supply(),
+            "limit_n": _DEFAULT_LIMIT,
+            "in_queue": roseltorg_in_queue,
+            "sort_order": 20,
+        },
+        {
+            "id": _SEED_IDS["re-abbr"],
+            "name": "Росэлторг — аббревиатуры",
+            "platform_id": "roseltorg",
+            "queries": ["ВИК", "ПВК", "УЗК", "НК"],
+            "exclude": _exclude_supply(),
+            "limit_n": _DEFAULT_LIMIT,
+            "in_queue": roseltorg_in_queue,
+            "sort_order": 21,
+        },
+        {
+            "id": _SEED_IDS["re-ctrl"],
+            "name": "Росэлторг — контроли",
+            "platform_id": "roseltorg",
+            "queries": [
+                "принимающий контроль",
+                "приёмочный контроль",
+                "входной контроль",
+            ],
+            "exclude": _exclude_supply(),
+            "limit_n": _DEFAULT_LIMIT,
+            "in_queue": roseltorg_in_queue,
+            "sort_order": 22,
+        },
+        {
+            "id": _SEED_IDS["re-insure"],
+            "name": "Росэлторг — страховка",
+            "platform_id": "roseltorg",
+            "queries": ["контроль сварн", "диагностирование", "неразрушающий контроль"],
+            "exclude": _exclude_supply(),
+            "limit_n": _DEFAULT_LIMIT,
+            "in_queue": roseltorg_in_queue,
+            "sort_order": 23,
+        },
+    ]
+    return rostender + tender_pro + roseltorg

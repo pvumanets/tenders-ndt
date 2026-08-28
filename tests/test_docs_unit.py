@@ -145,11 +145,13 @@ def test_download_docs_saves_score_ge_4_skips_l3(
             {
                 "tender_id": "rostender:45289101",
                 "score": 7,
+                "tier": "L1",
                 "doc_links": [{"name": "TZ.pdf", "url": "https://x/download/1"}],
             },
             {
                 "tender_id": "rostender:low",
                 "score": 3,
+                "tier": "noise",
                 "doc_links": [{"name": "nope.pdf", "url": "https://x/download/2"}],
             },
         ],
@@ -171,6 +173,7 @@ def test_download_docs_saves_score_ge_4_skips_l3(
             {
                 "tender_id": "rostender:45289101",
                 "score": 7,
+                "tier": "L1",
                 "doc_links": [{"name": "TZ.pdf", "url": "https://x/download/1"}],
             }
         ],

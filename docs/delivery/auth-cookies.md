@@ -1,12 +1,13 @@
 # Auth: два контура
 
 **status:** accepted  
-**last-review-date:** 2026-08-19  
+**last-review-date:** 2026-08-28  
 **архитектура:** [`tech-architecture.md`](./tech-architecture.md)  
 **API Scout:** [`sales-inbox-api.md`](./sales-inbox-api.md)  
+**реестр площадок:** [`../discovery/platforms.md`](../discovery/platforms.md)  
 **фазы:** P5.2 (Scout login), worker cookies — как P1
 
-Это **не** один механизм. Путать логин директора (Scout) и сессию ЭТП (rostender / СИБУР / OnlineContract / Tender.Pro) нельзя.
+Это **не** один механизм. Путать логин директора (Scout) и сессию ЭТП (rostender / Tender.Pro / B2B / Росэлторг / …) нельзя.
 
 ---
 
@@ -53,17 +54,28 @@
 
 ## 3. Другие ЭТП — cookies worker (NEXT+)
 
-Тот же паттерн, что rostender: Netscape-файл в корне, **gitignore** `cookies*.txt`, в markdown только путь и имена cookie.
+Тот же паттерн, что rostender: Netscape-файл в корне, **gitignore** `cookies*.txt`, в markdown только путь и имена переменных. Значения cookie и пароли сюда не писать.
+
+### As-is / с учёткой (owner 2026-08-28)
+
+| Площадка | Файл cookies | Переменные (имена в `.env`) | Зонд / статус |
+| --- | --- | --- | --- |
+| Tender.Pro (`tender-pro`) | `./cookies.tender-pro.txt` | `TENDER_PRO_COOKIES_FILE` (логин/пароль **не** в env) | [`../discovery/tender-pro-probe.md`](../discovery/tender-pro-probe.md) · адаптер [024](./tasks/024-tender-pro-adapter.md) |
+| B2B-Center (`b2b-center`) | `./cookies.b2b-center.txt` | `B2B_CENTER_USER` / `B2B_CENTER_PASSWORD` / `B2B_CENTER_COOKIES_FILE` | account · зонд/адаптер позже |
+| Росэлторг (`roseltorg`) | `./cookies.roseltorg.txt` (опц.) | `ROSELTORG_USER` / `ROSELTORG_PASSWORD` / `ROSELTORG_COOKIES_FILE` | **канон списка = логин ELK** (password grant → CORP Bearer); cookies alone ≠ сессия · зонд [`../discovery/roseltorg-probe.md`](../discovery/roseltorg-probe.md) · адаптер [040](./tasks/040-roseltorg-adapter.md) |
+| OilB2B (`oilb2bcs`) | `./cookies.oilb2bcs.txt` | `OILB2BCS_USER` / `OILB2BCS_PASSWORD` / `OILB2BCS_COOKIES_FILE` | account · зонд/адаптер позже |
+| Северсталь (`severstal`) | `./cookies.severstal.txt` | `SEVERSTAL_USER` / `SEVERSTAL_PASSWORD` / `SEVERSTAL_COOKIES_FILE` | account · портал `procurement.severstal.com` |
+
+Worker as-is читает `cookies.rostender.txt`, `TENDER_PRO_COOKIES_FILE` и **Росэлторг** через `ROSELTORG_USER`/`PASSWORD` (ELK Bearer). Список Tender.Pro идёт и без cookies; **файлы** лотов rostender/TP — с живой сессией. Остальные `*_COOKIES_FILE` — после зонда и адаптера. Не путать со Scout login.
+
+### Parked (нет учётки в актуальном перечне)
 
 | Площадка | Файл | Переменная (имя) | Зонд |
 | --- | --- | --- | --- |
 | СИБУР SRM (`sibur-srm`) | `./cookies.sibur.txt` | `SIBUR_COOKIES_FILE` | [`../discovery/sibur-srm-probe.md`](../discovery/sibur-srm-probe.md) |
-| OnlineContract (`onlinecontract`) | `./cookies.onlinecontract.txt` | `ONLINECONTRACT_COOKIES_FILE` | [`../discovery/onlinecontract-probe.md`](../discovery/onlinecontract-probe.md) |
-| Tender.Pro (`tender-pro`) | `./cookies.tender-pro.txt` | `TENDER_PRO_COOKIES_FILE` | [`../discovery/tender-pro-probe.md`](../discovery/tender-pro-probe.md) |
+| OnlineContract (`onlinecontract`) | `./cookies.onlinecontract.txt` | `ONLINECONTRACT_COOKIES_FILE` (+ `ONLINECONTRACT_USER` / `ONLINECONTRACT_PASSWORD`) | [`../discovery/onlinecontract-probe.md`](../discovery/onlinecontract-probe.md) |
 
-Учётка OnlineContract: имена `ONLINECONTRACT_USER` / `ONLINECONTRACT_PASSWORD` только в `.env`. Worker читает `cookies.rostender.txt` и после [024](./tasks/024-tender-pro-adapter.md) — `TENDER_PRO_COOKIES_FILE` **для скачивания файлов**; **список Tender.Pro идёт и без файла**. Не путать со Scout login. Значения cookie и пароли сюда не писать. Пароль Tender.Pro в env **не** заводим — только Netscape-файл.
-
-После утечки дампа в чат / зонда, который трогал NWBC `page_collection`: перелогин в ЛК площадки и свежий экспорт файла.
+После утечки дампа в чат / зонда, который трогал NWBC `page_collection`: перелогин в ЛК площадки и свежий экспорт файла. Учётки из перечня 2026-08-28 **не** считаем скомпрометированными без явной команды владельца.
 
 ## Запрещено
 

@@ -2,7 +2,7 @@
 
 **status:** active  
 **last-review-date:** 2026-08-28  
-**P17:** [036](./036-search-plus-minus.md) **done** · [037](./037-score-no-inject.md) **done** · [038](./038-ai-reviewed-tab.md) **done**  
+**P17:** [036](./036-search-plus-minus.md) **done** · [037](./037-score-no-inject.md) **done** · [038](./038-ai-reviewed-tab.md) **done** · **039** [ready](./039-ai-master-prompt.md)
 
 Владелец смотрит **эту таблицу**. Карточка = детали и acceptance. Cursor Plans ≠ канон.
 
@@ -58,6 +58,8 @@
 | 036 | Поиск v2: плюс/минус по пакетам | task | done | NEXT+ | P17 | [036-search-plus-minus.md](./036-search-plus-minus.md) |
 | 037 | Скоринг: supply-минусы + без methods inject | task | done | NEXT+ | P18 | [037-score-no-inject.md](./037-score-no-inject.md) |
 | 038 | Вкладка «Разобрано с помощью ИИ» | task | done | NEXT+ | | [038-ai-reviewed-tab.md](./038-ai-reviewed-tab.md) |
+| 039 | Мастер-промпт ИИ + wire provod | task | ready | NEXT+ | | [039-ai-master-prompt.md](./039-ai-master-prompt.md) |
+| 040 | Адаптер Росэлторг CORP | task | done | NEXT+ | | [040-roseltorg-adapter.md](./040-roseltorg-adapter.md) |
 
 ### Очередь
 
@@ -72,4 +74,7 @@
 - **036** — поиск v2 плюс/минус — **done** (2026-08-28); wipe #4 RT-only.
 - **037** — supply exclude + no methods inject — **done** (P18 wipe #5, 2026-08-28).
 - **038** — вкладка ИИ вместо галочки — **done** (2026-08-28).
+- **039** — мастер-промпт ИИ (co-design + wire provod) — **ready**; session 1 scout-ai-prompt → owner Q1–Q5 → acceptance → code.
+- **040** — адаптер Росэлторг CORP — **done** (merge `feat/040-roseltorg-adapter`); VPS deploy — `--sync` + `--deploy` по команде.
+- **ЭТП учётки:** канон [`../../discovery/platforms.md`](../../discovery/platforms.md) + [`../auth-cookies.md`](../auth-cookies.md). Следующие адаптеры: B2B → OilB2B → Северсталь.
 - Порядок фаз: [`../next-phases.md`](../next-phases.md). **P13 wipe + полный прогон** — **done** (2026-08-27).
