@@ -25,8 +25,8 @@ _ARCHIVE_TEXT = re.compile(r"скачать одним архивом", re.I)
 _SKIP_HREF = re.compile(r"^(javascript:|mailto:|#)", re.I)
 
 METHOD_PATTERNS = [
-    ("УЗК", re.compile(r"ультразвуков|узк|\bук\b|узт", re.I)),
-    ("РК", re.compile(r"радиограф|\bрк\b|гаммаграф|рентген", re.I)),
+    ("УЗК", re.compile(r"ультразвуков|\bузк\b|узт", re.I)),
+    ("РК", re.compile(r"радиограф|рентген|гаммаграф", re.I)),
     ("ЦР", re.compile(r"цифров\w*\s+радиограф|\bцр\b", re.I)),
     ("ВИК", re.compile(r"\bвик\b|визуальн\w*\s+и\s+измерительн", re.I)),
     ("ПВК", re.compile(r"\bпвк\b|капиллярн|цветн\w*\s+дефектоскоп|проникающ", re.I)),

@@ -1,7 +1,7 @@
 # Фазы разработки NEXT+ (после P7)
 
 **status:** draft  
-**last-review-date:** 2026-08-27  
+**last-review-date:** 2026-08-28  
 **решения владельца:** [`../discovery/owner-decisions.md`](../discovery/owner-decisions.md)  
 **уже сделано:** [`code-phases.md`](./code-phases.md) · [`platform-phases.md`](./platform-phases.md) (P0–P7 **done**; 022–026 **done**)  
 **таски:** [`tasks/README.md`](./tasks/README.md)  
@@ -30,6 +30,7 @@
 | **P12** | Синхрон канона API с lock | **done** | [032](./tasks/032-api-canon-sync.md) |
 | **P13** | Wipe прода + чистый прогон | **done** | ops после P8–P11 на `main` |
 | **P14** | Укрепление скрейпа | **done** | [031](./tasks/031-scrape-hardening.md) |
+| **P15** | Без УК/РК + wipe #2 | **doing** | [033](./tasks/033-no-uk-rk-keywords.md) |
 | **P15+** | Дальний хвост | backlog | cron, ЭТП, Bitrix, роли, Excel |
 
 ```text
@@ -41,6 +42,8 @@ P12 (канон API)
                     P13 wipe + полный прогон
                          ↓
                     P14 (031)
+                         ↓
+                    P15 (033) + wipe #2
                          ↓
                     P15+ …
 ```
