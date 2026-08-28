@@ -2,7 +2,7 @@
 
 **status:** active  
 **last-review-date:** 2026-08-28  
-**P17:** [036](./036-search-plus-minus.md) **done** · [037](./037-score-no-inject.md) **done**  
+**P17:** [036](./036-search-plus-minus.md) **done** · [037](./037-score-no-inject.md) **done** · [038](./038-ai-reviewed-tab.md) **done**  
 
 Владелец смотрит **эту таблицу**. Карточка = детали и acceptance. Cursor Plans ≠ канон.
 
@@ -57,6 +57,7 @@
 | 035 | Строительный контроль не в Горячих | task | done | NEXT+ | | [035-no-build-control-hot.md](./035-no-build-control-hot.md) |
 | 036 | Поиск v2: плюс/минус по пакетам | task | done | NEXT+ | P17 | [036-search-plus-minus.md](./036-search-plus-minus.md) |
 | 037 | Скоринг: supply-минусы + без methods inject | task | done | NEXT+ | P18 | [037-score-no-inject.md](./037-score-no-inject.md) |
+| 038 | Вкладка «Разобрано с помощью ИИ» | task | done | NEXT+ | | [038-ai-reviewed-tab.md](./038-ai-reviewed-tab.md) |
 
 ### Очередь
 
@@ -70,4 +71,5 @@
 - **035** — строительный контроль → L3, убрать из сидов — **done** (2026-08-28); **deprecated** при коде 036 — см. [`search-system-v2.md`](../../discovery/search-system-v2.md).
 - **036** — поиск v2 плюс/минус — **done** (2026-08-28); wipe #4 RT-only.
 - **037** — supply exclude + no methods inject — **done** (P18 wipe #5, 2026-08-28).
+- **038** — вкладка ИИ вместо галочки — **done** (2026-08-28).
 - Порядок фаз: [`../next-phases.md`](../next-phases.md). **P13 wipe + полный прогон** — **done** (2026-08-27).

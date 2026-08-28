@@ -207,10 +207,6 @@ export default function InboxCommandBar({
   onIngestedTo,
   view,
   onView,
-  aiReviewedOnly,
-  onAiReviewedOnly,
-  onAiReview,
-  aiBusy = false,
 }: {
   unreadOnly: boolean;
   onUnreadOnly: (v: boolean) => void;
@@ -232,10 +228,6 @@ export default function InboxCommandBar({
   onIngestedTo: (v: string) => void;
   view: ViewMode;
   onView: (v: ViewMode) => void;
-  aiReviewedOnly: boolean;
-  onAiReviewedOnly: (v: boolean) => void;
-  onAiReview: () => void;
-  aiBusy?: boolean;
 }) {
   const [priorityEl, setPriorityEl] = useState<HTMLElement | null>(null);
   const [deadlineEl, setDeadlineEl] = useState<HTMLElement | null>(null);
@@ -304,28 +296,6 @@ export default function InboxCommandBar({
           >
             {copy.filter_unread}
           </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => onAiReviewedOnly(!aiReviewedOnly)}
-            startIcon={
-              <Checkbox
-                checked={aiReviewedOnly}
-                size="small"
-                tabIndex={-1}
-                disableRipple
-                sx={{ p: 0, pointerEvents: "none", "& .MuiSvgIcon-root": { fontSize: 16 } }}
-              />
-            }
-            sx={{
-              flexShrink: 0,
-              width: { xs: "100%", md: "auto" },
-              bgcolor: aiReviewedOnly ? stripe.blurpleSoft : stripe.surface,
-              color: aiReviewedOnly ? stripe.blurple : stripe.text,
-            }}
-          >
-            {copy.filter_ai_reviewed}
-          </Button>
           <FilterTriggerButton
             label={copy.filter_menu}
             badgeContent={priority.length}
@@ -361,15 +331,6 @@ export default function InboxCommandBar({
               {copy.view_table}
             </ToggleButton>
           </ToggleButtonGroup>
-          <Button
-            variant="contained"
-            size="small"
-            disabled={aiBusy}
-            onClick={onAiReview}
-            sx={{ flexShrink: 0 }}
-          >
-            {aiBusy ? copy.action_ai_review_busy : copy.action_ai_review}
-          </Button>
         </ViewCommandBar.End>
       </ViewCommandBar>
 

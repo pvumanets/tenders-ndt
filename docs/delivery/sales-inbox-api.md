@@ -63,7 +63,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | --- | --- | --- |
 | `POST` | `/api/inbox/ai-review` | body `{ "tender_ids"?: string[] }` — пусто = очередь без успешного review; ответ `{ processed, failed, items }` |
 | `POST` | `/api/inbox/{id}/ai-wrong` | body `{ "note"?: string }` — журнал «ИИ ошибся» |
-| `GET` | `/api/inbox?ai_reviewed=1` | раздел «Разобрано с помощью ИИ» |
+| `GET` | `/api/inbox?ai_reviewed=1` | вкладка «Разобрано с помощью ИИ» (доска по `ai_tier`; «Лоты» — без этого фильтра, колонки по rules) |
 
 Сбой → `ai_error`, tier правил не меняется. `GET /api/status` может нести `ai_failures` (накопитель сбоев с последнего review-батча / сессии UI). Docs download — для лотов пула L1–L3.
 

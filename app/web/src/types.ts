@@ -1,6 +1,6 @@
 export type SalesTier = "L1" | "L2" | "L3";
 export type ViewMode = "cards" | "table";
-export type AppTab = "lots" | "run";
+export type AppTab = "lots" | "ai" | "run";
 
 export type DocFile = {
   name: string;
