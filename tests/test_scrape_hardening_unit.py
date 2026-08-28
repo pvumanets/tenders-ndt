@@ -44,20 +44,15 @@ def test_filtered_empty_streak_constant() -> None:
 
 
 @pytest.mark.unit
-def test_rescore_promotes_when_methods_present() -> None:
+def test_rescore_ignores_methods_field() -> None:
     base = [{"tender_id": "1", "title": "Мебель офисная", "rank": 1}]
     scored, _, _ = score_rows(base)
-    title_only_tier = scored[0]["tier"]
     row = dict(scored[0])
     row["card_fetched"] = True
     row["methods"] = "ВИК"
-    rescored, _, card_ids = rescore_rows([row])
-    assert rescored[0]["tier"] in {"L1", "L2", "L3", "noise", "pool"}
-    assert rescored[0]["score"] >= scored[0]["score"]
-    if title_only_tier in {"noise", "pool"}:
-        assert rescored[0]["tier"] in {"L1", "L2", "L3"} or rescored[0]["score"] > scored[0]["score"]
-    if rescored[0]["tier"] in {"L1", "L2", "L3"}:
-        assert rescored[0]["tender_id"] in card_ids
+    rescored, _, _ = rescore_rows([row])
+    assert rescored[0]["tier"] == scored[0]["tier"]
+    assert rescored[0]["score"] == scored[0]["score"]
 
 
 @pytest.mark.unit

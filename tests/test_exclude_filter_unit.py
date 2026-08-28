@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 from app.worker.exclude_filter import filter_rows_by_exclude, title_hits_exclude
-from app.worker.search_seeds import search_seed_rows
+from app.worker.search_seeds import _SUPPLY_EXCLUDE, search_seed_rows
 
 
 @pytest.mark.unit
@@ -43,8 +43,10 @@ def test_filter_rows_drops_zags_roof_keeps_kindergarten_radiography() -> None:
 def test_seed_package_d_plus_minus() -> None:
     d = next(r for r in search_seed_rows() if r["name"] == "РосТендер — контроли")
     assert "строительный контроль" in d["queries"]
-    for phrase in ("жилой", "кровля", "ЗАГС", "детсад", "дороги"):
+    for phrase in ("жилой", "кровля", "ЗАГС", "детсад", "дороги", "поставка", "закупка", "прибор"):
         assert phrase in d["exclude"]
     for row in search_seed_rows():
-        if row["name"] != "РосТендер — контроли":
-            assert row["exclude"] == []
+        if row["name"] == "РосТендер — контроли":
+            continue
+        for phrase in _SUPPLY_EXCLUDE:
+            assert phrase in row["exclude"], row["name"]

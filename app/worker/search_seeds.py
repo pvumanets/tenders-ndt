@@ -26,7 +26,7 @@ LEGACY_SEARCH_IDS = (
 # limit_n=0 → no product cap (soft unlimited)
 _DEFAULT_LIMIT = 0
 
-# Package D minus (search-system-v2)
+# Package D minus (search-system-v2) + supply minus on all packages (037)
 _RT_D_EXCLUDE = [
     "жилой",
     "жилых",
@@ -41,6 +41,21 @@ _RT_D_EXCLUDE = [
     "благоустройство",
     "дороги",
 ]
+_SUPPLY_EXCLUDE = ["поставка", "закупка", "прибор"]
+
+
+def _exclude_supply() -> list[str]:
+    return list(_SUPPLY_EXCLUDE)
+
+
+def _exclude_d_full() -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for phrase in _RT_D_EXCLUDE + _SUPPLY_EXCLUDE:
+        if phrase not in seen:
+            seen.add(phrase)
+            out.append(phrase)
+    return out
 
 
 def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any]]:
@@ -54,7 +69,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
                 "неразрушающий контроль",
                 "дефектоскопия",
             ],
-            "exclude": [],
+            "exclude": _exclude_supply(),
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": True,
             "sort_order": 1,
@@ -71,7 +86,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
                 "гаммаграфический контроль",
                 "толщинометрия ультразвуковая",
             ],
-            "exclude": [],
+            "exclude": _exclude_supply(),
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": True,
             "sort_order": 2,
@@ -81,7 +96,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
             "name": "РосТендер — аббревиатуры",
             "platform_id": "rostender",
             "queries": ["ВИК"],
-            "exclude": [],
+            "exclude": _exclude_supply(),
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": True,
             "sort_order": 3,
@@ -96,7 +111,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
                 "входной контроль",
                 "строительный контроль",
             ],
-            "exclude": list(_RT_D_EXCLUDE),
+            "exclude": _exclude_d_full(),
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": True,
             "sort_order": 4,
@@ -109,7 +124,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
                 "контроль сварных соединений",
                 "сварных соединений",
             ],
-            "exclude": [],
+            "exclude": _exclude_supply(),
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": True,
             "sort_order": 5,
@@ -126,7 +141,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
                 "капиллярный",
                 "радиографический",
             ],
-            "exclude": [],
+            "exclude": _exclude_supply(),
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": tender_pro_in_queue,
             "sort_order": 10,
@@ -136,7 +151,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
             "name": "Tender.Pro — аббревиатуры",
             "platform_id": "tender-pro",
             "queries": ["ВИК", "ПВК", "УЗК", "НК"],
-            "exclude": [],
+            "exclude": _exclude_supply(),
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": tender_pro_in_queue,
             "sort_order": 11,
@@ -150,7 +165,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
                 "приёмочный контроль",
                 "входной контроль",
             ],
-            "exclude": [],
+            "exclude": _exclude_supply(),
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": tender_pro_in_queue,
             "sort_order": 12,
@@ -160,7 +175,7 @@ def search_seed_rows(*, tender_pro_in_queue: bool = False) -> list[dict[str, Any
             "name": "Tender.Pro — страховка",
             "platform_id": "tender-pro",
             "queries": ["контроль сварн", "диагностирование"],
-            "exclude": [],
+            "exclude": _exclude_supply(),
             "limit_n": _DEFAULT_LIMIT,
             "in_queue": tender_pro_in_queue,
             "sort_order": 13,

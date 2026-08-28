@@ -131,7 +131,7 @@ def parse_card_html(html: str, title_hint: str = "") -> dict[str, Any]:
                 source_etp = ln
             break
 
-    methods = _detect_methods(title_hint + "\n" + blob[:2000])
+    methods = _detect_methods(title_hint)
 
     return {
         "status": status,
