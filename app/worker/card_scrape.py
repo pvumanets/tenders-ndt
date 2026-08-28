@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from app.worker.cookies import parse_netscape_cookies
 from app.worker.customer_name import clean_customer_name
 from app.worker.docs import sanitize_filename
+from app.worker.http_retry import request_with_retry
 from app.worker.list_scrape import AuthError, UA
 
 _FILE_EXT = re.compile(
@@ -212,6 +213,7 @@ def enrich_cards(
     delay_s: float = 0.25,
     should_stop=None,
     on_progress=None,
+    on_retry=None,
 ) -> tuple[list[dict], list[dict]]:
     """Return (enriched_rows, errors). Mutates copies of L1–L3 rows."""
     id_set = set(card_ids)
@@ -242,7 +244,7 @@ def enrich_cards(
                 errors.append({"tender_id": tid, "error": "no_url"})
                 continue
             try:
-                r = client.get(url)
+                r = request_with_retry(client, "GET", url, on_retry=on_retry)
                 if r.status_code == 403 or (
                     "403 Forbidden" in r.text and "administrative rules" in r.text
                 ):

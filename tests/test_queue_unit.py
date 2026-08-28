@@ -109,6 +109,52 @@ def test_queue_continues_after_tender_pro_error(
     assert snap["queue"][0]["status"] == "error"
     assert snap["queue"][1]["status"] == "done"
     assert snap["running"] is False
+    assert snap["phase"] == "partial"
+
+
+@pytest.mark.unit
+def test_soft_stop_after_p2_ingests_board_rows(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    ingested: list[dict] = []
+    real_score = runner.score_rows
+
+    def score_and_request_stop(rows: list[dict]):
+        scored, summary, card_ids = real_score(rows)
+        monkeypatch.setattr(runner.STATE, "should_stop", lambda: True)
+        return scored, summary, card_ids
+
+    monkeypatch.setattr(runner, "probe_rostender_cookies", lambda *_a, **_k: "ok")
+    monkeypatch.setattr(
+        runner,
+        "scrape_queries",
+        lambda **_kw: [{"tender_id": "99", "title": "Проведение неразрушающего контроля сварных швов"}],
+    )
+    monkeypatch.setattr(runner, "score_rows", score_and_request_stop)
+    def no_enrich(*_a, **_k):
+        raise AssertionError("P3 must not run")
+
+    monkeypatch.setattr(runner, "enrich_cards", no_enrich)
+    monkeypatch.setattr(runner, "_ingest_step", lambda **kw: ingested.append(kw))
+    monkeypatch.setattr(runner, "_cookies_path", lambda _p: tmp_path / "cookies.txt")
+    (tmp_path / "cookies.txt").write_text("dummy", encoding="utf-8")
+
+    status = runner._run_rostender(
+        item={
+            "id": str(uuid4()),
+            "name": "test",
+            "platform_id": "rostender",
+            "queries": ["узк"],
+            "limit_n": 0,
+        },
+        run_dir=tmp_path,
+    )
+    assert status == "cancelled"
+    assert ingested
+    board = ingested[-1]["rows"]
+    assert board
+    assert board[0]["tier"] in {"L1", "L2", "L3"}
 
 
 @pytest.mark.unit

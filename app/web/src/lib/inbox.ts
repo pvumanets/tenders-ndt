@@ -64,6 +64,7 @@ type StatusSnapshot = {
   counters?: Partial<TechStatus["counters"]> & { pool?: number };
   run_report?: Partial<TechStatus["run_report"]>;
   ai_failures?: number;
+  http_retries?: number;
   session?: string;
   sessions?: Record<string, string>;
   run_dir?: string | null;
@@ -238,6 +239,8 @@ function phaseLabel(phase: string): string {
       return copy.phase_artifacts;
     case "done":
       return copy.phase_done;
+    case "partial":
+      return copy.phase_partial;
     case "stopped":
       return copy.phase_stopped;
     case "error":
@@ -404,6 +407,7 @@ export function mapRunStatus(raw: StatusSnapshot): TechStatus {
       expired: raw.run_report?.expired ?? 0,
     },
     ai_failures: raw.ai_failures ?? 0,
+    http_retries: raw.http_retries ?? 0,
     session: sessionUi(raw.session),
     sessions: raw.sessions,
     run_dir: raw.run_dir ?? "",

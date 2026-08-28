@@ -12,13 +12,13 @@ from dotenv import load_dotenv
 
 from app.api import searches as searches_api
 from app.api.state import STATE
-from app.scoring.pipeline import score_rows
+from app.scoring.pipeline import rescore_rows, score_rows
 from app.worker import tender_pro as tender_pro_worker
 from app.worker.artifacts import write_artifacts
 from app.worker.card_scrape import enrich_cards
 from app.worker.docs import download_docs_enabled, download_inbox_docs
 from app.worker.ingest import ingest_run, redact_db_error, snapshot_expired_tender_ids
-from app.worker.list_scrape import AuthError, scrape_queries
+from app.worker.list_scrape import AuthError, probe_rostender_cookies, scrape_queries
 from app.worker.platform_ids import (
     PLATFORM_ROSTENDER,
     PLATFORM_TENDER_PRO,
@@ -27,6 +27,8 @@ from app.worker.platform_ids import (
 
 _thread: threading.Thread | None = None
 _lock = threading.Lock()
+_BAD_STEP = frozenset({"skipped", "error", "cancelled"})
+_BOARD_TIERS = frozenset({"L1", "L2", "L3"})
 
 
 def _repo_root() -> Path:
@@ -45,14 +47,59 @@ def _cookies_path(platform_id: str = PLATFORM_ROSTENDER) -> Path:
     return path
 
 
+def _http_retry_callback(attempt: int, status_code: int) -> None:
+    STATE.add_http_retry()
+    STATE.log_msg(f"HTTP retry #{attempt} (status {status_code})", level="warn")
+
+
+def _board_rows(scored: list[dict]) -> list[dict]:
+    return [row for row in scored if str(row.get("tier") or "") in _BOARD_TIERS]
+
+
+def _apply_rescore_counter_delta(old: dict, new: dict) -> None:
+    delta: dict[str, int] = {}
+    for key in ("L1", "L2", "L3", "noise", "pool"):
+        diff = int(new.get(key, 0) or 0) - int(old.get(key, 0) or 0)
+        if diff:
+            delta[key] = diff
+    if delta:
+        STATE.add_counters(delta)
+
+
+def _write_scored_bundle(run_dir: Path, rows: list[dict], summary: dict, card_ids: list[str]) -> None:
+    (run_dir / "scored-list.json").write_text(
+        json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (run_dir / "tier-summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (run_dir / "card-ids.json").write_text(
+        json.dumps(card_ids, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+
 def refresh_session() -> str:
     rostender = _cookies_path(PLATFORM_ROSTENDER)
-    if not rostender.is_file():
+    base = os.getenv("ROSTENDER_BASE_URL", "https://rostender.info")
+    probe = probe_rostender_cookies(rostender, base, on_retry=_http_retry_callback)
+    if probe == "missing":
         STATE.set_session("missing_cookies")
+    elif probe == "expired":
+        STATE.set_session("expired")
     else:
         STATE.set_session("ok")
-    # List is public; file optional (docs only).
-    STATE.set_session("ok", platform_id=PLATFORM_TENDER_PRO)
+
+    tp_cookies = _cookies_path(PLATFORM_TENDER_PRO)
+    tp_base = os.getenv("TENDER_PRO_BASE_URL", tender_pro_worker.DEFAULT_BASE)
+    tp_probe = tender_pro_worker.probe_tender_pro_cookies(
+        tp_cookies, tp_base, on_retry=_http_retry_callback
+    )
+    if tp_probe == "missing":
+        STATE.set_session("missing_cookies", platform_id=PLATFORM_TENDER_PRO)
+    elif tp_probe == "expired":
+        STATE.set_session("expired", platform_id=PLATFORM_TENDER_PRO)
+    else:
+        STATE.set_session("ok", platform_id=PLATFORM_TENDER_PRO)
     return STATE.snapshot()["session"]
 
 
@@ -207,11 +254,13 @@ def _run_queue(*, items: list[dict], run_dir: Path) -> None:
                 STATE.cancel_remaining(index + 1)
                 overall = "stopped"
                 break
-            if step_status == "error" and overall != "stopped":
-                overall = "done"
+            if step_status in _BAD_STEP and overall != "stopped":
+                overall = "partial"
         else:
             if overall == "done":
                 STATE.log_msg("Queue finished")
+            elif overall == "partial":
+                STATE.log_msg("Queue finished (partial)", level="warn")
         newly_expired = STATE.finalize_expired_report(snapshot_expired_tender_ids())
         STATE.log_msg(f"Ушли в просроченные: {newly_expired}")
     except Exception as exc:  # noqa: BLE001
@@ -268,9 +317,14 @@ def _finish_artifacts(
 
 def _run_rostender(*, item: dict, run_dir: Path) -> str:
     cookies = _cookies_path(PLATFORM_ROSTENDER)
-    if not cookies.is_file():
-        STATE.set_session("missing_cookies")
-        STATE.log_msg("Rostender cookies missing — skip step", level="warn")
+    base = os.getenv("ROSTENDER_BASE_URL", "https://rostender.info")
+    probe = probe_rostender_cookies(cookies, base, on_retry=_http_retry_callback)
+    if probe != "ok":
+        if probe == "missing":
+            STATE.set_session("missing_cookies")
+        else:
+            STATE.set_session("expired")
+        STATE.log_msg("Rostender session not ok — skip step", level="warn")
         _ingest_step(
             item=item,
             status="skipped",
@@ -278,7 +332,6 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
             started_at=datetime.now(timezone.utc),
         )
         return "skipped"
-    base = os.getenv("ROSTENDER_BASE_URL", "https://rostender.info")
     queries = [str(q) for q in (item.get("queries") or []) if str(q).strip()]
     limit = int(item.get("limit_n") or 0)
     started_at = datetime.now(timezone.utc)
@@ -293,6 +346,7 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
             queries=queries,
             limit=limit,
             should_stop=STATE.should_stop,
+            on_retry=_http_retry_callback,
             on_progress=lambda n, lim: STATE.set_list_progress(n, lim),
         )
         rows = prefix_rows(rows, PLATFORM_ROSTENDER)
@@ -323,7 +377,12 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
         STATE.log_msg(f"P2 done: tiers={summary} cards={len(card_ids)}")
         if STATE.should_stop():
             STATE.log_msg("Stopped after P2", level="warn")
-            _ingest_step(item=item, status="stopped", rows=[], started_at=started_at)
+            _ingest_step(
+                item=item,
+                status="stopped",
+                rows=_board_rows(scored),
+                started_at=started_at,
+            )
             return "cancelled"
 
         STATE.set_phase("P3")
@@ -334,20 +393,27 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
             cookies_path=cookies,
             delay_s=0.2,
             should_stop=STATE.should_stop,
+            on_retry=_http_retry_callback,
             on_progress=lambda d, t: STATE.set_cards_progress(d, t),
         )
-        (run_dir / "scored-list.json").write_text(
-            json.dumps(enriched, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        old_summary = dict(summary)
+        enriched, summary, card_ids = rescore_rows(enriched)
+        _apply_rescore_counter_delta(old_summary, summary)
+        _write_scored_bundle(run_dir, enriched, summary, card_ids)
         (run_dir / "cards-errors.json").write_text(
             json.dumps(errors, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        STATE.log_msg(f"P3 done: errors={len(errors)}")
+        STATE.log_msg(f"P3 done: errors={len(errors)}; re-score tiers={summary}")
         if STATE.should_stop():
             STATE.set_phase("P4")
             write_artifacts(run_dir, enriched)
             STATE.log_msg("Stopped during/after P3; partial artifacts written", level="warn")
-            _ingest_step(item=item, status="stopped", rows=enriched, started_at=started_at)
+            _ingest_step(
+                item=item,
+                status="stopped",
+                rows=_board_rows(enriched),
+                started_at=started_at,
+            )
             _download_docs(enriched, platform_id=PLATFORM_ROSTENDER)
             return "cancelled"
 
@@ -387,6 +453,30 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
 
 def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
     base = os.getenv("TENDER_PRO_BASE_URL", tender_pro_worker.DEFAULT_BASE)
+    tp_cookies = _cookies_path(PLATFORM_TENDER_PRO)
+    tp_probe = tender_pro_worker.probe_tender_pro_cookies(
+        tp_cookies, base, on_retry=_http_retry_callback
+    )
+    if tp_probe == "missing":
+        STATE.set_session("missing_cookies", platform_id=PLATFORM_TENDER_PRO)
+        STATE.log_msg("Tender.Pro cookies missing — skip step", level="warn")
+        _ingest_step(
+            item=item,
+            status="skipped",
+            rows=[],
+            started_at=datetime.now(timezone.utc),
+        )
+        return "skipped"
+    if tp_probe == "expired":
+        STATE.set_session("expired", platform_id=PLATFORM_TENDER_PRO)
+        STATE.log_msg("Tender.Pro session expired — skip step", level="warn")
+        _ingest_step(
+            item=item,
+            status="skipped",
+            rows=[],
+            started_at=datetime.now(timezone.utc),
+        )
+        return "skipped"
     queries = [str(q) for q in (item.get("queries") or []) if str(q).strip()]
     limit = int(item.get("limit_n") or 0)
     started_at = datetime.now(timezone.utc)
@@ -400,6 +490,7 @@ def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
             limit=limit,
             base_url=base,
             should_stop=STATE.should_stop,
+            on_retry=_http_retry_callback,
             on_progress=lambda n, lim: STATE.set_list_progress(n, lim),
         )
         rows = prefix_rows(rows, PLATFORM_TENDER_PRO)
@@ -430,7 +521,12 @@ def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
         STATE.log_msg(f"P2 done: tiers={summary} cards={len(card_ids)}")
         if STATE.should_stop():
             STATE.log_msg("Stopped after P2", level="warn")
-            _ingest_step(item=item, status="stopped", rows=[], started_at=started_at)
+            _ingest_step(
+                item=item,
+                status="stopped",
+                rows=_board_rows(scored),
+                started_at=started_at,
+            )
             return "cancelled"
 
         STATE.set_phase("P3")
@@ -441,20 +537,27 @@ def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
             base_url=base,
             delay_s=0.2,
             should_stop=STATE.should_stop,
+            on_retry=_http_retry_callback,
             on_progress=lambda d, t: STATE.set_cards_progress(d, t),
         )
-        (run_dir / "scored-list.json").write_text(
-            json.dumps(enriched, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        old_summary = dict(summary)
+        enriched, summary, card_ids = rescore_rows(enriched)
+        _apply_rescore_counter_delta(old_summary, summary)
+        _write_scored_bundle(run_dir, enriched, summary, card_ids)
         (run_dir / "cards-errors.json").write_text(
             json.dumps(errors, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        STATE.log_msg(f"P3 done: errors={len(errors)}")
+        STATE.log_msg(f"P3 done: errors={len(errors)}; re-score tiers={summary}")
         if STATE.should_stop():
             STATE.set_phase("P4")
             write_artifacts(run_dir, enriched)
             STATE.log_msg("Stopped during/after P3; partial artifacts written", level="warn")
-            _ingest_step(item=item, status="stopped", rows=enriched, started_at=started_at)
+            _ingest_step(
+                item=item,
+                status="stopped",
+                rows=_board_rows(enriched),
+                started_at=started_at,
+            )
             _download_docs(enriched, platform_id=PLATFORM_TENDER_PRO)
             return "cancelled"
 

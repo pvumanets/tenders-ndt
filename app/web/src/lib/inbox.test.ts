@@ -84,6 +84,12 @@ describe("mapRunStatus", () => {
     const status = mapRunStatus({ phase: "done", running: false });
     expect(status.run_report).toEqual({ new: 0, already: 0, updated: 0, expired: 0 });
   });
+
+  it("maps partial phase and http_retries", () => {
+    const status = mapRunStatus({ phase: "partial", running: false, http_retries: 3 });
+    expect(status.phase_label).toBe(copy.phase_partial);
+    expect(status.http_retries).toBe(3);
+  });
 });
 
 describe("documentDownloadUrl", () => {

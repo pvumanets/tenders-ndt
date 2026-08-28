@@ -28,9 +28,11 @@ services:
       SCOUT_WEB_DIST: /app/web-dist
       SCOUT_LEGACY_HTML: ${SCOUT_LEGACY_HTML:-1}
       ROSTENDER_COOKIES_FILE: /app/cookies.rostender.txt
+      TENDER_PRO_COOKIES_FILE: /app/cookies.tender-pro.txt
     volumes:
       - ./runs:/app/runs
       - ./cookies.rostender.txt:/app/cookies.rostender.txt:ro
+      - ./cookies.tender-pro.txt:/app/cookies.tender-pro.txt:ro
       - docs_data:/data/docs
     depends_on:
       db:
