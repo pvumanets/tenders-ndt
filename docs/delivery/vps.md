@@ -18,6 +18,7 @@ Owner lock 2026-08-13: доступы **не считаем скомпромет
 | SSH alias | `tenders-ndt-vps` в `~/.ssh/config` (не в git) |
 | Scout/Postgres на сервере | `/opt/tenders-ndt/.env` (не в git) |
 | Cookies площадок | `/opt/tenders-ndt/cookies*.txt` (не в git) |
+| provod.ai (ИИ) | `PROVOD_API_KEY` в локальном `.env` → `--sync` на VPS |
 
 Агент читает `.env.vps` с диска. Не выводить значения. Не копировать пароль в md/skills/правила.  
 `--sync` — **только** чтобы заново залить секреты с ПК, не каждый деплой.

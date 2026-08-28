@@ -1,7 +1,7 @@
 # ИИ-проверка тира (отдельный шаг после прогона)
 
 **status:** draft  
-**last-review-date:** 2026-08-27  
+**last-review-date:** 2026-08-28  
 **owner lock (2026-08-27):** ИИ **не** при каждой загрузке; **отдельный шаг**; раздел «Разобрано с помощью ИИ»; журнал ошибок  
 **owner lock (2026-08-26):** провайдер **provod.ai**; запасные **модели того же API**  
 **тиры:** [`fit-tiers.md`](./fit-tiers.md)  
@@ -127,6 +127,20 @@
 - Не создаёт дубликаты
 - Не запускается автоматически при ingest (lock 2026-08-27)
 - Не ходит в API вне provod.ai
+
+---
+
+## Включение на проде (2026-08-28)
+
+1. `PROVOD_API_KEY=sk_…` в локальном `.env` (не в git).
+2. `python scripts/vps-bootstrap.py --sync` — ключ уезжает в `/opt/tenders-ndt/.env` (`COPY_ENV_KEYS` в [`scripts/vps-bootstrap.py`](../../scripts/vps-bootstrap.py)).
+3. Проверка на VPS (без печати ключа): `provod True` в api-контейнере.
+4. Inbox → **«Разобрать с ИИ»** (или `POST /api/inbox/ai-review` с `{}` — все L1–L3 без `ai_reviewed`).
+5. Прогон Rostender **без** ИИ; ИИ только после, вручную (owner lock).
+
+**Стоимость (оценка, provod Sonnet 4.6):** ~250 input + ~80 output tok на лот. Доска после wipe #5 (037): **35 лотов ≈ 5–7 ₽** за полный разбор; только L1 (3) ≈ 0.5 ₽. Pool/noise в ИИ не идут.
+
+**Статус:** инфра sync готова (`main` `1ef36ab`); первый живой прогон — после вставки ключа в `.env` + повторный `--sync`.
 
 ---
 
