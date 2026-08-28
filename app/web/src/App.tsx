@@ -287,6 +287,7 @@ function AppInner() {
           name: search.name,
           platform_id: search.platform_id,
           queries: search.queries,
+          exclude: search.exclude,
           limit_n: search.limit_n,
           in_queue: inQueue,
           sort_order: search.sort_order,

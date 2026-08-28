@@ -64,6 +64,9 @@ class NamedSearch(Base):
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     platform_id: Mapped[str] = mapped_column(String(64), nullable=False)
     queries: Mapped[list] = mapped_column(JSONB, nullable=False)
+    exclude: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
     limit_n: Mapped[int] = mapped_column(Integer, nullable=False)
     in_queue: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")

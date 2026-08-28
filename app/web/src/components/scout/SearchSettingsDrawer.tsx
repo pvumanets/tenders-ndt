@@ -20,6 +20,7 @@ export type SearchDraft = {
   name: string;
   platform_id: string;
   queriesText: string;
+  excludeText: string;
   limit_n: number;
   in_queue: boolean;
   sort_order: number;
@@ -30,6 +31,7 @@ export function emptySearchDraft(sortOrder: number): SearchDraft {
     name: "",
     platform_id: "rostender",
     queriesText: "",
+    excludeText: "",
     limit_n: 0,
     in_queue: false,
     sort_order: sortOrder,
@@ -41,6 +43,7 @@ export function draftFromNamedSearch(search: {
   name: string;
   platform_id: string;
   queries: string[];
+  exclude?: string[];
   limit_n: number;
   in_queue: boolean;
   sort_order: number;
@@ -50,6 +53,7 @@ export function draftFromNamedSearch(search: {
     name: search.name,
     platform_id: search.platform_id,
     queriesText: search.queries.join("\n"),
+    excludeText: (search.exclude ?? []).join("\n"),
     limit_n: search.limit_n,
     in_queue: search.in_queue,
     sort_order: search.sort_order,
@@ -131,6 +135,16 @@ export default function SearchSettingsDrawer({
             onChange={(e) => onChange({ ...draft, queriesText: e.target.value })}
             multiline
             minRows={4}
+            fullWidth
+          />
+          <TextField
+            size="small"
+            label={copy.searches_exclude}
+            value={draft.excludeText}
+            onChange={(e) => onChange({ ...draft, excludeText: e.target.value })}
+            helperText={copy.searches_exclude_hint}
+            multiline
+            minRows={3}
             fullWidth
           />
           {draft.platform_id === "tender-pro" ? (

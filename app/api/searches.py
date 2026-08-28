@@ -30,6 +30,7 @@ class SearchIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     platform_id: str
     queries: list[str] = Field(min_length=1)
+    exclude: list[str] = Field(default_factory=list)
     limit_n: int = Field(default=0, ge=0, description="0 = без потолка; иначе soft stop")
     in_queue: bool = False
     sort_order: int = Field(default=0, ge=0, le=10_000)
@@ -58,6 +59,11 @@ class SearchIn(BaseModel):
             raise ValueError("empty_queries")
         return cleaned
 
+    @field_validator("exclude")
+    @classmethod
+    def clean_exclude(cls, value: list[str]) -> list[str]:
+        return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+
 
 def _dump(row: NamedSearch) -> dict[str, Any]:
     return {
@@ -65,6 +71,7 @@ def _dump(row: NamedSearch) -> dict[str, Any]:
         "name": row.name,
         "platform_id": row.platform_id,
         "queries": list(row.queries or []),
+        "exclude": list(row.exclude or []),
         "limit_n": row.limit_n,
         "in_queue": bool(row.in_queue),
         "sort_order": row.sort_order,
@@ -98,6 +105,7 @@ def create_search(body: SearchIn) -> dict[str, Any]:
         name=body.name,
         platform_id=body.platform_id,
         queries=body.queries,
+        exclude=body.exclude,
         limit_n=body.limit_n,
         in_queue=body.in_queue,
         sort_order=body.sort_order,
@@ -122,6 +130,7 @@ def update_search(search_id: UUID, body: SearchIn) -> dict[str, Any]:
         row.name = body.name
         row.platform_id = body.platform_id
         row.queries = body.queries
+        row.exclude = body.exclude
         row.limit_n = body.limit_n
         row.in_queue = body.in_queue
         row.sort_order = body.sort_order

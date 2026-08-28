@@ -23,11 +23,17 @@ def test_search_in_strips_and_rejects_bad_platform() -> None:
             "name": "  РосТендер НК  ",
             "platform_id": "rostender",
             "queries": ["  неразрушающий  ", ""],
+            "exclude": ["  ЗАГС  ", "", "кровля"],
             "limit_n": 10,
         }
     )
     assert body.name == "РосТендер НК"
     assert body.queries == ["неразрушающий"]
+    assert body.exclude == ["ЗАГС", "кровля"]
+    defaulted = SearchIn.model_validate(
+        {"name": "x", "platform_id": "rostender", "queries": ["а"], "limit_n": 10}
+    )
+    assert defaulted.exclude == []
     with pytest.raises(ValidationError):
         SearchIn.model_validate(
             {"name": "x", "platform_id": "sibur", "queries": ["а"], "limit_n": 10}

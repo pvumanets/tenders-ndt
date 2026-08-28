@@ -43,6 +43,7 @@ export type NamedSearch = {
   name: string;
   platform_id: string;
   queries: string[];
+  exclude: string[];
   limit_n: number;
   in_queue: boolean;
   sort_order: number;

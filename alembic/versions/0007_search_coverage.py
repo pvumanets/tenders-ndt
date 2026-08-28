@@ -49,7 +49,11 @@ def upgrade() -> None:
             sa.text("DELETE FROM searches WHERE id = :id OR name = :name"),
             {"id": row["id"], "name": row["name"]},
         )
-    op.bulk_insert(searches, rows)
+    # exclude column arrives in 0011 — strip so historical upgrade stays valid
+    op.bulk_insert(
+        searches,
+        [{k: v for k, v in row.items() if k != "exclude"} for row in rows],
+    )
 
 
 def downgrade() -> None:

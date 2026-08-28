@@ -16,8 +16,6 @@ from app.scoring.tiers import assign_tier
         ("Закупка дефектоскопа ультразвукового", "L3"),
         ("Калибровка толщиномера без оказания услуг НК", "L3"),
         ("Обучение персонала по неразрушающему контролю", "noise"),
-        ("Услуги строительного контроля на объекте", "L3"),
-        ("Строительный контроль зданий и сооружений", "L3"),
     ],
 )
 def test_fit_tier_etalons(title: str, expected: str) -> None:
@@ -28,3 +26,11 @@ def test_fit_tier_etalons(title: str, expected: str) -> None:
             assert tier == "L1"
     else:
         assert tier == expected
+
+
+@pytest.mark.unit
+def test_construction_control_not_hard_l3() -> None:
+    """036: стройконтроль без минуса не форсируется в L3 (откат 035)."""
+    tier, _score, reason, _uzk = assign_tier("Услуги строительного контроля на объекте")
+    assert "build_ctrl_l3" not in reason
+    assert tier == "pool"
