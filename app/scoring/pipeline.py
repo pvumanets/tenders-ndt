@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections import Counter
 
 from app.scoring.tiers import assign_tier
-from app.worker.platform_ids import PLATFORM_TENDER_PRO
+from app.worker.platform_ids import PLATFORM_ROSELTORG, PLATFORM_TENDER_PRO
 
 _BOARD_TIERS = frozenset({"L1", "L2", "L3"})
 _RESCORE_SNIPPET = 2000
@@ -28,10 +28,15 @@ def _is_tender_pro_row(row: dict) -> bool:
     return tid.startswith(f"{PLATFORM_TENDER_PRO}:")
 
 
+def _is_roseltorg_row(row: dict) -> bool:
+    tid = str(row.get("tender_id") or "")
+    return tid.startswith(f"{PLATFORM_ROSELTORG}:")
+
+
 def _should_rescore(row: dict) -> bool:
     if row.get("card_fetched"):
         return True
-    return _is_tender_pro_row(row)
+    return _is_tender_pro_row(row) or _is_roseltorg_row(row)
 
 
 def rescore_rows(rows: list[dict]) -> tuple[list[dict], dict, list[str]]:

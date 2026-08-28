@@ -65,6 +65,14 @@ def test_seed_rows_rostender_a_to_e_order() -> None:
     ]
     assert all(r["in_queue"] is False for r in tp)
     assert all(r["in_queue"] is True for r in search_seed_rows(tender_pro_in_queue=True) if r["platform_id"] == "tender-pro")
+    re = [r for r in rows if r["platform_id"] == "roseltorg"]
+    assert len(re) == 4
+    assert all(r["in_queue"] is False for r in re)
+    assert all(
+        r["in_queue"] is True
+        for r in search_seed_rows(roseltorg_in_queue=True)
+        if r["platform_id"] == "roseltorg"
+    )
 
 
 @pytest.mark.unit

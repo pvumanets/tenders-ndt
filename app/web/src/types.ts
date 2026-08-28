@@ -71,7 +71,7 @@ export type TechStatus = {
   ai_failures: number;
   http_retries: number;
   session: "ok" | "expired" | "missing";
-  sessions?: { rostender?: string; "tender-pro"?: string };
+  sessions?: { rostender?: string; "tender-pro"?: string; roseltorg?: string };
   run_dir: string;
   queue: QueueStep[];
   queue_index: number;

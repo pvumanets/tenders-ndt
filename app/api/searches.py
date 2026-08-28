@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from app.db.models import NamedSearch
 from app.db.session import session_factory
 
-ALLOWED_PLATFORMS = frozenset({"rostender", "tender-pro"})
+ALLOWED_PLATFORMS = frozenset({"rostender", "tender-pro", "roseltorg"})
 
 
 class SearchError(ValueError):

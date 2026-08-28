@@ -160,6 +160,7 @@ describe("TechRunPanel", () => {
     expect(screen.getByText(/неразрушающий/)).toBeInTheDocument();
     expect(screen.getByText(copy.searches_tender_pro_docs)).toBeInTheDocument();
     expect(screen.getByText(copy.session_tender_pro)).toBeInTheDocument();
+    expect(screen.getByText(copy.session_roseltorg)).toBeInTheDocument();
     expect(screen.queryByText(/пока не подключён/)).not.toBeInTheDocument();
   });
 

@@ -92,6 +92,7 @@ def test_documents_list_and_download_require_session(
                     score=7,
                     tier="L1",
                     location="Казань",
+                    deadline_msk="20.08.2026",
                     source_platform_id="rostender",
                     ingested_at=datetime(2026, 8, 13, 12, 0, tzinfo=timezone.utc),
                 )

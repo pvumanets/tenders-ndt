@@ -17,6 +17,7 @@ import {
   platformLabel,
   queueStatusLabel,
   rostenderSessionCopy,
+  roseltorgSessionCopy,
   type SearchWrite,
 } from "../../lib/inbox";
 import { stripe } from "../../theme/palette";
@@ -115,6 +116,9 @@ export default function TechRunPanel({
           </Typography>
           <Typography variant="body2" color="primary" sx={{ fontWeight: 500 }}>
             {copy.session_tender_pro}
+          </Typography>
+          <Typography variant="body2" color="primary" sx={{ fontWeight: 500 }}>
+            {roseltorgSessionCopy(status.sessions?.roseltorg)}
           </Typography>
         </Stack>
         {queueVisible ? (
@@ -258,6 +262,11 @@ export default function TechRunPanel({
                   {search.platform_id === "tender-pro" ? (
                     <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
                       {copy.searches_tender_pro_docs}
+                    </Typography>
+                  ) : null}
+                  {search.platform_id === "roseltorg" ? (
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                      {copy.searches_roseltorg_docs}
                     </Typography>
                   ) : null}
                 </Box>

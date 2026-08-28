@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from app.api import searches as searches_api
 from app.api.state import STATE
 from app.scoring.pipeline import rescore_rows, score_rows
+from app.worker import roseltorg as roseltorg_worker
 from app.worker import tender_pro as tender_pro_worker
 from app.worker.artifacts import write_artifacts
 from app.worker.card_scrape import enrich_cards
@@ -20,6 +21,7 @@ from app.worker.docs import download_docs_enabled, download_inbox_docs
 from app.worker.ingest import ingest_run, redact_db_error, snapshot_expired_tender_ids
 from app.worker.list_scrape import AuthError, probe_rostender_cookies, scrape_queries
 from app.worker.platform_ids import (
+    PLATFORM_ROSELTORG,
     PLATFORM_ROSTENDER,
     PLATFORM_TENDER_PRO,
     prefix_rows,
@@ -78,7 +80,7 @@ def _write_scored_bundle(run_dir: Path, rows: list[dict], summary: dict, card_id
     )
 
 
-def refresh_session() -> str:
+def refresh_session(*, probe_roseltorg_live: bool = True) -> str:
     rostender = _cookies_path(PLATFORM_ROSTENDER)
     base = os.getenv("ROSTENDER_BASE_URL", "https://rostender.info")
     probe = probe_rostender_cookies(rostender, base, on_retry=_http_retry_callback)
@@ -100,6 +102,21 @@ def refresh_session() -> str:
         STATE.set_session("expired", platform_id=PLATFORM_TENDER_PRO)
     else:
         STATE.set_session("ok", platform_id=PLATFORM_TENDER_PRO)
+
+    re_lk = os.getenv("ROSELTORG_LK_URL", roseltorg_worker.DEFAULT_LK)
+    re_corp = os.getenv("ROSELTORG_CORP_URL", roseltorg_worker.DEFAULT_CORP)
+    if not roseltorg_worker.credentials_present():
+        STATE.set_session("missing_cookies", platform_id=PLATFORM_ROSELTORG)
+    elif probe_roseltorg_live:
+        re_probe = roseltorg_worker.probe_roseltorg_session(
+            lk_base=re_lk, corp_base=re_corp, on_retry=_http_retry_callback
+        )
+        if re_probe == "missing":
+            STATE.set_session("missing_cookies", platform_id=PLATFORM_ROSELTORG)
+        elif re_probe == "expired":
+            STATE.set_session("expired", platform_id=PLATFORM_ROSELTORG)
+        else:
+            STATE.set_session("ok", platform_id=PLATFORM_ROSELTORG)
     return STATE.snapshot()["session"]
 
 
@@ -207,6 +224,9 @@ def _download_docs(rows: list[dict], *, platform_id: str) -> None:
     if not rows:
         return
     cookies = _cookies_path(platform_id)
+    if platform_id == PLATFORM_ROSELTORG:
+        STATE.log_msg("Docs: Росэлторг — скачивание файлов лота в v1 не делаем (skip)")
+        return
     if platform_id == PLATFORM_TENDER_PRO and not cookies.is_file():
         STATE.log_msg("Docs: Tender.Pro cookies missing — skip files", level="warn")
         return
@@ -276,6 +296,8 @@ def _run_one_search(*, item: dict, run_dir: Path) -> str:
     platform = str(item.get("platform_id") or "")
     if platform == PLATFORM_TENDER_PRO:
         return _run_tender_pro(item=item, run_dir=run_dir)
+    if platform == PLATFORM_ROSELTORG:
+        return _run_roseltorg(item=item, run_dir=run_dir)
     if platform == PLATFORM_ROSTENDER:
         return _run_rostender(item=item, run_dir=run_dir)
     STATE.log_msg(f"No adapter for {platform} — skip", level="warn")
@@ -577,6 +599,166 @@ def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
             started_at=started_at,
             platform_id=PLATFORM_TENDER_PRO,
         )
+    except Exception as e:  # noqa: BLE001
+        _ingest_step(
+            item=item,
+            status="error",
+            rows=enriched,
+            started_at=started_at,
+            error=f"{type(e).__name__}: {e}",
+        )
+        STATE.log_msg(f"{type(e).__name__}: {e}", level="error")
+        return "error"
+
+
+def _run_roseltorg(*, item: dict, run_dir: Path) -> str:
+    lk = os.getenv("ROSELTORG_LK_URL", roseltorg_worker.DEFAULT_LK)
+    corp = os.getenv("ROSELTORG_CORP_URL", roseltorg_worker.DEFAULT_CORP)
+    if not roseltorg_worker.credentials_present():
+        STATE.set_session("missing_cookies", platform_id=PLATFORM_ROSELTORG)
+        STATE.log_msg("Росэлторг: нет USER/PASSWORD — skip", level="warn")
+        _ingest_step(
+            item=item,
+            status="skipped",
+            rows=[],
+            started_at=datetime.now(timezone.utc),
+        )
+        return "skipped"
+    probe = roseltorg_worker.probe_roseltorg_session(
+        lk_base=lk, corp_base=corp, on_retry=_http_retry_callback
+    )
+    if probe == "missing":
+        STATE.set_session("missing_cookies", platform_id=PLATFORM_ROSELTORG)
+        STATE.log_msg("Росэлторг: нет учётных данных — skip", level="warn")
+        _ingest_step(
+            item=item,
+            status="skipped",
+            rows=[],
+            started_at=datetime.now(timezone.utc),
+        )
+        return "skipped"
+    if probe == "expired":
+        STATE.set_session("expired", platform_id=PLATFORM_ROSELTORG)
+        STATE.log_msg("Росэлторг: сессия ELK недоступна — skip", level="warn")
+        _ingest_step(
+            item=item,
+            status="skipped",
+            rows=[],
+            started_at=datetime.now(timezone.utc),
+        )
+        return "skipped"
+    STATE.set_session("ok", platform_id=PLATFORM_ROSELTORG)
+    queries = [str(q) for q in (item.get("queries") or []) if str(q).strip()]
+    exclude = [str(x) for x in (item.get("exclude") or []) if str(x).strip()]
+    limit = int(item.get("limit_n") or 0)
+    started_at = datetime.now(timezone.utc)
+    enriched: list[dict] = []
+    scored: list[dict] = []
+    summary: dict = {}
+    try:
+        STATE.set_phase("P1")
+        STATE.log_msg("P1: Росэлторг CORP list…")
+        rows = roseltorg_worker.scrape_queries(
+            queries=queries,
+            limit=limit,
+            corp_base=corp,
+            lk_base=lk,
+            exclude=exclude,
+            should_stop=STATE.should_stop,
+            on_retry=_http_retry_callback,
+            on_progress=lambda n, lim: STATE.set_list_progress(n, lim),
+        )
+        rows = prefix_rows(rows, PLATFORM_ROSELTORG)
+        (run_dir / "raw-list.json").write_text(
+            json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        STATE.set_list_progress(len(rows), limit)
+        STATE.log_msg(f"P1 done: {len(rows)} rows")
+        if STATE.should_stop():
+            STATE.log_msg("Stopped after P1", level="warn")
+            _ingest_step(item=item, status="stopped", rows=[], started_at=started_at)
+            return "cancelled"
+
+        STATE.set_phase("P2")
+        STATE.log_msg("P2: scoring…")
+        scored, summary, card_ids = score_rows(rows)
+        STATE.add_counters(summary)
+        (run_dir / "scored-list.json").write_text(
+            json.dumps(scored, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        (run_dir / "tier-summary.json").write_text(
+            json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        (run_dir / "card-ids.json").write_text(
+            json.dumps(card_ids, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        STATE.set_cards_progress(0, len(card_ids))
+        STATE.log_msg(f"P2 done: tiers={summary} cards={len(card_ids)}")
+        if STATE.should_stop():
+            STATE.log_msg("Stopped after P2", level="warn")
+            _ingest_step(
+                item=item,
+                status="stopped",
+                rows=_board_rows(scored),
+                started_at=started_at,
+            )
+            return "cancelled"
+
+        STATE.set_phase("P3")
+        STATE.log_msg("P3: Росэлторг procedure cards…")
+        enriched, errors = roseltorg_worker.enrich_cards(
+            scored,
+            card_ids,
+            corp_base=corp,
+            lk_base=lk,
+            delay_s=0.2,
+            should_stop=STATE.should_stop,
+            on_retry=_http_retry_callback,
+            on_progress=lambda d, t: STATE.set_cards_progress(d, t),
+        )
+        old_summary = dict(summary)
+        enriched, summary, card_ids = rescore_rows(enriched)
+        _apply_rescore_counter_delta(old_summary, summary)
+        _write_scored_bundle(run_dir, enriched, summary, card_ids)
+        (run_dir / "cards-errors.json").write_text(
+            json.dumps(errors, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        STATE.log_msg(f"P3 done: errors={len(errors)}; re-score tiers={summary}")
+        if STATE.should_stop():
+            STATE.set_phase("P4")
+            write_artifacts(run_dir, enriched)
+            STATE.log_msg("Stopped during/after P3; partial artifacts written", level="warn")
+            _ingest_step(
+                item=item,
+                status="stopped",
+                rows=_board_rows(enriched),
+                started_at=started_at,
+            )
+            _download_docs(enriched, platform_id=PLATFORM_ROSELTORG)
+            return "cancelled"
+
+        STATE.set_phase("P4")
+        STATE.log_msg("P4: artifacts…")
+        return _finish_artifacts(
+            item=item,
+            run_dir=run_dir,
+            enriched=enriched,
+            summary=summary,
+            limit=limit,
+            started_at=started_at,
+            platform_id=PLATFORM_ROSELTORG,
+        )
+    except AuthError as e:
+        STATE.set_session("expired", platform_id=PLATFORM_ROSELTORG)
+        _ingest_step(
+            item=item,
+            status="error",
+            rows=_board_rows(enriched or scored),
+            started_at=started_at,
+            error=f"AuthError: {e}",
+        )
+        STATE.log_msg(f"AuthError: {e}", level="error")
+        return "error"
     except Exception as e:  # noqa: BLE001
         _ingest_step(
             item=item,
