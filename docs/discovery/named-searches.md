@@ -64,7 +64,7 @@ Q25 **держим:** query, exclude и limit живут в карточке п�
 ### Сиды
 
 Плюс/минус A–E: [`search-keywords.md`](./search-keywords.md) · [`search-system-v2.md`](./search-system-v2.md).  
-**Сиды (041):** на rostender / tender-pro / roseltorg — полный A–E из одного SoT; TP/РЭ `in_queue` при cookies / USER+PASSWORD.
+**Сиды (041):** на rostender / tender-pro / roseltorg — полный A–E из одного SoT; TP/РЭ `in_queue` при cookies.
 
 ## Очередь и прогон
 

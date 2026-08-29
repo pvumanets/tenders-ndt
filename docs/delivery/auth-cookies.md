@@ -62,11 +62,11 @@
 | --- | --- | --- | --- |
 | Tender.Pro (`tender-pro`) | `./cookies.tender-pro.txt` | `TENDER_PRO_COOKIES_FILE` (логин/пароль **не** в env) | [`../discovery/tender-pro-probe.md`](../discovery/tender-pro-probe.md) · адаптер [024](./tasks/024-tender-pro-adapter.md) |
 | B2B-Center (`b2b-center`) | `./cookies.b2b-center.txt` | `B2B_CENTER_USER` / `B2B_CENTER_PASSWORD` / `B2B_CENTER_COOKIES_FILE` | account · зонд/адаптер позже |
-| Росэлторг (`roseltorg`) | `./cookies.roseltorg.txt` (опц.) | `ROSELTORG_USER` / `ROSELTORG_PASSWORD` / `ROSELTORG_COOKIES_FILE` | **канон списка = логин ELK** (password grant → CORP Bearer); cookies alone ≠ сессия · зонд [`../discovery/roseltorg-probe.md`](../discovery/roseltorg-probe.md) · адаптер [040](./tasks/040-roseltorg-adapter.md) |
+| Росэлторг (`roseltorg`) | `./cookies.roseltorg.txt` | `ROSELTORG_COOKIES_FILE` (+ опц. `ROSELTORG_BASE_URL`); USER/PASSWORD только для ручного логина в браузере | **канон списка/docs = Netscape cookies** на www · зонд [`../discovery/roseltorg-probe.md`](../discovery/roseltorg-probe.md) · адаптер [043](./tasks/043-roseltorg-www.md) (CORP/040 retired) |
 | OilB2B (`oilb2bcs`) | `./cookies.oilb2bcs.txt` | `OILB2BCS_USER` / `OILB2BCS_PASSWORD` / `OILB2BCS_COOKIES_FILE` | account · зонд/адаптер позже |
 | Северсталь (`severstal`) | `./cookies.severstal.txt` | `SEVERSTAL_USER` / `SEVERSTAL_PASSWORD` / `SEVERSTAL_COOKIES_FILE` | account · портал `procurement.severstal.com` |
 
-Worker as-is читает `cookies.rostender.txt`, `TENDER_PRO_COOKIES_FILE` и **Росэлторг** через `ROSELTORG_USER`/`PASSWORD` (ELK Bearer). Список Tender.Pro идёт и без cookies; **файлы** лотов rostender/TP — с живой сессией. Остальные `*_COOKIES_FILE` — после зонда и адаптера. Не путать со Scout login.
+Worker as-is читает `cookies.rostender.txt`, `TENDER_PRO_COOKIES_FILE` и **`cookies.roseltorg.txt`** (www-поиск + docs). Список Tender.Pro идёт и без cookies; **файлы** лотов rostender/TP/РЭ — с живой сессией. Остальные `*_COOKIES_FILE` — после зонда и адаптера. Не путать со Scout login.
 
 ### Parked (нет учётки в актуальном перечне)
 

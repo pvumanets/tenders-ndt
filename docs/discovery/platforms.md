@@ -9,7 +9,7 @@
 **зонд СИБУР SRM (parked):** [`sibur-srm-probe.md`](./sibur-srm-probe.md)  
 **зонд OnlineContract (parked):** [`onlinecontract-probe.md`](./onlinecontract-probe.md)  
 **зонд Tender.Pro (as-is):** [`tender-pro-probe.md`](./tender-pro-probe.md)  
-**зонд Росэлторг CORP (as-is):** [`roseltorg-probe.md`](./roseltorg-probe.md)  
+**зонд Росэлторг www (as-is):** [`roseltorg-probe.md`](./roseltorg-probe.md)
 **ассеты:** `app/web/public/platforms/{id}.png` (32×32)
 
 Ship scrape = **rostender** + **tender-pro** + **roseltorg** (адаптер [040](../delivery/tasks/040-roseltorg-adapter.md)). Очередь следующих: **b2b-center → oilb2bcs → severstal**. Пароли и cookie values — только `.env` / `cookies*.txt`, не в этом md.
@@ -36,7 +36,7 @@ Ship scrape = **rostender** + **tender-pro** + **roseltorg** (адаптер [04
 | `tender-pro` | Tender.Pro | www.tender.pro, tender.pro | **as-is** | `/platforms/tender-pro.png` |
 | `tektorg-kim` | ТЭК-Торг КИМ | kim.tektorg.ru | parked | `/platforms/tektorg-kim.png` |
 | `astgoz` | АСТ ГОЗ | 223.astgoz.ru | parked | `/platforms/astgoz.png` |
-| `roseltorg` | Росэлторг | lk.roseltorg.ru, corp.roseltorg.ru | **as-is** | `/platforms/roseltorg.png` |
+| `roseltorg` | Росэлторг | www.roseltorg.ru (сводный поиск); lk.roseltorg.ru | **as-is** | `/platforms/roseltorg.png` |
 | `oilb2bcs` | OilB2B | oilb2bcs.ru | **account** | `/platforms/oilb2bcs.png` |
 | `gpb-etp` | ЭТП ГПБ | etp.gpb.ru | parked | `/platforms/gpb-etp.png` |
 | `tmk` | ТМК закупки | zakupki.tmk-group.com | parked | `/platforms/tmk.png` |
@@ -50,7 +50,7 @@ Ship scrape = **rostender** + **tender-pro** + **roseltorg** (адаптер [04
 2. Экспорт Netscape → `cookies.{slug}.txt` в корне (gitignore). На VPS — `--sync`.
 3. Зонд с агентом (1 площадка = 1 сессия) → `docs/discovery/{slug}-probe.md` **без** паролей/cookie values: URL списка, карточки, нужны ли cookies для поиска.
 4. Таск адаптера → `feat/0XX-{slug}-adapter` → worker + `runner.py` → QA → docs. Прогон — человек в Tech.
-5. Порядок следующих: B2B-Center → OilB2B → Северсталь SRM. Росэлторг CORP — [040](../delivery/tasks/040-roseltorg-adapter.md) / [`roseltorg-probe.md`](./roseltorg-probe.md) (логин ELK из `.env`, не cookies-only).
+5. Порядок следующих: B2B-Center → OilB2B → Северсталь SRM. Росэлторг www — [043](../delivery/tasks/043-roseltorg-www.md) / [`roseltorg-probe.md`](./roseltorg-probe.md) (cookies Netscape; CORP retired).
 
 Не коммитить `.env` / `cookies*.txt`. Не править продукт на VPS руками. Не тащить все четыре адаптера одним PR.
 

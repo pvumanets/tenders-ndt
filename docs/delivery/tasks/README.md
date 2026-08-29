@@ -62,6 +62,7 @@
 | 040 | Адаптер Росэлторг CORP | task | done | NEXT+ | | [040-roseltorg-adapter.md](./040-roseltorg-adapter.md) |
 | 041 | Общие слова поиска A–E на все площадки | task | done | NEXT+ | | [041-shared-search-packages.md](./041-shared-search-packages.md) |
 | 042 | provod.ai: timeout→fallback + commit per lot | task | done | NEXT+ | | [042-provod-resilience.md](./042-provod-resilience.md) |
+| 043 | Росэлторг www-поиск вместо CORP | task | done | NEXT+ | | [043-roseltorg-www.md](./043-roseltorg-www.md) |
 
 ### Очередь
 
@@ -80,5 +81,6 @@
 - **040** — адаптер Росэлторг CORP — **done** (merge `feat/040-roseltorg-adapter`); VPS deploy — `--sync` + `--deploy` по команде.
 - **041** — общие слова A–E на все ЭТП (канон Ростендер) — **done** (2026-08-29).
 - **042** — provod resilience (timeout→fallback, commit per lot, 3-model chain) — **done** (2026-08-29; smoke 3/0).
+- **043** — Росэлторг www вместо CORP (+ docs + twin prefer) — **done** (2026-08-29; live ATOM28082600172).
 - **ЭТП учётки:** канон [`../../discovery/platforms.md`](../../discovery/platforms.md) + [`../auth-cookies.md`](../auth-cookies.md). Следующие адаптеры: B2B → OilB2B → Северсталь.
 - Порядок фаз: [`../next-phases.md`](../next-phases.md). **P13 wipe + полный прогон** — **done** (2026-08-27).

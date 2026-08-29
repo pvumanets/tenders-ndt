@@ -120,6 +120,7 @@ def parse_card_html(html: str, title_hint: str = "") -> dict[str, Any]:
         pass
 
     source_etp = None
+    etp_procedure_id = None
     for i, ln in enumerate(lines):
         if ln in ("ТЭК-Торг", "ЭТП ГПБ", "B2B-Center", "РТС-тендер", "ЕИС") or (
             "торг" in ln.lower() and len(ln) < 40
@@ -130,6 +131,10 @@ def parse_card_html(html: str, title_hint: str = "") -> dict[str, Any]:
             else:
                 source_etp = ln
             break
+
+    from app.worker.etp_twins import extract_etp_procedure_id as _extract_etp
+
+    etp_procedure_id = _extract_etp(title_hint, source_etp, "\n".join(lines))
 
     methods = _detect_methods(title_hint)
 
@@ -145,6 +150,7 @@ def parse_card_html(html: str, title_hint: str = "") -> dict[str, Any]:
         "customer_name": clean_customer_name(customer),
         "price_rub": price if price and re.search(r"\d", price or "") else None,
         "source_etp": source_etp,
+        "etp_procedure_id": etp_procedure_id,
         "methods": methods or None,
     }
 

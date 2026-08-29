@@ -41,6 +41,8 @@ def _cookies_path(platform_id: str = PLATFORM_ROSTENDER) -> Path:
     load_dotenv(_repo_root() / ".env")
     if platform_id == PLATFORM_TENDER_PRO:
         raw = os.getenv("TENDER_PRO_COOKIES_FILE", "./cookies.tender-pro.txt")
+    elif platform_id == PLATFORM_ROSELTORG:
+        raw = os.getenv("ROSELTORG_COOKIES_FILE", "./cookies.roseltorg.txt")
     else:
         raw = os.getenv("ROSTENDER_COOKIES_FILE", "./cookies.rostender.txt")
     path = Path(raw)
@@ -103,13 +105,15 @@ def refresh_session(*, probe_roseltorg_live: bool = True) -> str:
     else:
         STATE.set_session("ok", platform_id=PLATFORM_TENDER_PRO)
 
-    re_lk = os.getenv("ROSELTORG_LK_URL", roseltorg_worker.DEFAULT_LK)
-    re_corp = os.getenv("ROSELTORG_CORP_URL", roseltorg_worker.DEFAULT_CORP)
-    if not roseltorg_worker.credentials_present():
+    re_cookies = _cookies_path(PLATFORM_ROSELTORG)
+    re_base = os.getenv("ROSELTORG_BASE_URL", roseltorg_worker.DEFAULT_BASE)
+    if not roseltorg_worker.cookies_present():
         STATE.set_session("missing_cookies", platform_id=PLATFORM_ROSELTORG)
     elif probe_roseltorg_live:
         re_probe = roseltorg_worker.probe_roseltorg_session(
-            lk_base=re_lk, corp_base=re_corp, on_retry=_http_retry_callback
+            cookies_file=re_cookies,
+            base=re_base,
+            on_retry=_http_retry_callback,
         )
         if re_probe == "missing":
             STATE.set_session("missing_cookies", platform_id=PLATFORM_ROSELTORG)
@@ -224,8 +228,8 @@ def _download_docs(rows: list[dict], *, platform_id: str) -> None:
     if not rows:
         return
     cookies = _cookies_path(platform_id)
-    if platform_id == PLATFORM_ROSELTORG:
-        STATE.log_msg("Docs: Росэлторг — скачивание файлов лота в v1 не делаем (skip)")
+    if platform_id == PLATFORM_ROSELTORG and not cookies.is_file():
+        STATE.log_msg("Docs: Росэлторг cookies missing — skip files", level="warn")
         return
     if platform_id == PLATFORM_TENDER_PRO and not cookies.is_file():
         STATE.log_msg("Docs: Tender.Pro cookies missing — skip files", level="warn")
@@ -612,11 +616,11 @@ def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
 
 
 def _run_roseltorg(*, item: dict, run_dir: Path) -> str:
-    lk = os.getenv("ROSELTORG_LK_URL", roseltorg_worker.DEFAULT_LK)
-    corp = os.getenv("ROSELTORG_CORP_URL", roseltorg_worker.DEFAULT_CORP)
-    if not roseltorg_worker.credentials_present():
+    cookies = _cookies_path(PLATFORM_ROSELTORG)
+    base = os.getenv("ROSELTORG_BASE_URL", roseltorg_worker.DEFAULT_BASE)
+    if not roseltorg_worker.cookies_present():
         STATE.set_session("missing_cookies", platform_id=PLATFORM_ROSELTORG)
-        STATE.log_msg("Росэлторг: нет USER/PASSWORD — skip", level="warn")
+        STATE.log_msg("Росэлторг: нет cookies.roseltorg.txt — skip", level="warn")
         _ingest_step(
             item=item,
             status="skipped",
@@ -625,11 +629,11 @@ def _run_roseltorg(*, item: dict, run_dir: Path) -> str:
         )
         return "skipped"
     probe = roseltorg_worker.probe_roseltorg_session(
-        lk_base=lk, corp_base=corp, on_retry=_http_retry_callback
+        cookies_file=cookies, base=base, on_retry=_http_retry_callback
     )
     if probe == "missing":
         STATE.set_session("missing_cookies", platform_id=PLATFORM_ROSELTORG)
-        STATE.log_msg("Росэлторг: нет учётных данных — skip", level="warn")
+        STATE.log_msg("Росэлторг: cookies пустые — skip", level="warn")
         _ingest_step(
             item=item,
             status="skipped",
@@ -639,7 +643,7 @@ def _run_roseltorg(*, item: dict, run_dir: Path) -> str:
         return "skipped"
     if probe == "expired":
         STATE.set_session("expired", platform_id=PLATFORM_ROSELTORG)
-        STATE.log_msg("Росэлторг: сессия ELK недоступна — skip", level="warn")
+        STATE.log_msg("Росэлторг: сессия www недоступна — skip", level="warn")
         _ingest_step(
             item=item,
             status="skipped",
@@ -657,12 +661,12 @@ def _run_roseltorg(*, item: dict, run_dir: Path) -> str:
     summary: dict = {}
     try:
         STATE.set_phase("P1")
-        STATE.log_msg("P1: Росэлторг CORP list…")
+        STATE.log_msg("P1: Росэлторг www list…")
         rows = roseltorg_worker.scrape_queries(
             queries=queries,
             limit=limit,
-            corp_base=corp,
-            lk_base=lk,
+            base=base,
+            cookies_file=cookies,
             exclude=exclude,
             should_stop=STATE.should_stop,
             on_retry=_http_retry_callback,
@@ -709,8 +713,8 @@ def _run_roseltorg(*, item: dict, run_dir: Path) -> str:
         enriched, errors = roseltorg_worker.enrich_cards(
             scored,
             card_ids,
-            corp_base=corp,
-            lk_base=lk,
+            cookies_file=cookies,
+            base=base,
             delay_s=0.2,
             should_stop=STATE.should_stop,
             on_retry=_http_retry_callback,
