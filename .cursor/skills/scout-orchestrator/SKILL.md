@@ -47,6 +47,7 @@ If the route includes `scout-backend` or `scout-frontend` (or worker/scoring), *
 | Operator UI feature | `scout-designer` → `scout-ux-writer` → `scout-frontend` → `scout-qa` → `scout-documentation-writer` |
 | React migration (P7) | `scout-architect` → `scout-designer` → `scout-frontend` → `scout-qa` → `scout-documentation-writer` |
 | Copy / empty states / labels | `scout-ux-writer` → `scout-frontend` → `scout-qa` → `scout-documentation-writer` |
+| Master prompt / independent AI tier (provod) | `scout-ai-prompt` → (after acceptance) `scout-architect` → `scout-backend` → `scout-qa` → `scout-documentation-writer` |
 | Docs drift / status to business-proc | `scout-documentation-writer` (+ author role that changed code) |
 | Bitrix leads from tenders | `scout-product-manager` → `scout-architect` → `scout-documentation-writer` (no coding until accepted) |
 

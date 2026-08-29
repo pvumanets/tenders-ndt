@@ -5,7 +5,7 @@
 **заменяет для новых прогонов:** [`ideal-priority-spec.md`](./ideal-priority-spec.md) (deprecated)  
 **скоринг-база:** [`../discovery/relevance-rules.md`](../discovery/relevance-rules.md)  
 **жизненный цикл доски:** [`../discovery/inbox-lifecycle.md`](../discovery/inbox-lifecycle.md)  
-**ИИ:** [`ai-tier-review.md`](./ai-tier-review.md)  
+**ИИ:** [`ai-tier-review.md`](./ai-tier-review.md) · **мастер-промпт (accepted):** [`ai-master-prompt.md`](./ai-master-prompt.md)  
 **owner lock (2026-08-26):** услуги НК → Горячие; поставка / калибровка / приборы → всегда Смотреть; эталоны из скринов владельца  
 **owner lock (2026-08-27):** на доске **L1+L2+L3**; ИИ — **отдельный шаг** ([`owner-decisions.md`](../discovery/owner-decisions.md))
 

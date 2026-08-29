@@ -1,13 +1,15 @@
 # ИИ-проверка тира (отдельный шаг после прогона)
 
 **status:** draft  
-**last-review-date:** 2026-08-28  
+**last-review-date:** 2026-08-29  
 **owner lock (2026-08-27):** ИИ **не** при каждой загрузке; **отдельный шаг**; раздел «Разобрано с помощью ИИ»; журнал ошибок  
 **owner lock (2026-08-26):** провайдер **provod.ai**; запасные **модели того же API**  
+**owner lock (2026-08-28):** независимая классификация — **не** передаём `rules_tier` / `fit_reason` в модель  
 **тиры:** [`fit-tiers.md`](./fit-tiers.md)  
+**мастер-промпт (accepted):** [`ai-master-prompt.md`](./ai-master-prompt.md)  
 **решения владельца:** [`../discovery/owner-decisions.md`](../discovery/owner-decisions.md)  
 **lifecycle:** [`../discovery/inbox-lifecycle.md`](../discovery/inbox-lifecycle.md)  
-**код:** задача [029](./tasks/029-tier-rules-and-ai.md) (**done**)
+**код:** задача [029](./tasks/029-tier-rules-and-ai.md) (**done**); wire промпта [039](./tasks/039-ai-master-prompt.md)
 
 Этот файл — **канон будущей реализации**, не инструкция запускать ИИ из Cursor.
 
@@ -31,7 +33,7 @@
   → ai_reviewed = false (или null)
 
 Оператор: «Разобрать с ИИ» (пакет или выбор)
-  → provod.ai: title + кусок описания + теги + tier правил
+  → provod.ai: title ± description ± customer (без rules_tier / fit_reason)
   → JSON: tier + reason_ru
   → ai_reviewed = true; раздел «Разобрано с помощью ИИ»
   → при ошибке: ai_error, tier правил сохраняется, запись в журнал
@@ -116,8 +118,9 @@
 ```
 
 - `tier` ∈ `L1` | `L2` | `L3`
-- Промпт повторяет жёсткие правила fit-tiers; **запрет** фильтра по классу опасности
-- **Вход:** title, кусок описания, теги score, tier правил, опционально `platform_id`
+- System prompt — SoT [`ai-master-prompt.md`](./ai-master-prompt.md) (**accepted**); **запрет** фильтра по классу опасности / допускам
+- **Вход модели (только факты закупки):** `title`; опционально `customer_name`, `description` (~800 из `lot.raw`, если есть)
+- **Не передаём в модель:** `rules_tier`, `fit_reason`, score, methods, теги regex (`rules_tier` в БД — только для UI-diff на вкладке «Лоты»)
 
 ---
 

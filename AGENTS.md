@@ -25,6 +25,7 @@
 | QA | `scout-qa` | After **code** (backend/frontend/worker): review + pytest/vitest; before docs |
 | Designer | `scout-designer` | IA / layout / visual for operator UI |
 | UX writer | `scout-ux-writer` | RU microcopy, empty/error states |
+| AI prompt | `scout-ai-prompt` | Master provod system prompt, etalons, co-design with owner (before code 039) |
 | Documentation | `scout-documentation-writer` | Keep `docs/` + business-proc stub in sync |
 
 ## Hard rules
