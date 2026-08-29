@@ -37,7 +37,7 @@ export default function SearchGroupList({
           <Typography variant="body2" color="text.secondary">
             {copy.groups_empty}
           </Typography>
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
             {copy.groups_empty_body}
           </Typography>
         </Box>
@@ -85,7 +85,7 @@ export default function SearchGroupList({
                   {copy.groups_delete}
                 </Button>
               </Stack>
-              <Typography variant="caption" color="text.secondary" noWrap display="block">
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: "block" }}>
                 {group.queries.join(", ")}
                 {group.limit_n > 0 ? ` · ${copy.groups_limit} ${group.limit_n}` : ""}
               </Typography>

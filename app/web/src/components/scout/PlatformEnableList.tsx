@@ -58,7 +58,7 @@ export default function PlatformEnableList({
                 label={copy.platform_participate}
               />
             </Stack>
-            <Typography variant="caption" color="text.secondary" display="block">
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
               {formatPlatformSessionLine(platform)}
             </Typography>
             {needsHint ? (
