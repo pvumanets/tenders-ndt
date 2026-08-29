@@ -5,7 +5,7 @@
 **AS-IS:** фаза P5 в [`code-phases.md`](./code-phases.md)  
 **TO-BE фазы:** [`platform-phases.md`](./platform-phases.md)  
 **стек:** [`tech-architecture.md`](./tech-architecture.md)  
-**API:** [`sales-inbox-api.md`](./sales-inbox-api.md) · группы: [`search-groups-api.md`](./search-groups-api.md) (`draft`)
+**API:** [`sales-inbox-api.md`](./sales-inbox-api.md) · группы: [`search-groups-api.md`](./search-groups-api.md)
 
 Экран для **человека** (директор / digital). Не путать с UI rostender (его автоматизирует worker).
 
@@ -75,21 +75,19 @@ API: [`sales-inbox-api.md`](./sales-inbox-api.md).
 | --- | --- |
 | Вход | `/api/auth/*` |
 | **Лоты** (default) | тот же UI → `/api/inbox*` |
-| **Прогон** | `GET /api/status` + `POST /api/run/start` / `stop`; CRUD `/api/searches*` ([023](./tasks/023-named-searches.md) **done**) |
+| **Прогон** | `GET /api/status` + `POST /api/run/start` / `stop`; CRUD `/api/search-groups*` + `/api/platforms*` ([049](./tasks/049-search-groups-ui.md) **done**); shim `/api/searches*` до снятия |
 
 Пресеты дат остаются в UI; на API уходят `deadline_*` / `ingested_*`. Viewed / приоритет — `PUT`. Документы в drawer — `GET /api/inbox/{id}` + same-origin download.
 
-### NEXT+ — поиски на вкладке Прогон (023 **done** → TO-BE группы)
+### NEXT+ — Прогон: группы × площадки ([049](./tasks/049-search-groups-ui.md) **done**)
 
 Третью вкладку не плодим.
 
-**AS-IS (runtime до 049):** список именованных поисков × площадка, Switch «в очереди», CRUD, Старт/Стоп. Query/limit в карточке поиска. Канон истории: [`../discovery/named-searches.md`](../discovery/named-searches.md).
-
-**TO-BE ([044](./tasks/044-search-groups-discovery.md)+):** канон [`../discovery/search-groups.md`](../discovery/search-groups.md). Четыре секции на «Прогоне» (**порядок** — designer review 2026-08-29):
+**Runtime:** канон [`../discovery/search-groups.md`](../discovery/search-groups.md). Четыре секции на «Прогоне» (**порядок** — designer review 2026-08-29):
 
 1. **Управление** (sticky) — Старт/Стоп, `RunQueueSummary`, фаза + шаг, прогресс, L1 hero, счётчики; **отчёт** только после завершения.  
 2. **Группы поиска** — плюс/минус один раз; Switch очереди; drawer без select площадки; lock while running.  
 3. **Площадки** — enable Switch primary; статус сессии muted; без имён cookie-файлов в primary.  
 4. **Диагностика** — свёрнуто; авто-раскрытие при error; лог; папка `run_dir` не в основном потоке.
 
-Wireframe: [`../discovery/design/sales-inbox-wireframes.md`](../discovery/design/sales-inbox-wireframes.md) W-run. Компоненты: [`../discovery/design/sales-inbox-components.md`](../discovery/design/sales-inbox-components.md). Copy: [`../discovery/design/sales-inbox-copy.md`](../discovery/design/sales-inbox-copy.md). API: [`search-groups-api.md`](./search-groups-api.md). Код UI — [049](./tasks/049-search-groups-ui.md) после acceptance docs.
+История named searches: [`../discovery/named-searches.md`](../discovery/named-searches.md). Wireframe W-run · компоненты · copy · API [`search-groups-api.md`](./search-groups-api.md).

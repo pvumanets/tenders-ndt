@@ -13,9 +13,10 @@ import type {
   DeadlinePreset,
   InboxLot,
   IngestedPreset,
-  NamedSearch,
+  PlatformRow,
   PriorityFilter,
   SalesTier,
+  SearchGroup,
   TechStatus,
   ViewMode,
 } from "./types";
@@ -27,11 +28,12 @@ import {
   SearchControlError,
   UnauthorizedError,
   apiTierParam,
-  createSearch,
-  deleteSearch,
+  createSearchGroup,
+  deleteSearchGroup,
   fetchInbox,
   fetchInboxItem,
-  fetchSearches,
+  fetchPlatforms,
+  fetchSearchGroups,
   fetchStatus,
   putPriority,
   putViewed,
@@ -40,10 +42,11 @@ import {
   postAiWrong,
   runControlMessage,
   searchControlMessage,
+  setPlatformEnabled,
   startRun,
   stopRun,
-  updateSearch,
-  type SearchWrite,
+  updateSearchGroup,
+  type SearchGroupWrite,
 } from "./lib/inbox";
 import { stripe } from "./theme/palette";
 import ThemeRegistry from "./theme/ThemeRegistry";
@@ -147,8 +150,9 @@ function AppInner() {
   const [tech, setTech] = useState<TechStatus>(idleTech);
   const [techBusy, setTechBusy] = useState(false);
   const [techError, setTechError] = useState<string | null>(null);
-  const [searches, setSearches] = useState<NamedSearch[]>([]);
-  const [searchError, setSearchError] = useState<string | null>(null);
+  const [groups, setGroups] = useState<SearchGroup[]>([]);
+  const [platforms, setPlatforms] = useState<PlatformRow[]>([]);
+  const [groupError, setGroupError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -246,11 +250,12 @@ function AppInner() {
     let timer: number | undefined;
 
     const tick = () => {
-      Promise.all([fetchStatus(), fetchSearches()])
-        .then(([status, items]) => {
+      Promise.all([fetchStatus(), fetchSearchGroups(), fetchPlatforms()])
+        .then(([status, groupItems, platformItems]) => {
           if (cancelled) return;
           setTech(status);
-          setSearches(items);
+          setGroups(groupItems);
+          setPlatforms(platformItems);
           timer = window.setTimeout(tick, status.running ? STATUS_POLL_MS : STATUS_POLL_MS * 4);
         })
         .catch((err: unknown) => {
@@ -285,26 +290,33 @@ function AppInner() {
     }
   }
 
-  function replaceSearch(next: NamedSearch) {
-    setSearches((prev) => {
+  function replaceGroup(next: SearchGroup) {
+    setGroups((prev) => {
       const exists = prev.some((row) => row.id === next.id);
       if (!exists) return [...prev, next];
       return prev.map((row) => (row.id === next.id ? next : row));
     });
   }
 
-  async function onToggleQueue(search: NamedSearch, inQueue: boolean) {
-    setSearchError(null);
+  function replacePlatform(next: PlatformRow) {
+    setPlatforms((prev) => {
+      const exists = prev.some((row) => row.platform_id === next.platform_id);
+      if (!exists) return [...prev, next];
+      return prev.map((row) => (row.platform_id === next.platform_id ? next : row));
+    });
+  }
+
+  async function onToggleQueue(group: SearchGroup, inQueue: boolean) {
+    setGroupError(null);
     try {
-      replaceSearch(
-        await updateSearch(search.id, {
-          name: search.name,
-          platform_id: search.platform_id,
-          queries: search.queries,
-          exclude: search.exclude,
-          limit_n: search.limit_n,
+      replaceGroup(
+        await updateSearchGroup(group.id, {
+          name: group.name,
+          queries: group.queries,
+          exclude: group.exclude,
+          limit_n: group.limit_n,
           in_queue: inQueue,
-          sort_order: search.sort_order,
+          sort_order: group.sort_order,
         }),
       );
     } catch (err: unknown) {
@@ -312,41 +324,54 @@ function AppInner() {
         onUnauthorized();
         return;
       }
-      setSearchError(
-        err instanceof SearchControlError ? searchControlMessage(err.code) : copy.searches_save_failed,
+      setGroupError(
+        err instanceof SearchControlError ? searchControlMessage(err.code) : copy.groups_save_failed,
       );
     }
   }
 
-  async function onSaveSearch(id: string | undefined, body: SearchWrite) {
-    setSearchError(null);
+  async function onTogglePlatform(platform: PlatformRow, enabled: boolean) {
+    setGroupError(null);
     try {
-      const saved = id ? await updateSearch(id, body) : await createSearch(body);
-      if (id) replaceSearch(saved);
-      else setSearches((prev) => [...prev, saved]);
-    } catch (err: unknown) {
-      if (err instanceof UnauthorizedError) {
-        onUnauthorized();
-        throw err;
-      }
-      setSearchError(
-        err instanceof SearchControlError ? searchControlMessage(err.code) : copy.searches_save_failed,
-      );
-      throw err;
-    }
-  }
-
-  async function onDeleteSearch(search: NamedSearch) {
-    setSearchError(null);
-    try {
-      await deleteSearch(search.id);
-      setSearches((prev) => prev.filter((row) => row.id !== search.id));
+      replacePlatform(await setPlatformEnabled(platform.platform_id, enabled));
     } catch (err: unknown) {
       if (err instanceof UnauthorizedError) {
         onUnauthorized();
         return;
       }
-      setSearchError(copy.searches_save_failed);
+      setGroupError(copy.groups_save_failed);
+    }
+  }
+
+  async function onSaveGroup(id: string | undefined, body: SearchGroupWrite) {
+    setGroupError(null);
+    try {
+      const saved = id ? await updateSearchGroup(id, body) : await createSearchGroup(body);
+      if (id) replaceGroup(saved);
+      else setGroups((prev) => [...prev, saved]);
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        throw err;
+      }
+      setGroupError(
+        err instanceof SearchControlError ? searchControlMessage(err.code) : copy.groups_save_failed,
+      );
+      throw err;
+    }
+  }
+
+  async function onDeleteGroup(group: SearchGroup) {
+    setGroupError(null);
+    try {
+      await deleteSearchGroup(group.id);
+      setGroups((prev) => prev.filter((row) => row.id !== group.id));
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
+      setGroupError(copy.groups_save_failed);
     }
   }
 
@@ -621,15 +646,17 @@ function AppInner() {
         ) : (
           <TechRunPanel
             status={tech}
-            searches={searches}
+            groups={groups}
+            platforms={platforms}
             busy={techBusy}
             error={techError}
-            searchError={searchError}
+            groupError={groupError}
             onStart={onStartRun}
             onStop={onStopRun}
             onToggleQueue={onToggleQueue}
-            onSaveSearch={onSaveSearch}
-            onDeleteSearch={onDeleteSearch}
+            onTogglePlatform={onTogglePlatform}
+            onSaveGroup={onSaveGroup}
+            onDeleteGroup={onDeleteGroup}
           />
         )}
       </Box>

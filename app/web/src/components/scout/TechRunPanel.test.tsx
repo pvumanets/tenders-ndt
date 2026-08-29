@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { copy } from "../../copy";
 import ThemeRegistry from "../../theme/ThemeRegistry";
-import type { NamedSearch, TechStatus } from "../../types";
+import type { PlatformRow, SearchGroup, TechStatus } from "../../types";
 import TechRunPanel from "./TechRunPanel";
 
 afterEach(() => {
@@ -23,7 +23,7 @@ const idle: TechStatus = {
   ai_failures: 0,
   http_retries: 0,
   session: "ok",
-  run_dir: "",
+  run_dir: "/tmp/run",
   queue: [],
   queue_index: 0,
   queue_total: 0,
@@ -31,10 +31,9 @@ const idle: TechStatus = {
   log: [],
 };
 
-const rostender: NamedSearch = {
-  id: "s-rt",
-  name: "РосТендер — услуги НК",
-  platform_id: "rostender",
+const methods: SearchGroup = {
+  id: "g-methods",
+  name: "методы",
   queries: ["неразрушающий"],
   exclude: [],
   limit_n: 0,
@@ -42,16 +41,36 @@ const rostender: NamedSearch = {
   sort_order: 1,
 };
 
-const tenderPro: NamedSearch = {
-  id: "s-tp",
-  name: "Tender.Pro — методы",
-  platform_id: "tender-pro",
+const services: SearchGroup = {
+  id: "g-services",
+  name: "услуги НК",
   queries: ["ВИК", "ПВК"],
   exclude: [],
   limit_n: 0,
   in_queue: false,
-  sort_order: 10,
+  sort_order: 2,
 };
+
+const platforms: PlatformRow[] = [
+  {
+    platform_id: "rostender",
+    name: copy.platform_rostender,
+    enabled: true,
+    session: "ok",
+  },
+  {
+    platform_id: "tender-pro",
+    name: copy.platform_tender_pro,
+    enabled: true,
+    session: "list_without_login",
+  },
+  {
+    platform_id: "roseltorg",
+    name: copy.platform_roseltorg,
+    enabled: false,
+    session: "missing",
+  },
+];
 
 function renderPanel(
   status: TechStatus,
@@ -60,51 +79,67 @@ function renderPanel(
   const onStart = extra?.onStart ?? vi.fn();
   const onStop = extra?.onStop ?? vi.fn();
   const onToggleQueue = extra?.onToggleQueue ?? vi.fn();
-  const onSaveSearch = extra?.onSaveSearch ?? vi.fn().mockResolvedValue(undefined);
-  const onDeleteSearch = extra?.onDeleteSearch ?? vi.fn();
+  const onTogglePlatform = extra?.onTogglePlatform ?? vi.fn();
+  const onSaveGroup = extra?.onSaveGroup ?? vi.fn().mockResolvedValue(undefined);
+  const onDeleteGroup = extra?.onDeleteGroup ?? vi.fn();
   render(
     <ThemeRegistry>
       <TechRunPanel
         status={status}
-        searches={extra?.searches ?? [rostender, tenderPro]}
+        groups={extra?.groups ?? [methods, services]}
+        platforms={extra?.platforms ?? platforms}
         busy={extra?.busy}
         error={extra?.error}
-        searchError={extra?.searchError}
+        groupError={extra?.groupError}
         onStart={onStart}
         onStop={onStop}
         onToggleQueue={onToggleQueue}
-        onSaveSearch={onSaveSearch}
-        onDeleteSearch={onDeleteSearch}
+        onTogglePlatform={onTogglePlatform}
+        onSaveGroup={onSaveGroup}
+        onDeleteGroup={onDeleteGroup}
       />
     </ThemeRegistry>,
   );
-  return { onStart, onStop, onToggleQueue, onSaveSearch, onDeleteSearch };
+  return { onStart, onStop, onToggleQueue, onTogglePlatform, onSaveGroup, onDeleteGroup };
 }
 
 describe("TechRunPanel", () => {
-  it("opens search settings drawer on edit", async () => {
+  it("renders four W-run section titles", () => {
+    renderPanel(idle);
+    expect(screen.getByText(copy.run_section_controls)).toBeInTheDocument();
+    expect(screen.getByText(copy.run_section_groups)).toBeInTheDocument();
+    expect(screen.getByText(copy.run_section_platforms)).toBeInTheDocument();
+    expect(screen.getByText(copy.run_section_diagnostics)).toBeInTheDocument();
+  });
+
+  it("keeps diagnostics collapsed and run path out of primary flow", () => {
+    renderPanel(idle);
+    expect(screen.queryByDisplayValue("/tmp/run")).not.toBeInTheDocument();
+    expect(screen.queryByText(copy.run_path_label)).not.toBeInTheDocument();
+  });
+
+  it("opens group drawer without platform field", async () => {
     const user = userEvent.setup();
     renderPanel(idle);
-    await user.click(screen.getAllByRole("button", { name: copy.searches_edit })[0]);
-    expect(screen.getByText(copy.searches_drawer_title)).toBeInTheDocument();
-    expect(screen.getByLabelText(copy.searches_name)).toHaveValue(rostender.name);
-    expect(screen.getByLabelText(copy.searches_queries)).toHaveValue("неразрушающий");
-    expect(screen.getByLabelText(copy.searches_exclude)).toHaveValue("");
+    await user.click(screen.getAllByRole("button", { name: copy.groups_edit })[0]);
+    expect(screen.getByText(copy.groups_drawer_title)).toBeInTheDocument();
+    expect(screen.getByLabelText(copy.groups_name)).toHaveValue(methods.name);
+    expect(screen.getByLabelText(copy.groups_queries)).toHaveValue("неразрушающий");
+    expect(screen.queryByLabelText(/Площадка/i)).not.toBeInTheDocument();
   });
 
   it("saves draft with minus phrases", async () => {
     const user = userEvent.setup();
-    const { onSaveSearch } = renderPanel(idle, {
-      searches: [{ ...rostender, exclude: ["кровля"] }],
+    const { onSaveGroup } = renderPanel(idle, {
+      groups: [{ ...methods, exclude: ["кровля"] }],
     });
-    await user.click(screen.getAllByRole("button", { name: copy.searches_edit })[0]);
-    expect(screen.getByLabelText(copy.searches_exclude)).toHaveValue("кровля");
-    await user.clear(screen.getByLabelText(copy.searches_exclude));
-    await user.type(screen.getByLabelText(copy.searches_exclude), "ЗАГС\nшкола");
-    await user.click(screen.getByRole("button", { name: copy.searches_save }));
-    expect(onSaveSearch).toHaveBeenCalledWith("s-rt", {
-      name: rostender.name,
-      platform_id: "rostender",
+    await user.click(screen.getAllByRole("button", { name: copy.groups_edit })[0]);
+    expect(screen.getByLabelText(copy.groups_exclude)).toHaveValue("кровля");
+    await user.clear(screen.getByLabelText(copy.groups_exclude));
+    await user.type(screen.getByLabelText(copy.groups_exclude), "ЗАГС\nшкола");
+    await user.click(screen.getByRole("button", { name: copy.groups_save }));
+    expect(onSaveGroup).toHaveBeenCalledWith("g-methods", {
+      name: methods.name,
       queries: ["неразрушающий"],
       exclude: ["ЗАГС", "школа"],
       limit_n: 0,
@@ -113,9 +148,9 @@ describe("TechRunPanel", () => {
     });
   });
 
-  it("enables start when a search is queued, even without cookies", async () => {
+  it("enables start when a group and platform are queued", async () => {
     const user = userEvent.setup();
-    const { onStart, onStop } = renderPanel({ ...idle, session: "missing" });
+    const { onStart, onStop } = renderPanel(idle);
     const start = screen.getByRole("button", { name: copy.run_start });
     const stop = screen.getByRole("button", { name: copy.run_stop });
     expect(start).toBeEnabled();
@@ -126,47 +161,34 @@ describe("TechRunPanel", () => {
   });
 
   it("disables start when the queue is empty", () => {
-    renderPanel(idle, { searches: [{ ...rostender, in_queue: false }, tenderPro] });
+    renderPanel(idle, {
+      groups: [
+        { ...methods, in_queue: false },
+        { ...services, in_queue: false },
+      ],
+    });
     expect(screen.getByRole("button", { name: copy.run_start })).toBeDisabled();
-    expect(screen.getByText(copy.run_error_empty_queue)).toBeInTheDocument();
+    expect(screen.getByText(copy.run_queue_empty)).toBeInTheDocument();
   });
 
   it("enables stop while running", () => {
-    renderPanel({ ...idle, running: true });
+    renderPanel({ ...idle, running: true, queue_total: 2, queue_index: 0 });
     expect(screen.getByRole("button", { name: copy.run_start })).toBeDisabled();
     expect(screen.getByRole("button", { name: copy.run_stop })).toBeEnabled();
   });
 
-  it("calls stop while running and shows error copy", async () => {
-    const user = userEvent.setup();
-    const { onStop } = renderPanel(
-      { ...idle, running: true },
-      { error: copy.run_error_already },
-    );
-    await user.click(screen.getByRole("button", { name: copy.run_stop }));
-    expect(onStop).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(copy.run_error_already)).toBeInTheDocument();
-    expect(screen.queryByText("Старт и стоп прогона в этом экране отключены")).not.toBeInTheDocument();
-  });
-
-  it("shows empty_queue copy from start error", () => {
-    renderPanel(idle, { error: copy.run_error_empty_queue });
-    expect(screen.getAllByText(copy.run_error_empty_queue).length).toBeGreaterThan(0);
-  });
-
-  it("keeps query and limit off the start button and in the search row", () => {
+  it("shows session labels without cookie filenames", () => {
     renderPanel(idle);
-    expect(screen.queryByLabelText(/query/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/неразрушающий/)).toBeInTheDocument();
-    expect(screen.getByText(copy.searches_tender_pro_docs)).toBeInTheDocument();
-    expect(screen.getByText(copy.session_tender_pro)).toBeInTheDocument();
-    expect(screen.getByText(copy.session_roseltorg)).toBeInTheDocument();
-    expect(screen.queryByText(/пока не подключён/)).not.toBeInTheDocument();
+    expect(screen.getByText(`${copy.platform_tender_pro}: ${copy.session_status_list_without_login}`)).toBeInTheDocument();
+    expect(screen.queryByText(/cookies\.tender-pro/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/cookies\.roseltorg/i)).not.toBeInTheDocument();
   });
 
-  it("shows four run report phrases", () => {
+  it("shows run report only when done", () => {
     renderPanel({
       ...idle,
+      phase: "done",
+      phase_label: copy.phase_done,
       run_report: { new: 1, already: 2, updated: 3, expired: 4 },
     });
     expect(screen.getByText(`${copy.run_report_new}: 1`)).toBeInTheDocument();
@@ -175,10 +197,20 @@ describe("TechRunPanel", () => {
     expect(screen.getByText(`${copy.run_report_expired}: 4`)).toBeInTheDocument();
   });
 
-  it("toggles in_queue from the switch", async () => {
+  it("hides run report while idle", () => {
+    renderPanel({
+      ...idle,
+      run_report: { new: 1, already: 2, updated: 3, expired: 4 },
+    });
+    expect(screen.queryByText(`${copy.run_report_new}: 1`)).not.toBeInTheDocument();
+  });
+
+  it("toggles group queue and platform enable", async () => {
     const user = userEvent.setup();
-    const { onToggleQueue } = renderPanel(idle);
-    await user.click(screen.getByLabelText(`${copy.searches_queue}: ${tenderPro.name}`));
-    expect(onToggleQueue).toHaveBeenCalledWith(tenderPro, true);
+    const { onToggleQueue, onTogglePlatform } = renderPanel(idle);
+    await user.click(screen.getByLabelText(`${copy.groups_queue}: ${services.name}`));
+    expect(onToggleQueue).toHaveBeenCalledWith(services, true);
+    await user.click(screen.getByLabelText(`${copy.platform_participate}: ${copy.platform_roseltorg}`));
+    expect(onTogglePlatform).toHaveBeenCalledWith(platforms[2], true);
   });
 });

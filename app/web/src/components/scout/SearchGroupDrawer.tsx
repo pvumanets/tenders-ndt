@@ -4,7 +4,6 @@ import {
   Button,
   FormControlLabel,
   IconButton,
-  MenuItem,
   Stack,
   Switch,
   TextField,
@@ -14,11 +13,11 @@ import CloseIcon from "@mui/icons-material/Close";
 import { copy } from "../../copy";
 import { stripe } from "../../theme/palette";
 import DetailDrawerShell from "../../vendor/personal/people/DetailDrawerShell";
+import type { SearchGroup } from "../../types";
 
-export type SearchDraft = {
+export type GroupDraft = {
   id?: string;
   name: string;
-  platform_id: string;
   queriesText: string;
   excludeText: string;
   limit_n: number;
@@ -26,10 +25,9 @@ export type SearchDraft = {
   sort_order: number;
 };
 
-export function emptySearchDraft(sortOrder: number): SearchDraft {
+export function emptyGroupDraft(sortOrder: number): GroupDraft {
   return {
     name: "",
-    platform_id: "rostender",
     queriesText: "",
     excludeText: "",
     limit_n: 0,
@@ -38,45 +36,35 @@ export function emptySearchDraft(sortOrder: number): SearchDraft {
   };
 }
 
-export function draftFromNamedSearch(search: {
-  id: string;
-  name: string;
-  platform_id: string;
-  queries: string[];
-  exclude?: string[];
-  limit_n: number;
-  in_queue: boolean;
-  sort_order: number;
-}): SearchDraft {
+export function draftFromSearchGroup(group: SearchGroup): GroupDraft {
   return {
-    id: search.id,
-    name: search.name,
-    platform_id: search.platform_id,
-    queriesText: search.queries.join("\n"),
-    excludeText: (search.exclude ?? []).join("\n"),
-    limit_n: search.limit_n,
-    in_queue: search.in_queue,
-    sort_order: search.sort_order,
+    id: group.id,
+    name: group.name,
+    queriesText: group.queries.join("\n"),
+    excludeText: (group.exclude ?? []).join("\n"),
+    limit_n: group.limit_n,
+    in_queue: group.in_queue,
+    sort_order: group.sort_order,
   };
 }
 
-export function parseSearchQueries(text: string): string[] {
+export function parseGroupLines(text: string): string[] {
   return text
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
 }
 
-export default function SearchSettingsDrawer({
+export default function SearchGroupDrawer({
   draft,
   saving,
   onChange,
   onSave,
   onClose,
 }: {
-  draft: SearchDraft;
+  draft: GroupDraft;
   saving: boolean;
-  onChange: (next: SearchDraft) => void;
+  onChange: (next: GroupDraft) => void;
   onSave: () => void;
   onClose: () => void;
 }) {
@@ -88,21 +76,26 @@ export default function SearchSettingsDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const canSave = draft.name.trim().length > 0 && parseSearchQueries(draft.queriesText).length > 0;
+  const canSave =
+    draft.name.trim().length > 0 && parseGroupLines(draft.queriesText).length > 0;
 
   return (
     <DetailDrawerShell open onClose={onClose}>
       <Box sx={{ p: 2.5, borderBottom: `1px solid ${stripe.border}` }}>
-        <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ justifyContent: "space-between", alignItems: "flex-start" }}
+        >
           <Box sx={{ minWidth: 0 }}>
             <Typography variant="caption" color="text.secondary">
-              {copy.searches_drawer_title}
+              {copy.groups_drawer_title}
             </Typography>
             <Typography component="h2" sx={{ mt: 0.5, fontWeight: 600, color: stripe.navy }}>
-              {draft.name.trim() || copy.searches_add}
+              {draft.name.trim() || copy.groups_add}
             </Typography>
           </Box>
-          <IconButton size="small" aria-label={copy.searches_drawer_close_aria} onClick={onClose}>
+          <IconButton size="small" aria-label={copy.groups_drawer_close_aria} onClick={onClose}>
             <CloseIcon fontSize="small" />
           </IconButton>
         </Stack>
@@ -112,26 +105,14 @@ export default function SearchSettingsDrawer({
         <Stack spacing={1.5}>
           <TextField
             size="small"
-            label={copy.searches_name}
+            label={copy.groups_name}
             value={draft.name}
             onChange={(e) => onChange({ ...draft, name: e.target.value })}
             fullWidth
           />
           <TextField
             size="small"
-            select
-            label={copy.searches_platform}
-            value={draft.platform_id}
-            onChange={(e) => onChange({ ...draft, platform_id: e.target.value })}
-            fullWidth
-          >
-            <MenuItem value="rostender">{copy.platform_rostender}</MenuItem>
-            <MenuItem value="tender-pro">{copy.platform_tender_pro}</MenuItem>
-            <MenuItem value="roseltorg">{copy.platform_roseltorg}</MenuItem>
-          </TextField>
-          <TextField
-            size="small"
-            label={copy.searches_queries}
+            label={copy.groups_queries}
             value={draft.queriesText}
             onChange={(e) => onChange({ ...draft, queriesText: e.target.value })}
             multiline
@@ -140,31 +121,21 @@ export default function SearchSettingsDrawer({
           />
           <TextField
             size="small"
-            label={copy.searches_exclude}
+            label={copy.groups_exclude}
             value={draft.excludeText}
             onChange={(e) => onChange({ ...draft, excludeText: e.target.value })}
-            helperText={copy.searches_exclude_hint}
+            helperText={copy.groups_exclude_hint}
             multiline
             minRows={3}
             fullWidth
           />
-          {draft.platform_id === "tender-pro" ? (
-            <Typography variant="caption" color="text.secondary">
-              {copy.searches_tender_pro_docs}
-            </Typography>
-          ) : null}
-          {draft.platform_id === "roseltorg" ? (
-            <Typography variant="caption" color="text.secondary">
-              {copy.searches_roseltorg_docs}
-            </Typography>
-          ) : null}
           <TextField
             size="small"
             type="number"
-            label={copy.searches_limit}
+            label={copy.groups_limit}
             value={draft.limit_n}
             onChange={(e) => onChange({ ...draft, limit_n: Number(e.target.value) })}
-            helperText={copy.searches_limit_hint}
+            helperText={copy.groups_limit_hint}
             slotProps={{ htmlInput: { min: 0 } }}
             fullWidth
           />
@@ -175,7 +146,7 @@ export default function SearchSettingsDrawer({
                 onChange={(_, checked) => onChange({ ...draft, in_queue: checked })}
               />
             }
-            label={copy.searches_queue}
+            label={copy.groups_queue}
           />
         </Stack>
       </Box>
@@ -183,10 +154,10 @@ export default function SearchSettingsDrawer({
       <Box sx={{ p: 2.5, borderTop: `1px solid ${stripe.border}` }}>
         <Stack direction="row" spacing={1}>
           <Button variant="contained" size="small" disabled={saving || !canSave} onClick={onSave}>
-            {copy.searches_save}
+            {copy.groups_save}
           </Button>
           <Button size="small" disabled={saving} onClick={onClose}>
-            {copy.searches_cancel}
+            {copy.groups_cancel}
           </Button>
         </Stack>
       </Box>
