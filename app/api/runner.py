@@ -252,7 +252,7 @@ def _download_docs(rows: list[dict], *, platform_id: str) -> None:
         if platform_id == PLATFORM_ROSTENDER:
             STATE.set_session("expired")
         else:
-            STATE.set_session("expired", platform_id=PLATFORM_TENDER_PRO)
+            STATE.set_session("expired", platform_id=platform_id)
         STATE.log_msg(f"Docs AuthError: {exc}", level="error")
     except Exception as exc:  # noqa: BLE001
         STATE.log_msg(f"Docs error: {type(exc).__name__}: {exc}", level="error")
