@@ -2,7 +2,8 @@
 
 **status:** active  
 **last-review-date:** 2026-08-29  
-**P17:** [036](./036-search-plus-minus.md) **done** · [037](./037-score-no-inject.md) **done** · [038](./038-ai-reviewed-tab.md) **done** · [039](./039-ai-master-prompt.md) **done** · [040](./040-roseltorg-adapter.md) **done** · [041](./041-shared-search-packages.md) **done**
+**P17:** [036](./036-search-plus-minus.md) **done** · [037](./037-score-no-inject.md) **done** · [038](./038-ai-reviewed-tab.md) **done** · [039](./039-ai-master-prompt.md) **done** · [040](./040-roseltorg-adapter.md) **done** · [041](./041-shared-search-packages.md) **done**  
+**Прогон группы (docs):** [044](./044-search-groups-discovery.md)–[047](./047-run-ux-copy.md) **done** · код [048](./048-search-groups-backend.md) **done** · UI [049](./049-search-groups-ui.md)–[050](./050-search-groups-qa.md) **backlog**
 
 Владелец смотрит **эту таблицу**. Карточка = детали и acceptance. Cursor Plans ≠ канон.
 
@@ -63,6 +64,13 @@
 | 041 | Общие слова поиска A–E на все площадки | task | done | NEXT+ | | [041-shared-search-packages.md](./041-shared-search-packages.md) |
 | 042 | provod.ai: timeout→fallback + commit per lot | task | done | NEXT+ | | [042-provod-resilience.md](./042-provod-resilience.md) |
 | 043 | Росэлторг www-поиск вместо CORP | task | done | NEXT+ | | [043-roseltorg-www.md](./043-roseltorg-www.md) |
+| 044 | Discovery: группы поиска × площадки | task | done | NEXT+ | | [044-search-groups-discovery.md](./044-search-groups-discovery.md) |
+| 045 | Delivery: API контракт групп и площадок | task | done | NEXT+ | | [045-search-groups-api.md](./045-search-groups-api.md) |
+| 046 | Design: IA Прогон + компоненты W-run | task | done | NEXT+ | | [046-run-ia-design.md](./046-run-ia-design.md) |
+| 047 | UX copy: площадки, группы, диагностика | task | done | NEXT+ | | [047-run-ux-copy.md](./047-run-ux-copy.md) |
+| 048 | Backend: search_groups + platforms.enabled | task | done | NEXT+ | | [048-search-groups-backend.md](./048-search-groups-backend.md) |
+| 049 | Frontend: Прогон 4 секции + группы | task | backlog | NEXT+ | | [049-search-groups-ui.md](./049-search-groups-ui.md) |
+| 050 | QA: группы × площадки + wipe/seeds notes | task | backlog | NEXT+ | | [050-search-groups-qa.md](./050-search-groups-qa.md) |
 
 ### Очередь
 
@@ -82,5 +90,7 @@
 - **041** — общие слова A–E на все ЭТП (канон Ростендер) — **done** (2026-08-29).
 - **042** — provod resilience (timeout→fallback, commit per lot, 3-model chain) — **done** (2026-08-29; smoke 3/0).
 - **043** — Росэлторг www вместо CORP (+ docs + twin prefer) — **done** (2026-08-29; live ATOM28082600172).
+- **044–047** — docs: группы поиска × площадки + IA/copy Прогон — **done** (2026-08-29); канон [`../../discovery/search-groups.md`](../../discovery/search-groups.md).
+- **048** — backend search_groups + platform_settings + queue expand — **done** (2026-08-29). UI **049–050** — backlog.
 - **ЭТП учётки:** канон [`../../discovery/platforms.md`](../../discovery/platforms.md) + [`../auth-cookies.md`](../auth-cookies.md). Следующие адаптеры: B2B → OilB2B → Северсталь.
 - Порядок фаз: [`../next-phases.md`](../next-phases.md). **P13 wipe + полный прогон** — **done** (2026-08-27).

@@ -1,11 +1,12 @@
 # Sales Inbox — каталог компонентов
 
 **status:** accepted-with-notes  
-**last-review-date:** 2026-08-13  
+**last-review-date:** 2026-08-29  
 **product:** [`../sales-inbox.md`](../sales-inbox.md)  
 **specs:** [`sales-inbox-component-specs.md`](./sales-inbox-component-specs.md)  
 **wireframes:** [`sales-inbox-wireframes.md`](./sales-inbox-wireframes.md)  
-**copy:** [`sales-inbox-copy.md`](./sales-inbox-copy.md)
+**copy:** [`sales-inbox-copy.md`](./sales-inbox-copy.md)  
+**группы / Прогон TO-BE:** [`../search-groups.md`](../search-groups.md) · [046](../../delivery/tasks/046-run-ia-design.md)
 
 Каталог UI. **Реализация:** копируем kit из `ndt-personal` в `app/web/src/vendor/personal/` + адаптеры `components/scout/` (лоты, столбцы приоритета). Domain people/crew API не переносим.
 
@@ -20,7 +21,7 @@
 | Лоты — список | `LotCardGrid`, `LotCard`, `LotTable`, `LotTableRow` |
 | Общие атомы списка | `PriorityChip`, `UnreadMarker`, `BitrixStatus` |
 | Детали лота | `TenderDetailDrawer`, `TenderFieldRow`, `DocumentsList` |
-| Прогон | `TechRunPanel`, `TechPhaseBar`, `TechCounters`, `TechLog`, `RunPathCopy`, `RunControls` |
+| Прогон | `TechRunPanel` (shell) → `RunControls`, `RunQueueSummary`, `TechPhaseBar`, `TechCounters`, `RunReport` (done only), `SearchGroupList`, `SearchGroupDrawer`, `PlatformEnableList`, `PlatformSessionHint`, `TechDiagnostics` |
 | Состояния | `InboxEmptyState`, `InboxErrorState` |
 
 ---
@@ -180,24 +181,104 @@
 | | |
 | --- | --- |
 | **Зона** | Вкладка Прогон |
-| **Ответственность** | Сборка tech-блоков для digital |
-| **In** | status API shape (логически) |
-| **Out** | sales filters |
-| **Состояния** | idle; running; done; stopped; error |
+| **Ответственность** | Shell из **4 секций** в порядке: Управление · **Группы** · **Площадки** · Диагностика. Sticky Управление. |
+| **In** | status API; search-groups; platforms |
+| **Out** | sales filters; primary «Путь/папка прогона»; RunReport в idle/running |
+| **Состояния** | idle; running (config locked); done; stopped; error |
+
+### `RunControls`
+
+| | |
+| --- | --- |
+| **Зона** | Секция «Управление» |
+| **Ответственность** | Start / Stop |
+| **Состояния** | can start; running (stop enabled); disabled empty queue / busy |
+
+### `RunQueueSummary`
+
+| | |
+| --- | --- |
+| **Зона** | Управление |
+| **Ответственность** | Prefight: `N групп × M площадок → K шагов` / «очередь пуста»; running: `Шаг i/K · группа × площадка` |
+| **Состояния** | empty; ready; running |
 
 ### `TechPhaseBar`
 
 | | |
 | --- | --- |
-| **Ответственность** | Текущая фаза прогона + прогресс пула/карточек |
-| **Состояния** | per phase P1–P4; done |
+| **Зона** | Управление |
+| **Ответственность** | Текущая фаза + прогресс списка/карточек + (opt) текущий шаг; **hero** text в секции |
+| **Состояния** | per phase; done; idle |
 
 ### `TechCounters`
 
 | | |
 | --- | --- |
-| **Ответственность** | Счётчики fit; **здесь допустимы L1/L2/L3** |
+| **Зона** | Управление |
+| **Ответственность** | Счётчики; L1–L3/noise; **L1 визуально доминирует**, L2/L3/noise muted |
 | **Состояния** | zero; populated |
+
+### `RunReport`
+
+| | |
+| --- | --- |
+| **Зона** | Управление — **только** `done` / `stopped` (или collapse «Отчёт») |
+| **Ответственность** | new / already / updated / expired |
+| **Out** | idle и running primary row |
+| **Состояния** | hidden; populated |
+
+### `SearchGroupList`
+
+| | |
+| --- | --- |
+| **Зона** | Секция «Группы поиска» (вторая, после Управления) |
+| **Ответственность** | Список групп: имя · Switch «В очереди» · Править/Удалить · «Новая группа». Plus preview — не колонка (muted clamp / drawer). |
+| **In** | `/api/search-groups` |
+| **Out** | строки «РосТендер — …» × N; select площадки; chip-пикер |
+| **Состояния** | empty; populated; locked while running |
+
+### `SearchGroupDrawer`
+
+| | |
+| --- | --- |
+| **Зона** | Overlay Прогон |
+| **Ответственность** | CRUD группы: имя, плюс, минус, лимит, очередь. **Без** поля площадки. |
+| **Состояния** | create; edit; locked while running |
+
+### `PlatformEnableList`
+
+| | |
+| --- | --- |
+| **Зона** | Секция «Площадки» (третья) |
+| **Ответственность** | Строка на ЭТП: имя · Switch «Участвует» (FormControlLabel). Session — через `PlatformSessionHint`, не равный вес. |
+| **In** | `/api/platforms` |
+| **Out** | имена `cookies.*.txt` в primary |
+| **Состояния** | enabled/disabled; locked while running |
+| **Was** | часть `PlatformStatusList` (split 2026-08-29) |
+
+### `PlatformSessionHint`
+
+| | |
+| --- | --- |
+| **Зона** | Ряд площадки / quiet Alert под заголовком секции |
+| **Ответственность** | Muted статус сессии (`session_status_*`); при missing/expired на **включённой** ЭТП — один quiet Alert; детали файлов — в Диагностике |
+| **Out** | Chip как пикер; essay на каждую ЭТП |
+| **Состояния** | ok; missing; expired; list_without_login |
+
+### `PlatformStatusList`
+
+| | |
+| --- | --- |
+| **Статус** | **deprecated** — заменить на `PlatformEnableList` + `PlatformSessionHint` |
+
+### `TechDiagnostics`
+
+| | |
+| --- | --- |
+| **Зона** | Секция «Диагностика» |
+| **Ответственность** | Collapse **закрыт по умолчанию**; **авто-раскрытие** при `error` / stop-with-error. Лог + опционально папка прогона. |
+| **Out** | path в основном потоке |
+| **Состояния** | collapsed; expanded; empty log |
 
 ### `TechLog`
 
@@ -205,20 +286,15 @@
 | --- | --- |
 | **Ответственность** | Последние N строк лога; ошибки выделены |
 | **Состояния** | empty; streaming; error line |
+| **Parent** | только внутри `TechDiagnostics` |
 
 ### `RunPathCopy`
 
 | | |
 | --- | --- |
-| **Ответственность** | Путь `runs/…` + одно действие «Копировать» |
-| **Состояния** | no run; has path; copied feedback |
-
-### `RunControls`
-
-| | |
-| --- | --- |
-| **Ответственность** | Start / Stop прогона (только Tech) |
-| **Состояния** | can start; running (stop enabled); disabled missing cookies |
+| **Ответственность** | Папка прогона + «Копировать» |
+| **Статус** | **deprecate** из основного UI; только внутри `TechDiagnostics` |
+| **Состояния** | no run; has path; copied |
 
 ### `InboxEmptyState`
 

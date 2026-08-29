@@ -62,10 +62,18 @@ class RunState:
                 "queue": [dict(item) for item in self.queue],
                 "queue_index": self.queue_index,
                 "queue_total": len(self.queue),
-                "current_search_id": self.queue[self.queue_index]["id"]
+                "current_search_id": self.queue[self.queue_index].get("group_id")
+                or self.queue[self.queue_index].get("id")
                 if self.queue and 0 <= self.queue_index < len(self.queue)
                 else None,
-                "current_search_name": self.queue[self.queue_index]["name"]
+                "current_search_name": self.queue[self.queue_index].get("group_name")
+                or self.queue[self.queue_index].get("name")
+                if self.queue and 0 <= self.queue_index < len(self.queue)
+                else None,
+                "current_group_id": self.queue[self.queue_index].get("group_id")
+                if self.queue and 0 <= self.queue_index < len(self.queue)
+                else None,
+                "current_platform_id": self.queue[self.queue_index].get("platform_id")
                 if self.queue and 0 <= self.queue_index < len(self.queue)
                 else None,
                 "log": list(self.log),

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.worker.search_seeds import search_seed_rows
+from app.worker.search_seeds import group_seed_rows, search_seed_rows
 
 _FORBIDDEN = {
     "нераз.",
@@ -15,13 +15,21 @@ _FORBIDDEN = {
     "ПВК",
 }
 
-_LEVEL_SUFFIXES = (
+_LEVEL_NAMES = (
     "услуги НК",
     "методы",
     "аббревиатуры",
     "контроли",
     "страховка",
 )
+
+
+@pytest.mark.unit
+def test_group_seeds_a_to_e() -> None:
+    rows = group_seed_rows()
+    assert len(rows) == 5
+    assert [r["name"] for r in rows] == list(_LEVEL_NAMES)
+    assert "platform_id" not in rows[0]
 
 
 def _by_platform(platform_id: str) -> list[dict]:
@@ -37,7 +45,7 @@ def test_all_platforms_have_a_to_e() -> None:
     ):
         rows = _by_platform(platform_id)
         assert len(rows) == 5
-        assert [r["name"] for r in rows] == [f"{prefix} — {s}" for s in _LEVEL_SUFFIXES]
+        assert [r["name"] for r in rows] == [f"{prefix} — {s}" for s in _LEVEL_NAMES]
 
 
 @pytest.mark.unit
