@@ -224,7 +224,7 @@ export default function TechRunPanel({
           {emptyPriority === "groups" ? null : emptyPriority === "queued" ? (
             <Alert severity="info" sx={{ mb: 1 }}>
               <Typography variant="body2">{copy.groups_none_queued}</Typography>
-              <Typography variant="caption" display="block">
+              <Typography variant="caption" sx={{ display: "block" }}>
                 {copy.groups_none_queued_body}
               </Typography>
             </Alert>
@@ -253,7 +253,7 @@ export default function TechRunPanel({
           {emptyPriority === "platforms" ? (
             <Alert severity="info" sx={{ mb: 1 }}>
               <Typography variant="body2">{copy.platforms_none_enabled}</Typography>
-              <Typography variant="caption" display="block">
+              <Typography variant="caption" sx={{ display: "block" }}>
                 {copy.platforms_none_enabled_body}
               </Typography>
             </Alert>
