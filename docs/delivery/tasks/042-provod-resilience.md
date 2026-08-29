@@ -1,7 +1,7 @@
 ---
 id: "042"
 type: task
-status: in_progress
+status: done
 phase: NEXT+
 title: "provod.ai: timeout→fallback + commit per lot + model chain"
 was: ""
@@ -44,7 +44,7 @@ Default chain: `claude-sonnet-4-6` → `openai-gpt-5-4` → `gemini-2.5-flash` (
 - [x] Частичный успех пакета сохраняется (`commit` per lot)
 - [x] Все модели fail → `ai_error` + `ai_failures`, tier правил на месте
 - [x] pytest unit pass
-- [ ] Docs synced; deploy + smoke 1–3 лота на проде
+- [x] Docs synced; deploy + smoke 1–3 лота на проде (2026-08-29: processed=3 failed=0)
 
 ## Файлы
 
