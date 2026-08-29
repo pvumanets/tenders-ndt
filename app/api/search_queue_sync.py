@@ -10,7 +10,7 @@ from app.db.config import database_url
 from app.db.models import NamedSearch
 from app.db.session import session_factory
 from app.worker.platform_ids import PLATFORM_ROSELTORG, PLATFORM_TENDER_PRO
-from app.worker.roseltorg import credentials_present as roseltorg_credentials_present
+from app.worker.roseltorg import cookies_present as roseltorg_cookies_present
 from app.worker.search_seeds import search_seed_rows
 
 
@@ -55,5 +55,5 @@ def sync_tender_pro_queue_from_cookies() -> None:
 
 
 def sync_roseltorg_queue_from_credentials() -> None:
-    """If ROSELTORG_USER+PASSWORD set, put Росэлторг seed packages into the run queue."""
-    _sync_platform_queue(platform_id=PLATFORM_ROSELTORG, want=roseltorg_credentials_present())
+    """If Росэлторг Netscape cookies exist, put seed packages into the run queue."""
+    _sync_platform_queue(platform_id=PLATFORM_ROSELTORG, want=roseltorg_cookies_present())

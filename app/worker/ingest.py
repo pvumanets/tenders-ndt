@@ -18,6 +18,8 @@ from app.db.models import Lot, Run
 from app.db.session import session_factory
 from app.worker.artifacts import _clean_loc
 from app.worker.customer_name import clean_customer_name
+from app.worker.etp_twins import hide_if_roseltorg_exists, hide_rostender_twins_for_roseltorg
+from app.worker.platform_ids import PLATFORM_ROSELTORG, PLATFORM_ROSTENDER
 
 INBOX_TIERS = frozenset({"L1", "L2", "L3"})
 # Deprecated alias — pool is tier-based (P10/029), not score≥4.
@@ -40,6 +42,7 @@ _RAW_KEYS = (
     "price_rub",
     "source_etp",
     "source_platform_id",
+    "etp_procedure_id",
     "methods",
     "contact_name",
     "contact_phone",
@@ -47,6 +50,7 @@ _RAW_KEYS = (
     "card_fetched",
     "card_error",
     "doc_links",
+    "fit_extra",
     "notes",
 )
 
@@ -293,6 +297,16 @@ def ingest_run(
                     if key == "tender_id":
                         continue
                     setattr(lot, key, value)
+
+        if source_platform_id == PLATFORM_ROSELTORG and candidates:
+            natives = [
+                str(row.get("etp_procedure_id") or str(row.get("tender_id") or "").split(":")[-1])
+                for row in candidates
+            ]
+            hide_rostender_twins_for_roseltorg(session, native_ids=natives)
+        elif source_platform_id == PLATFORM_ROSTENDER and candidates:
+            for row in candidates:
+                hide_if_roseltorg_exists(session, rostender_row=row)
 
         session.commit()
         return IngestResult(
