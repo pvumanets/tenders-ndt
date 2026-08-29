@@ -236,6 +236,7 @@ def ingest_run(
     finished_at: datetime | None = None,
     source_platform_id: str = SOURCE_PLATFORM_ID,
     search_id: UUID | None = None,
+    search_group_id: UUID | None = None,
 ) -> IngestResult | None:
     """Write one run + insert/update-on-diff inbox lots. None if DATABASE_URL is unset."""
     if not database_url():
@@ -252,6 +253,7 @@ def ingest_run(
             limit_n=limit_n,
             source_platform_id=source_platform_id,
             search_id=search_id,
+            search_group_id=search_group_id,
             started_at=started,
             finished_at=finished,
         )

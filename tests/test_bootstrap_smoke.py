@@ -13,7 +13,18 @@ from app.db.models import User
 from app.db.session import get_engine
 from tests.conftest import SMOKE_PREFIX, _user_count
 
-_CANON_TABLES = frozenset({"users", "sessions", "runs", "lots", "lot_state", "documents", "searches"})
+_CANON_TABLES = frozenset(
+    {
+        "users",
+        "sessions",
+        "runs",
+        "lots",
+        "lot_state",
+        "documents",
+        "search_groups",
+        "platform_settings",
+    }
+)
 
 
 def _patch_empty_scout_env(monkeypatch: pytest.MonkeyPatch) -> None:

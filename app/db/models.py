@@ -57,24 +57,34 @@ class ScoutSession(Base):
     user: Mapped[User] = relationship(back_populates="sessions")
 
 
-class NamedSearch(Base):
-    __tablename__ = "searches"
+class SearchGroup(Base):
+    """Named search group (plus/minus) — applies to all enabled platforms."""
+
+    __tablename__ = "search_groups"
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    platform_id: Mapped[str] = mapped_column(String(64), nullable=False)
     queries: Mapped[list] = mapped_column(JSONB, nullable=False)
     exclude: Mapped[list] = mapped_column(
         JSONB, nullable=False, default=list, server_default="[]"
     )
-    limit_n: Mapped[int] = mapped_column(Integer, nullable=False)
+    limit_n: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     in_queue: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    runs: Mapped[list["Run"]] = relationship(back_populates="search")
+    runs: Mapped[list["Run"]] = relationship(back_populates="search_group")
+
+
+class PlatformSetting(Base):
+    """Per-ETP enable flag for cartesian queue expand."""
+
+    __tablename__ = "platform_settings"
+
+    platform_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
 
 class Run(Base):
@@ -85,8 +95,11 @@ class Run(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     limit_n: Mapped[int] = mapped_column(Integer, nullable=False)
     source_platform_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    search_id: Mapped[UUID | None] = mapped_column(
-        Uuid(as_uuid=True), ForeignKey("searches.id", ondelete="SET NULL"), nullable=True
+    search_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    search_group_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("search_groups.id", ondelete="SET NULL"),
+        nullable=True,
     )
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -94,7 +107,7 @@ class Run(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
-    search: Mapped[NamedSearch | None] = relationship(back_populates="runs")
+    search_group: Mapped[SearchGroup | None] = relationship(back_populates="runs")
     lots: Mapped[list[Lot]] = relationship(back_populates="run")
 
 

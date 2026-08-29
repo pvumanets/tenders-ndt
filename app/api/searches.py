@@ -1,37 +1,34 @@
-"""CRUD for named searches (023)."""
+"""Compatibility shim: /api/searches* over search_groups × platforms (048 → 049)."""
 from __future__ import annotations
 
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 
-from app.db.models import NamedSearch
+from app.api import search_groups as groups_api
+from app.db.models import PlatformSetting, SearchGroup
 from app.db.session import session_factory
+from app.worker.search_seeds import PLATFORM_LABELS, PLATFORM_ORDER
 
-ALLOWED_PLATFORMS = frozenset({"rostender", "tender-pro", "roseltorg"})
+# Stable namespace for synthetic search ids (group × platform).
+_SHIM_NS = UUID("aaaaaaaa-bbbb-4ccc-8fff-000000000099")
 
+ALLOWED_PLATFORMS = frozenset(PLATFORM_ORDER)
 
-class SearchError(ValueError):
-    """400-class search validation."""
-
-
-class SearchConflict(RuntimeError):
-    """409 unique name."""
-
-
-class SearchNotFound(LookupError):
-    pass
+# Re-export error types under legacy names for main.py handlers.
+SearchError = groups_api.SearchGroupError
+SearchConflict = groups_api.SearchGroupConflict
+SearchNotFound = groups_api.SearchGroupNotFound
 
 
 class SearchIn(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-    platform_id: str
+    platform_id: str = "rostender"
     queries: list[str] = Field(min_length=1)
     exclude: list[str] = Field(default_factory=list)
-    limit_n: int = Field(default=0, ge=0, description="0 = без потолка; иначе soft stop")
+    limit_n: int = Field(default=0, ge=0)
     in_queue: bool = False
     sort_order: int = Field(default=0, ge=0, le=10_000)
 
@@ -65,89 +62,138 @@ class SearchIn(BaseModel):
         return [item.strip() for item in value if isinstance(item, str) and item.strip()]
 
 
-def _dump(row: NamedSearch) -> dict[str, Any]:
-    return {
-        "id": str(row.id),
-        "name": row.name,
-        "platform_id": row.platform_id,
-        "queries": list(row.queries or []),
-        "exclude": list(row.exclude or []),
-        "limit_n": row.limit_n,
-        "in_queue": bool(row.in_queue),
-        "sort_order": row.sort_order,
-    }
+def shim_search_id(group_id: UUID, platform_id: str) -> UUID:
+    return uuid5(_SHIM_NS, f"{group_id}:{platform_id}")
+
+
+def _group_display_name(name: str) -> str:
+    """Strip legacy 'Площадка — ' prefix if pasted into create."""
+    if " — " in name:
+        return name.split(" — ", 1)[1].strip() or name.strip()
+    return name.strip()
+
+
+def _resolve_shim(search_id: UUID) -> tuple[UUID, str] | None:
+    factory = session_factory()
+    with factory() as session:
+        groups = session.scalars(select(SearchGroup)).all()
+        for group in groups:
+            if group.id == search_id:
+                return group.id, "rostender"
+            for platform_id in PLATFORM_ORDER:
+                if shim_search_id(group.id, platform_id) == search_id:
+                    return group.id, platform_id
+    return None
 
 
 def list_searches() -> dict[str, Any]:
     factory = session_factory()
     with factory() as session:
-        rows = session.scalars(
-            select(NamedSearch).order_by(NamedSearch.sort_order, NamedSearch.name)
+        groups = session.scalars(
+            select(SearchGroup).order_by(SearchGroup.sort_order, SearchGroup.name)
         ).all()
-        return {"items": [_dump(row) for row in rows]}
+        settings = {
+            row.platform_id: bool(row.enabled)
+            for row in session.scalars(select(PlatformSetting)).all()
+        }
+        items: list[dict[str, Any]] = []
+        for group in groups:
+            for platform_id in PLATFORM_ORDER:
+                label = PLATFORM_LABELS.get(platform_id, platform_id)
+                enabled = bool(settings.get(platform_id, False))
+                items.append(
+                    {
+                        "id": str(shim_search_id(group.id, platform_id)),
+                        "name": f"{label} — {group.name}",
+                        "platform_id": platform_id,
+                        "queries": list(group.queries or []),
+                        "exclude": list(group.exclude or []),
+                        "limit_n": group.limit_n,
+                        "in_queue": bool(group.in_queue) and enabled,
+                        "sort_order": group.sort_order * 10
+                        + list(PLATFORM_ORDER).index(platform_id),
+                    }
+                )
+        return {"items": items}
 
 
-def get_queued() -> list[NamedSearch]:
-    factory = session_factory()
-    with factory() as session:
-        rows = session.scalars(
-            select(NamedSearch)
-            .where(NamedSearch.in_queue.is_(True))
-            .order_by(NamedSearch.sort_order, NamedSearch.name)
-        ).all()
-        session.expunge_all()
-        return list(rows)
+def get_queued() -> list[Any]:
+    """Deprecated for runner — use search_groups.get_queued_steps()."""
+    return []  # type: ignore[return-value]
 
 
 def create_search(body: SearchIn) -> dict[str, Any]:
-    factory = session_factory()
-    row = NamedSearch(
-        name=body.name,
-        platform_id=body.platform_id,
+    group_body = groups_api.SearchGroupIn(
+        name=_group_display_name(body.name),
         queries=body.queries,
         exclude=body.exclude,
         limit_n=body.limit_n,
         in_queue=body.in_queue,
         sort_order=body.sort_order,
     )
-    with factory() as session:
-        session.add(row)
-        try:
-            session.commit()
-        except IntegrityError as exc:
-            session.rollback()
-            raise SearchConflict("duplicate_name") from exc
-        session.refresh(row)
-        return _dump(row)
+    created = groups_api.create_group(group_body)
+    group_id = UUID(created["id"])
+    return {
+        "id": str(shim_search_id(group_id, body.platform_id)),
+        "name": f"{PLATFORM_LABELS.get(body.platform_id, body.platform_id)} — {created['name']}",
+        "platform_id": body.platform_id,
+        "queries": created["queries"],
+        "exclude": created["exclude"],
+        "limit_n": created["limit_n"],
+        "in_queue": created["in_queue"],
+        "sort_order": created["sort_order"],
+    }
 
 
 def update_search(search_id: UUID, body: SearchIn) -> dict[str, Any]:
+    resolved = _resolve_shim(search_id)
+    if resolved is None:
+        raise SearchNotFound("not_found")
+    group_id, _platform = resolved
     factory = session_factory()
     with factory() as session:
-        row = session.get(NamedSearch, search_id)
-        if row is None:
+        existing = session.get(SearchGroup, group_id)
+        if existing is None:
             raise SearchNotFound("not_found")
-        row.name = body.name
-        row.platform_id = body.platform_id
-        row.queries = body.queries
-        row.exclude = body.exclude
-        row.limit_n = body.limit_n
-        row.in_queue = body.in_queue
-        row.sort_order = body.sort_order
-        try:
-            session.commit()
-        except IntegrityError as exc:
-            session.rollback()
-            raise SearchConflict("duplicate_name") from exc
-        session.refresh(row)
-        return _dump(row)
+        # Keep real group sort_order — shim list exposes synthetic per-platform values.
+        keep_sort = int(existing.sort_order)
+    group_body = groups_api.SearchGroupIn(
+        name=_group_display_name(body.name),
+        queries=body.queries,
+        exclude=body.exclude,
+        limit_n=body.limit_n,
+        in_queue=body.in_queue,
+        sort_order=keep_sort,
+    )
+    updated = groups_api.update_group(group_id, group_body)
+    return {
+        "id": str(shim_search_id(group_id, body.platform_id)),
+        "name": f"{PLATFORM_LABELS.get(body.platform_id, body.platform_id)} — {updated['name']}",
+        "platform_id": body.platform_id,
+        "queries": updated["queries"],
+        "exclude": updated["exclude"],
+        "limit_n": updated["limit_n"],
+        "in_queue": updated["in_queue"],
+        "sort_order": updated["sort_order"],
+    }
 
 
 def delete_search(search_id: UUID) -> None:
+    """Shim DELETE: dequeue the group; do not destroy it.
+
+    Legacy UI deletes one synthetic group×platform row. Hard-deleting the
+    shared SearchGroup would wipe queries for every platform. Hard remove
+    remains DELETE /api/search-groups/{id}.
+    """
+    resolved = _resolve_shim(search_id)
+    if resolved is None:
+        raise SearchNotFound("not_found")
+    group_id, _platform = resolved
     factory = session_factory()
     with factory() as session:
-        row = session.get(NamedSearch, search_id)
-        if row is None:
+        group = session.get(SearchGroup, group_id)
+        if group is None:
             raise SearchNotFound("not_found")
-        session.delete(row)
-        session.commit()
+        if group.in_queue:
+            group.in_queue = False
+            session.commit()

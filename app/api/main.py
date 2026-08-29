@@ -13,7 +13,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api import auth, inbox, results, runner, searches as searches_api
+from app.api import auth, inbox, platforms as platforms_api, results, runner, search_groups as search_groups_api
+from app.api import searches as searches_api
 from app.api.state import STATE
 from app.db.bootstrap import bootstrap_users
 from app.db.session import ping_db
@@ -47,11 +48,13 @@ async def lifespan(_app: FastAPI):
     runner.refresh_session()
     bootstrap_users()
     try:
+        from app.api.search_groups import ensure_group_seeds
         from app.api.search_queue_sync import (
             sync_roseltorg_queue_from_credentials,
             sync_tender_pro_queue_from_cookies,
         )
 
+        ensure_group_seeds()
         sync_tender_pro_queue_from_cookies()
         sync_roseltorg_queue_from_credentials()
     except Exception:  # noqa: BLE001 — startup must not die on optional sync
@@ -173,6 +176,25 @@ def _parse_search_body(body: dict) -> searches_api.SearchIn:
         raise HTTPException(status_code=400, detail="invalid_search") from exc
 
 
+def _parse_group_body(body: dict) -> search_groups_api.SearchGroupIn:
+    try:
+        return search_groups_api.SearchGroupIn.model_validate(body)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail="invalid_search_group") from exc
+
+
+def _group_http(exc: Exception) -> None:
+    if isinstance(exc, search_groups_api.SearchGroupError):
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if isinstance(exc, search_groups_api.SearchGroupConflict):
+        raise HTTPException(status_code=409, detail="duplicate_name") from exc
+    if isinstance(exc, search_groups_api.SearchGroupNotFound):
+        raise HTTPException(status_code=404, detail="not_found") from exc
+    if isinstance(exc, RuntimeError) and str(exc) == "database_unconfigured":
+        raise HTTPException(status_code=503, detail="db_down") from exc
+    raise exc
+
+
 @app.get("/api/searches")
 def api_searches_list():
     try:
@@ -208,6 +230,73 @@ def api_searches_delete(search_id: UUID) -> None:
         searches_api.delete_search(search_id)
     except (searches_api.SearchNotFound, RuntimeError) as exc:
         _search_http(exc)
+
+
+@app.get("/api/search-groups")
+def api_search_groups_list():
+    try:
+        return search_groups_api.list_groups()
+    except RuntimeError as exc:
+        _group_http(exc)
+
+
+@app.post("/api/search-groups")
+def api_search_groups_create(body: dict):
+    try:
+        return search_groups_api.create_group(_parse_group_body(body))
+    except (
+        search_groups_api.SearchGroupError,
+        search_groups_api.SearchGroupConflict,
+        RuntimeError,
+    ) as exc:
+        _group_http(exc)
+
+
+@app.put("/api/search-groups/{group_id}")
+def api_search_groups_update(group_id: UUID, body: dict):
+    try:
+        return search_groups_api.update_group(group_id, _parse_group_body(body))
+    except (
+        search_groups_api.SearchGroupError,
+        search_groups_api.SearchGroupConflict,
+        search_groups_api.SearchGroupNotFound,
+        RuntimeError,
+    ) as exc:
+        _group_http(exc)
+
+
+@app.delete("/api/search-groups/{group_id}", status_code=204)
+def api_search_groups_delete(group_id: UUID) -> None:
+    try:
+        search_groups_api.delete_group(group_id)
+    except (search_groups_api.SearchGroupNotFound, RuntimeError) as exc:
+        _group_http(exc)
+
+
+@app.get("/api/platforms")
+def api_platforms_list():
+    try:
+        return platforms_api.list_platforms()
+    except RuntimeError as exc:
+        if str(exc) == "database_unconfigured":
+            raise HTTPException(status_code=503, detail="db_down") from exc
+        raise
+
+
+@app.put("/api/platforms/{platform_id}")
+def api_platforms_update(platform_id: str, body: dict):
+    try:
+        patch = platforms_api.PlatformPatch.model_validate(body)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail="invalid_platform") from exc
+    try:
+        return platforms_api.set_platform_enabled(platform_id, enabled=patch.enabled)
+    except platforms_api.PlatformNotFound as exc:
+        raise HTTPException(status_code=404, detail="not_found") from exc
+    except RuntimeError as exc:
+        if str(exc) == "database_unconfigured":
+            raise HTTPException(status_code=503, detail="db_down") from exc
+        raise
 
 
 def _inbox_http(exc: Exception) -> None:

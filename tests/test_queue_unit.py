@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 
 from app.api import runner
-from app.api import searches as searches_api
+from app.api import search_groups as search_groups_api
 from app.api.state import STATE
 from app.worker.list_scrape import scrape_queries
 
@@ -47,7 +47,7 @@ def test_scrape_queries_union_dedupes_and_caps(monkeypatch: pytest.MonkeyPatch) 
 
 @pytest.mark.unit
 def test_start_run_empty_queue(monkeypatch: pytest.MonkeyPatch, idle_run_state: None) -> None:
-    monkeypatch.setattr(searches_api, "get_queued", lambda: [])
+    monkeypatch.setattr(search_groups_api, "get_queued_steps", lambda: [])
     with pytest.raises(RuntimeError, match="empty_queue"):
         runner.start_run()
 
@@ -160,8 +160,8 @@ def test_soft_stop_after_p2_ingests_board_rows(
 @pytest.mark.unit
 def test_get_queued_empty_when_db_unconfigured(monkeypatch: pytest.MonkeyPatch, idle_run_state: None) -> None:
     monkeypatch.setattr(
-        searches_api,
-        "get_queued",
+        search_groups_api,
+        "get_queued_steps",
         lambda: (_ for _ in ()).throw(RuntimeError("database_unconfigured")),
     )
     with pytest.raises(RuntimeError, match="empty_queue"):
