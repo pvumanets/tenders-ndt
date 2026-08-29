@@ -58,6 +58,7 @@ def test_seed_rows_rostender_a_to_e_order() -> None:
     assert all(r["in_queue"] is True for r in rt)
     assert all(r["limit_n"] == 0 for r in rows)
     assert [r["name"] for r in tp] == [
+        "Tender.Pro — услуги НК",
         "Tender.Pro — методы",
         "Tender.Pro — аббревиатуры",
         "Tender.Pro — контроли",
@@ -66,7 +67,14 @@ def test_seed_rows_rostender_a_to_e_order() -> None:
     assert all(r["in_queue"] is False for r in tp)
     assert all(r["in_queue"] is True for r in search_seed_rows(tender_pro_in_queue=True) if r["platform_id"] == "tender-pro")
     re = [r for r in rows if r["platform_id"] == "roseltorg"]
-    assert len(re) == 4
+    assert len(re) == 5
+    assert [r["name"] for r in re] == [
+        "Росэлторг — услуги НК",
+        "Росэлторг — методы",
+        "Росэлторг — аббревиатуры",
+        "Росэлторг — контроли",
+        "Росэлторг — страховка",
+    ]
     assert all(r["in_queue"] is False for r in re)
     assert all(
         r["in_queue"] is True

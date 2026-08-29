@@ -49,9 +49,9 @@ def test_plate_rk_not_radiography_signal() -> None:
 @pytest.mark.unit
 def test_abbr_seeds_no_uk_rk() -> None:
     rows = search_seed_rows()
-    rt = next(r for r in rows if r["name"] == "РосТендер — аббревиатуры")
-    tp = next(r for r in rows if r["name"] == "Tender.Pro — аббревиатуры")
-    for q in rt["queries"] + tp["queries"]:
-        assert q.upper() not in {"УК", "РК"}
-    assert rt["queries"] == ["ВИК"]
-    assert "УЗК" in tp["queries"]
+    for row in rows:
+        if not row["name"].endswith("— аббревиатуры"):
+            continue
+        assert row["queries"] == ["ВИК"]
+        for q in row["queries"]:
+            assert q.upper() not in {"УК", "РК", "УЗК", "НК", "ПВК"}
