@@ -8,33 +8,37 @@ import pytest
 from app.api import search_groups as search_groups_api
 
 
-@pytest.mark.unit
-def test_get_queued_steps_cartesian(monkeypatch: pytest.MonkeyPatch) -> None:
-    g1 = uuid4()
-    g2 = uuid4()
+class _FakeGroup:
+    def __init__(self, gid, name, sort_order, *, in_queue: bool = True):
+        self.id = gid
+        self.name = name
+        self.queries = ["q"]
+        self.exclude = []
+        self.limit_n = 0
+        self.in_queue = in_queue
+        self.sort_order = sort_order
 
-    class FakeGroup:
-        def __init__(self, gid, name, sort_order):
-            self.id = gid
-            self.name = name
-            self.queries = ["q"]
-            self.exclude = []
-            self.limit_n = 0
-            self.in_queue = True
-            self.sort_order = sort_order
 
-    class FakeSetting:
-        def __init__(self, platform_id, enabled):
-            self.platform_id = platform_id
-            self.enabled = enabled
+class _FakeSetting:
+    def __init__(self, platform_id, enabled):
+        self.platform_id = platform_id
+        self.enabled = enabled
 
-    class FakeScalars:
-        def __init__(self, rows):
-            self._rows = rows
 
-        def all(self):
-            return self._rows
+class _FakeScalars:
+    def __init__(self, rows):
+        self._rows = rows
 
+    def all(self):
+        return self._rows
+
+
+def _patch_queued_session(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    groups: list[_FakeGroup],
+    settings: list[_FakeSetting],
+) -> None:
     class FakeSession:
         def __enter__(self):
             return self
@@ -43,30 +47,36 @@ def test_get_queued_steps_cartesian(monkeypatch: pytest.MonkeyPatch) -> None:
             return False
 
         def scalars(self, stmt):
-            # First call loads groups; second loads platform_settings (order in get_queued_steps).
             if not hasattr(self, "_n"):
                 self._n = 0
             self._n += 1
             if self._n == 1:
-                return FakeScalars(
-                    [
-                        FakeGroup(g1, "услуги НК", 1),
-                        FakeGroup(g2, "методы", 2),
-                    ]
-                )
-            return FakeScalars(
-                [
-                    FakeSetting("rostender", True),
-                    FakeSetting("tender-pro", True),
-                    FakeSetting("roseltorg", False),
-                ]
-            )
+                return _FakeScalars(groups)
+            return _FakeScalars(settings)
 
     class FakeFactory:
         def __call__(self):
             return FakeSession()
 
     monkeypatch.setattr(search_groups_api, "session_factory", lambda: FakeFactory())
+
+
+@pytest.mark.unit
+def test_get_queued_steps_cartesian(monkeypatch: pytest.MonkeyPatch) -> None:
+    g1 = uuid4()
+    g2 = uuid4()
+    _patch_queued_session(
+        monkeypatch,
+        groups=[
+            _FakeGroup(g1, "услуги НК", 1),
+            _FakeGroup(g2, "методы", 2),
+        ],
+        settings=[
+            _FakeSetting("rostender", True),
+            _FakeSetting("tender-pro", True),
+            _FakeSetting("roseltorg", False),
+        ],
+    )
 
     steps = search_groups_api.get_queued_steps()
     assert len(steps) == 4
@@ -80,6 +90,43 @@ def test_get_queued_steps_cartesian(monkeypatch: pytest.MonkeyPatch) -> None:
     assert steps[0]["group_id"] == str(g1)
     assert steps[0]["id"] != steps[1]["id"]
     assert steps[0]["group_id"] == steps[1]["group_id"]
+
+
+@pytest.mark.unit
+def test_get_queued_steps_empty_when_no_platforms_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Groups in_queue but all platforms disabled → empty queue."""
+    _patch_queued_session(
+        monkeypatch,
+        groups=[_FakeGroup(uuid4(), "методы", 1, in_queue=True)],
+        settings=[
+            _FakeSetting("rostender", False),
+            _FakeSetting("tender-pro", False),
+            _FakeSetting("roseltorg", False),
+        ],
+    )
+    assert search_groups_api.get_queued_steps() == []
+
+
+@pytest.mark.unit
+def test_get_queued_steps_empty_when_no_groups_in_queue(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Platforms enabled but no group in_queue → empty queue.
+
+    get_queued_steps only SELECTs in_queue=True rows, so groups list is empty.
+    """
+    _patch_queued_session(
+        monkeypatch,
+        groups=[],
+        settings=[
+            _FakeSetting("rostender", True),
+            _FakeSetting("tender-pro", True),
+            _FakeSetting("roseltorg", True),
+        ],
+    )
+    assert search_groups_api.get_queued_steps() == []
 
 
 @pytest.mark.unit
