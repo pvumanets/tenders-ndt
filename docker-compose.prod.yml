@@ -35,11 +35,13 @@ services:
       SCOUT_LEGACY_HTML: ${SCOUT_LEGACY_HTML:-1}
       ROSTENDER_COOKIES_FILE: /app/cookies.rostender.txt
       TENDER_PRO_COOKIES_FILE: /app/cookies.tender-pro.txt
+      ROSELTORG_COOKIES_FILE: /app/cookies.roseltorg.txt
       SCOUT_COOKIE_SECURE: "1"
     volumes:
       - ./runs:/app/runs
       - ./cookies.rostender.txt:/app/cookies.rostender.txt:ro
       - ./cookies.tender-pro.txt:/app/cookies.tender-pro.txt:ro
+      - ./cookies.roseltorg.txt:/app/cookies.roseltorg.txt:ro
       - docs_data:/data/docs
     depends_on:
       db:
