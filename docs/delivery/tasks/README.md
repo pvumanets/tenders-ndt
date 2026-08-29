@@ -3,7 +3,7 @@
 **status:** active  
 **last-review-date:** 2026-08-29  
 **P17:** [036](./036-search-plus-minus.md) **done** · [037](./037-score-no-inject.md) **done** · [038](./038-ai-reviewed-tab.md) **done** · [039](./039-ai-master-prompt.md) **done** · [040](./040-roseltorg-adapter.md) **done** · [041](./041-shared-search-packages.md) **done**  
-**Прогон группы (docs):** [044](./044-search-groups-discovery.md)–[047](./047-run-ux-copy.md) **done** · код [048](./048-search-groups-backend.md) **done** · UI [049](./049-search-groups-ui.md) **done** · QA [050](./050-search-groups-qa.md) **backlog**
+**Прогон группы (docs):** [044](./044-search-groups-discovery.md)–[047](./047-run-ux-copy.md) **done** · код [048](./048-search-groups-backend.md) **done** · UI [049](./049-search-groups-ui.md) **done** · QA [050](./050-search-groups-qa.md) **done**
 
 Владелец смотрит **эту таблицу**. Карточка = детали и acceptance. Cursor Plans ≠ канон.
 
@@ -70,7 +70,7 @@
 | 047 | UX copy: площадки, группы, диагностика | task | done | NEXT+ | | [047-run-ux-copy.md](./047-run-ux-copy.md) |
 | 048 | Backend: search_groups + platforms.enabled | task | done | NEXT+ | | [048-search-groups-backend.md](./048-search-groups-backend.md) |
 | 049 | Frontend: Прогон 4 секции + группы | task | done | NEXT+ | | [049-search-groups-ui.md](./049-search-groups-ui.md) |
-| 050 | QA: группы × площадки + wipe/seeds notes | task | backlog | NEXT+ | | [050-search-groups-qa.md](./050-search-groups-qa.md) |
+| 050 | QA: группы × площадки + wipe/seeds notes | task | done | NEXT+ | | [050-search-groups-qa.md](./050-search-groups-qa.md) |
 
 ### Очередь
 
@@ -92,6 +92,7 @@
 - **043** — Росэлторг www вместо CORP (+ docs + twin prefer) — **done** (2026-08-29; live ATOM28082600172).
 - **044–047** — docs: группы поиска × площадки + IA/copy Прогон — **done** (2026-08-29); канон [`../../discovery/search-groups.md`](../../discovery/search-groups.md).
 - **048** — backend search_groups + platform_settings + queue expand — **done** (2026-08-29).
-- **049** — React Прогон: 4 секции + группы/площадки — **done** (2026-08-29). QA epic **050** — backlog.
+- **049** — React Прогон: 4 секции + группы/площадки — **done** (2026-08-29).
+- **050** — QA групп×площадок (empty_queue оба случая, suites, ops notes) — **done** (2026-08-29). Epic 044–050 closed.
 - **ЭТП учётки:** канон [`../../discovery/platforms.md`](../../discovery/platforms.md) + [`../auth-cookies.md`](../auth-cookies.md). Следующие адаптеры: B2B → OilB2B → Северсталь.
 - Порядок фаз: [`../next-phases.md`](../next-phases.md). **P13 wipe + полный прогон** — **done** (2026-08-27).

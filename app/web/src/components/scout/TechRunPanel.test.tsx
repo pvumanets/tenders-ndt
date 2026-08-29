@@ -169,6 +169,17 @@ describe("TechRunPanel", () => {
     });
     expect(screen.getByRole("button", { name: copy.run_start })).toBeDisabled();
     expect(screen.getByText(copy.run_queue_empty)).toBeInTheDocument();
+    expect(screen.getByText(copy.groups_none_queued)).toBeInTheDocument();
+  });
+
+  it("disables start when no platforms enabled", () => {
+    renderPanel(idle, {
+      platforms: platforms.map((row) => ({ ...row, enabled: false })),
+    });
+    expect(screen.getByRole("button", { name: copy.run_start })).toBeDisabled();
+    expect(screen.getByText(copy.run_queue_empty)).toBeInTheDocument();
+    expect(screen.getByText(copy.platforms_none_enabled)).toBeInTheDocument();
+    expect(screen.getByText(copy.platforms_none_enabled_body)).toBeInTheDocument();
   });
 
   it("enables stop while running", () => {
