@@ -1,10 +1,12 @@
 import type {
   InboxLot,
-  NamedSearch,
+  PlatformRow,
+  PlatformSession,
   PriorityFilter,
   QueueStep,
   QueueStepStatus,
   SalesTier,
+  SearchGroup,
   TechStatus,
 } from "../types";
 import { copy } from "../copy";
@@ -69,10 +71,12 @@ type StatusSnapshot = {
   sessions?: Record<string, string>;
   run_dir?: string | null;
   log?: TechStatus["log"];
-  queue?: QueueStep[];
+  queue?: Array<Partial<QueueStep> & { group_id?: string; group_name?: string }>;
   queue_index?: number;
   queue_total?: number;
   current_search_name?: string | null;
+  current_group_id?: string | null;
+  current_platform_id?: string | null;
 };
 
 async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
@@ -265,13 +269,18 @@ const QUEUE_STATUSES: QueueStepStatus[] = [
   "cancelled",
 ];
 
-function parseQueue(raw: QueueStep[] | undefined): QueueStep[] {
+function parseQueue(raw: StatusSnapshot["queue"]): QueueStep[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((item, index) => {
-    const status = QUEUE_STATUSES.includes(item?.status) ? item.status : "pending";
+    const status = QUEUE_STATUSES.includes(item?.status as QueueStepStatus)
+      ? (item.status as QueueStepStatus)
+      : "pending";
+    const groupName = text(item?.group_name) || text(item?.name);
     return {
       id: text(item?.id) || `step-${index}`,
-      name: text(item?.name),
+      name: groupName,
+      group_id: text(item?.group_id) || undefined,
+      group_name: groupName || undefined,
       platform_id: text(item?.platform_id),
       status,
     };
@@ -283,6 +292,25 @@ export function platformLabel(platformId: string): string {
   if (platformId === "rostender") return copy.platform_rostender;
   if (platformId === "roseltorg") return copy.platform_roseltorg;
   return platformId;
+}
+
+export function sessionStatusLabel(session: PlatformSession | string): string {
+  switch (session) {
+    case "ok":
+      return copy.session_status_ok;
+    case "missing":
+      return copy.session_status_missing;
+    case "expired":
+      return copy.session_status_expired;
+    case "list_without_login":
+      return copy.session_status_list_without_login;
+    default:
+      return copy.session_status_unknown;
+  }
+}
+
+export function formatPlatformSessionLine(platform: PlatformRow): string {
+  return `${platform.name}: ${sessionStatusLabel(platform.session)}`;
 }
 
 export function queueStatusLabel(status: QueueStepStatus): string {
@@ -308,26 +336,28 @@ export function formatQueuePosition(current: number, total: number): string {
     .replace("{total}", String(total));
 }
 
-export function rostenderSessionCopy(session: TechStatus["session"]): string {
-  if (session === "ok") return copy.session_rostender_ok;
-  if (session === "expired") return copy.session_rostender_expired;
-  return copy.session_rostender_missing;
+export function formatQueueSummary(groups: number, platforms: number, steps: number): string {
+  return copy.run_queue_summary
+    .replace("{groups}", String(groups))
+    .replace("{platforms}", String(platforms))
+    .replace("{steps}", String(steps));
 }
 
-export function roseltorgSessionCopy(
-  session: string | undefined,
+export function formatQueueStepLine(
+  current: number,
+  total: number,
+  group: string,
+  platform: string,
 ): string {
-  if (session === "ok") return copy.session_roseltorg_ok;
-  if (session === "expired") return copy.session_roseltorg_expired;
-  if (session === "missing_cookies" || session === "missing") {
-    return copy.session_roseltorg_missing;
-  }
-  return copy.session_roseltorg;
+  return copy.run_queue_step
+    .replace("{current}", String(current))
+    .replace("{total}", String(total))
+    .replace("{group}", group)
+    .replace("{platform}", platform);
 }
 
-export type SearchWrite = {
+export type SearchGroupWrite = {
   name: string;
-  platform_id: string;
   queries: string[];
   exclude: string[];
   limit_n: number;
@@ -346,15 +376,14 @@ export class SearchControlError extends Error {
 }
 
 export function searchControlMessage(code: SearchControlError["code"]): string {
-  if (code === "duplicate_name") return copy.searches_duplicate_name;
-  return copy.searches_save_failed;
+  if (code === "duplicate_name") return copy.groups_duplicate_name;
+  return copy.groups_save_failed;
 }
 
-function parseSearch(raw: Partial<NamedSearch>): NamedSearch {
+function parseSearchGroup(raw: Partial<SearchGroup>): SearchGroup {
   return {
     id: text(raw.id),
     name: text(raw.name),
-    platform_id: text(raw.platform_id) || "rostender",
     queries: Array.isArray(raw.queries) ? raw.queries.map((item) => text(item)).filter(Boolean) : [],
     exclude: Array.isArray(raw.exclude) ? raw.exclude.map((item) => text(item)).filter(Boolean) : [],
     limit_n: typeof raw.limit_n === "number" ? raw.limit_n : 0,
@@ -363,40 +392,78 @@ function parseSearch(raw: Partial<NamedSearch>): NamedSearch {
   };
 }
 
-export async function fetchSearches(): Promise<NamedSearch[]> {
-  const res = await apiFetch("/api/searches");
-  if (!res.ok) throw new Error("searches_load_failed");
-  const body = (await res.json()) as { items?: Partial<NamedSearch>[] };
-  return Array.isArray(body.items) ? body.items.map(parseSearch) : [];
+function parsePlatformSession(raw: unknown): PlatformSession {
+  if (raw === "ok") return "ok";
+  if (raw === "missing") return "missing";
+  if (raw === "expired") return "expired";
+  if (raw === "list_without_login") return "list_without_login";
+  return "unknown";
 }
 
-async function writeSearch(res: Response): Promise<NamedSearch> {
+function parsePlatform(raw: Partial<PlatformRow> & { platform_id?: string }): PlatformRow {
+  const platformId = text(raw.platform_id);
+  return {
+    platform_id: platformId,
+    name: text(raw.name) || platformLabel(platformId),
+    enabled: Boolean(raw.enabled),
+    session: parsePlatformSession(raw.session),
+  };
+}
+
+export async function fetchSearchGroups(): Promise<SearchGroup[]> {
+  const res = await apiFetch("/api/search-groups");
+  if (!res.ok) throw new Error("search_groups_load_failed");
+  const body = (await res.json()) as { items?: Partial<SearchGroup>[] };
+  return Array.isArray(body.items) ? body.items.map(parseSearchGroup) : [];
+}
+
+async function writeSearchGroup(res: Response): Promise<SearchGroup> {
   if (res.status === 409) throw new SearchControlError("duplicate_name");
   if (!res.ok) throw new SearchControlError("failed");
-  return parseSearch((await res.json()) as Partial<NamedSearch>);
+  return parseSearchGroup((await res.json()) as Partial<SearchGroup>);
 }
 
-export async function createSearch(body: SearchWrite): Promise<NamedSearch> {
-  const res = await apiFetch("/api/searches", {
+export async function createSearchGroup(body: SearchGroupWrite): Promise<SearchGroup> {
+  const res = await apiFetch("/api/search-groups", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  return writeSearch(res);
+  return writeSearchGroup(res);
 }
 
-export async function updateSearch(id: string, body: SearchWrite): Promise<NamedSearch> {
-  const res = await apiFetch(`/api/searches/${encodeURIComponent(id)}`, {
+export async function updateSearchGroup(id: string, body: SearchGroupWrite): Promise<SearchGroup> {
+  const res = await apiFetch(`/api/search-groups/${encodeURIComponent(id)}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  return writeSearch(res);
+  return writeSearchGroup(res);
 }
 
-export async function deleteSearch(id: string): Promise<void> {
-  const res = await apiFetch(`/api/searches/${encodeURIComponent(id)}`, { method: "DELETE" });
+export async function deleteSearchGroup(id: string): Promise<void> {
+  const res = await apiFetch(`/api/search-groups/${encodeURIComponent(id)}`, { method: "DELETE" });
   if (res.status === 404 || !res.ok) throw new SearchControlError("failed");
+}
+
+export async function fetchPlatforms(): Promise<PlatformRow[]> {
+  const res = await apiFetch("/api/platforms");
+  if (!res.ok) throw new Error("platforms_load_failed");
+  const body = (await res.json()) as { items?: Array<Partial<PlatformRow>> };
+  return Array.isArray(body.items) ? body.items.map(parsePlatform) : [];
+}
+
+export async function setPlatformEnabled(
+  platformId: string,
+  enabled: boolean,
+): Promise<PlatformRow> {
+  const res = await apiFetch(`/api/platforms/${encodeURIComponent(platformId)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!res.ok) throw new SearchControlError("failed");
+  return parsePlatform((await res.json()) as Partial<PlatformRow>);
 }
 
 export function mapRunStatus(raw: StatusSnapshot): TechStatus {
@@ -429,6 +496,8 @@ export function mapRunStatus(raw: StatusSnapshot): TechStatus {
     queue_index: raw.queue_index ?? 0,
     queue_total: raw.queue_total ?? (Array.isArray(raw.queue) ? raw.queue.length : 0),
     current_search_name: raw.current_search_name ?? "",
+    current_group_id: raw.current_group_id ?? undefined,
+    current_platform_id: raw.current_platform_id ?? undefined,
     log: Array.isArray(raw.log) ? raw.log : [],
   };
 }

@@ -85,10 +85,30 @@ describe("mapRunStatus", () => {
     expect(status.run_report).toEqual({ new: 0, already: 0, updated: 0, expired: 0 });
   });
 
-  it("maps partial phase and http_retries", () => {
-    const status = mapRunStatus({ phase: "partial", running: false, http_retries: 3 });
-    expect(status.phase_label).toBe(copy.phase_partial);
-    expect(status.http_retries).toBe(3);
+  it("maps group×platform queue fields", () => {
+    const status = mapRunStatus({
+      phase: "P1",
+      running: true,
+      queue: [
+        {
+          id: "step-1",
+          name: "методы",
+          group_id: "g1",
+          group_name: "методы",
+          platform_id: "tender-pro",
+          status: "running",
+        },
+      ],
+      queue_index: 0,
+      queue_total: 1,
+      current_group_id: "g1",
+      current_platform_id: "tender-pro",
+      current_search_name: "методы",
+    });
+    expect(status.queue[0].group_name).toBe("методы");
+    expect(status.queue[0].platform_id).toBe("tender-pro");
+    expect(status.current_group_id).toBe("g1");
+    expect(status.current_platform_id).toBe("tender-pro");
   });
 });
 

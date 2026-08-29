@@ -38,10 +38,9 @@ export type InboxLot = {
   ai_wrong: boolean;
 };
 
-export type NamedSearch = {
+export type SearchGroup = {
   id: string;
   name: string;
-  platform_id: string;
   queries: string[];
   exclude: string[];
   limit_n: number;
@@ -49,11 +48,27 @@ export type NamedSearch = {
   sort_order: number;
 };
 
+export type PlatformSession =
+  | "ok"
+  | "missing"
+  | "expired"
+  | "list_without_login"
+  | "unknown";
+
+export type PlatformRow = {
+  platform_id: string;
+  name: string;
+  enabled: boolean;
+  session: PlatformSession;
+};
+
 export type QueueStepStatus = "pending" | "running" | "done" | "skipped" | "error" | "cancelled";
 
 export type QueueStep = {
   id: string;
   name: string;
+  group_id?: string;
+  group_name?: string;
   platform_id: string;
   status: QueueStepStatus;
 };
@@ -77,6 +92,8 @@ export type TechStatus = {
   queue_index: number;
   queue_total: number;
   current_search_name: string;
+  current_group_id?: string;
+  current_platform_id?: string;
   log: { t: string; msg: string; level?: "error" | "info" }[];
 };
 
