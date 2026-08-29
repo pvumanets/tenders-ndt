@@ -27,7 +27,7 @@ PLATFORMS: list[tuple[str, str, str]] = [
     ("tender-pro", "TP", "https://www.tender.pro/favicon.ico"),
     ("tektorg-kim", "ТЭК", "https://kim.tektorg.ru/favicon.ico"),
     ("astgoz", "АСТ", "https://223.astgoz.ru/favicon.ico"),
-    ("roseltorg", "РЭ", "https://www.roseltorg.ru/favicon.ico"),
+    ("roseltorg", "РЭ", "https://www.roseltorg.ru/themes/etp/favicon.ico"),
     ("oilb2bcs", "OIL", "https://oilb2bcs.ru/favicon.ico"),
     ("gpb-etp", "ГПБ", "https://etp.gpb.ru/favicon.ico"),
     ("tmk", "ТМК", "https://zakupki.tmk-group.com/favicon.ico"),

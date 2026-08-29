@@ -8,6 +8,7 @@ from app.worker.list_scrape import today_msk
 
 _ISO_DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})")
 _DMY_DATE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{4})")
+_DMY_SHORT = re.compile(r"^(\d{2})\.(\d{2})\.(\d{2})\b")
 
 
 def deadline_date(text: str | None) -> date | None:
@@ -24,6 +25,14 @@ def deadline_date(text: str | None) -> date | None:
     if dmy:
         try:
             return date(int(dmy.group(3)), int(dmy.group(2)), int(dmy.group(1)))
+        except ValueError:
+            return None
+    short = _DMY_SHORT.match(raw)
+    if short:
+        try:
+            yy = int(short.group(3))
+            year = 2000 + yy if yy < 100 else yy
+            return date(year, int(short.group(2)), int(short.group(1)))
         except ValueError:
             return None
     return None
