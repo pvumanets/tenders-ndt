@@ -50,7 +50,7 @@ def _sweep_smoke_lots() -> None:
     from sqlalchemy import delete, select
     from sqlalchemy.exc import ProgrammingError
 
-    from app.db.models import Document, Lot, LotState, NamedSearch, Run
+    from app.db.models import Document, Lot, LotState, Run, SearchGroup
     from app.db.session import session_factory
 
     factory = session_factory()
@@ -69,12 +69,14 @@ def _sweep_smoke_lots() -> None:
                 session.execute(delete(LotState).where(LotState.tender_id.in_(lot_ids)))
                 session.execute(delete(Lot).where(Lot.tender_id.in_(lot_ids)))
             session.execute(delete(Run).where(Run.query.startswith(SMOKE_PREFIX)))
-            search_ids = list(
-                session.scalars(select(NamedSearch.id).where(NamedSearch.name.startswith(SMOKE_PREFIX)))
+            group_ids = list(
+                session.scalars(
+                    select(SearchGroup.id).where(SearchGroup.name.startswith(SMOKE_PREFIX))
+                )
             )
-            if search_ids:
-                session.execute(delete(Run).where(Run.search_id.in_(search_ids)))
-                session.execute(delete(NamedSearch).where(NamedSearch.id.in_(search_ids)))
+            if group_ids:
+                session.execute(delete(Run).where(Run.search_group_id.in_(group_ids)))
+                session.execute(delete(SearchGroup).where(SearchGroup.id.in_(group_ids)))
             session.commit()
         except ProgrammingError:
             session.rollback()

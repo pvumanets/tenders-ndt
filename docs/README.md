@@ -24,7 +24,8 @@ This repository is the **source of truth** for tender-monitoring product + code.
 | СИБУР SRM зонд (NEXT+) | [discovery/sibur-srm-probe.md](./discovery/sibur-srm-probe.md) |
 | OnlineContract зонд (NEXT+) | [discovery/onlinecontract-probe.md](./discovery/onlinecontract-probe.md) |
 | Tender.Pro зонд (NEXT+) | [discovery/tender-pro-probe.md](./discovery/tender-pro-probe.md) |
-| Named searches + очередь | [discovery/named-searches.md](./discovery/named-searches.md) |
+| Named searches (AS-IS / history) | [discovery/named-searches.md](./discovery/named-searches.md) |
+| Группы поиска × площадки (TO-BE) | [discovery/search-groups.md](./discovery/search-groups.md) |
 
 **Agents:** start with root [`AGENTS.md`](../AGENTS.md) and skill `scout-orchestrator`.
 

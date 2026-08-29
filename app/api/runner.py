@@ -10,7 +10,7 @@ from uuid import UUID
 
 from dotenv import load_dotenv
 
-from app.api import searches as searches_api
+from app.api import search_groups as search_groups_api
 from app.api.state import STATE
 from app.scoring.pipeline import rescore_rows, score_rows
 from app.worker import roseltorg as roseltorg_worker
@@ -130,30 +130,18 @@ def start_run() -> None:
         if STATE.snapshot()["running"]:
             raise RuntimeError("already_running")
         try:
-            queued = searches_api.get_queued()
+            items = search_groups_api.get_queued_steps()
         except RuntimeError as exc:
             if str(exc) == "database_unconfigured":
                 raise RuntimeError("empty_queue") from exc
             raise
-        if not queued:
+        if not items:
             raise RuntimeError("empty_queue")
         refresh_session()
         run_dir = _repo_root() / "runs" / date.today().isoformat()
         run_dir.mkdir(parents=True, exist_ok=True)
-        items = [
-            {
-                "id": str(row.id),
-                "name": row.name,
-                "platform_id": row.platform_id,
-                "queries": list(row.queries or []),
-                "exclude": list(row.exclude or []),
-                "limit_n": row.limit_n,
-                "status": "pending",
-            }
-            for row in queued
-        ]
         STATE.reset_for_queue(items=items, run_dir=str(run_dir))
-        STATE.log_msg(f"Queue: {len(items)} search(es)")
+        STATE.log_msg(f"Queue: {len(items)} step(s)")
         _thread = threading.Thread(
             target=_run_queue,
             kwargs={"items": items, "run_dir": run_dir},
@@ -168,7 +156,10 @@ def request_stop() -> None:
 
 
 def _query_label(item: dict) -> str:
-    name = str(item.get("name") or "")
+    name = str(item.get("group_name") or item.get("name") or "")
+    platform = str(item.get("platform_id") or "")
+    if platform:
+        name = f"{name} × {platform}" if name else platform
     queries = item.get("queries") or []
     joined = ", ".join(str(q) for q in queries)
     return f"{name}: {joined}" if joined else name
@@ -182,13 +173,13 @@ def _ingest_step(
     started_at: datetime,
     error: str | None = None,
 ) -> None:
-    search_id: UUID | None = None
-    raw_id = item.get("id")
+    search_group_id: UUID | None = None
+    raw_id = item.get("group_id") or item.get("id")
     if raw_id:
         try:
-            search_id = UUID(str(raw_id))
+            search_group_id = UUID(str(raw_id))
         except ValueError:
-            search_id = None
+            search_group_id = None
     try:
         result = ingest_run(
             query=_query_label(item),
@@ -197,7 +188,7 @@ def _ingest_step(
             rows=rows,
             started_at=started_at,
             source_platform_id=str(item.get("platform_id") or PLATFORM_ROSTENDER),
-            search_id=search_id,
+            search_group_id=search_group_id,
         )
         if result is None:
             STATE.log_msg("Ingest skipped (database unconfigured)", level="warn")

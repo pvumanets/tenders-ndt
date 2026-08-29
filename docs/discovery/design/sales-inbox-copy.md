@@ -1,10 +1,11 @@
 # Sales Inbox — RU microcopy
 
 **status:** accepted-with-notes  
-**last-review-date:** 2026-08-26  
+**last-review-date:** 2026-08-29  
 **voice:** короткий RU, без сленга и emoji; директор и продажи — без жаргона L1  
 **catalog:** [`sales-inbox-components.md`](./sales-inbox-components.md)  
-**note:** строки copy ок по flight worksheet; UI = иконка + подпись на ключевых действиях
+**note:** строки copy ок по flight worksheet; UI = иконка + подпись на ключевых действиях  
+**Прогон TO-BE:** [`../search-groups.md`](../search-groups.md) · [047](../../delivery/tasks/047-run-ux-copy.md)
 
 ---
 
@@ -171,68 +172,148 @@
 
 ---
 
-## Tech tab
+## Tech tab (Прогон) — TO-BE 044+
+
+Primary UI **не** показывает имена cookie-файлов и «Путь/папку прогона» в основном потоке. Файлы cookies — только в [`../../delivery/auth-cookies.md`](../../delivery/auth-cookies.md) / ops.  
+Review: [UX copy rethink](b79f82c4-c3c9-46e4-94f8-6506df6e55da) 2026-08-29.
+
+### Секции
+
+Рендерить **один** заголовок секции (`run_section_*`). Не дублировать `groups_title` рядом с `run_section_groups`.
+
+| Key | String |
+| --- | --- |
+| run_section_controls | Управление |
+| run_section_platforms | Площадки |
+| run_section_groups | Группы поиска |
+| run_section_diagnostics | Диагностика |
+
+### Управление
 
 | Key | String |
 | --- | --- |
 | run_start | Старт |
 | run_stop | Стоп |
-| session_ok | Сессия: cookies OK |
-| session_expired | Сессия: cookies истекли — обновите файл cookies |
-| session_missing | Нет файла cookies — положите cookies по инструкции |
-| session_rostender_ok | РосТендер: cookies OK |
-| session_rostender_expired | РосТендер: cookies истекли — обновите файл cookies |
-| session_rostender_missing | РосТендер: нет файла cookies — положите cookies по инструкции |
-| session_tender_pro | Tender.Pro: список без cookies |
+| run_start_busy | Запуск… |
+| run_idle_hint | Нажмите «Старт», когда площадки и группы готовы. |
+| run_running_hint | Прогон идёт. «Стоп» прервёт текущий шаг и очередь. |
+| run_queue_summary | Очередь: {groups} групп × {platforms} площадки → {steps} шагов |
+| run_queue_empty | Очередь пуста — включите группу и площадку |
+| run_queue_step | Шаг {current}/{total} · {group} × {platform} |
+| phase_idle | Ожидание прогона |
 | phase_list | Фаза: список |
 | phase_score | Фаза: оценка |
 | phase_cards | Фаза: карточки |
 | phase_artifacts | Фаза: файлы |
-| phase_idle | Ожидание прогона |
 | phase_done | Прогон завершён |
+| phase_partial | Прогон завершён частично |
 | phase_stopped | Прогон остановлен |
 | phase_error | Прогон завершился с ошибкой |
 | progress_list | Список: {n} / {total} |
 | progress_cards | Карточки: {k} / {total} |
-| counters_legend | Счётчики fit (L1–L3) |
-| run_path_label | Путь прогона |
-| run_path_copy | Копировать |
-| run_path_copied | Скопировано |
-| log_title | Лог |
-| log_empty | Записей пока нет |
-| run_error_already | Прогон уже идёт |
-| run_error_cookies | Нет файла cookies — положите cookies по инструкции |
-| run_error_failed | Не удалось запустить прогон. Обновите страницу и повторите. |
-| run_error_empty_queue | Отметьте хотя бы один поиск в очереди |
-| run_start_busy | Запуск… |
-| searches_title | Поиски |
-| searches_queue | В очереди |
-| searches_add | Новый поиск |
-| searches_save | Сохранить |
-| searches_cancel | Отмена |
-| searches_delete | Удалить |
-| searches_edit | Править |
-| searches_name | Имя |
-| searches_platform | Площадка |
-| searches_queries | Запросы (по одному на строку) |
-| searches_limit | Лимит |
-| searches_empty | Нет сохранённых поисков |
-| searches_save_failed | Не удалось сохранить поиск |
-| searches_duplicate_name | Поиск с таким именем уже есть |
-| searches_delete_confirm | Удалить этот поиск? |
-| searches_tender_pro_docs | Файлы score≥4 — только с живым cookies.tender-pro.txt |
-| session_tender_pro | Tender.Pro: список без cookies; файлы — с cookies.tender-pro.txt |
-| platform_rostender | РосТендер |
-| platform_tender_pro | Tender.Pro |
+| counters_legend | Счётчики L1–L3 |
+| run_report_legend | Отчёт прогона |
+| run_report_new | Новые лоты |
+| run_report_already | Уже были в системе |
+| run_report_updated | Обновлено с площадки |
+| run_report_expired | Ушли в просроченные |
 | queue_position | Очередь: {current} из {total} |
 | queue_status_pending | ждёт |
 | queue_status_running | идёт |
 | queue_status_done | готово |
-| queue_status_skipped | пропуск |
+| queue_status_skipped | пропущен |
 | queue_status_error | ошибка |
 | queue_status_cancelled | отменён |
 
-Tech показывает `L1` / `L2` / `L3` в счётчиках — это норма. Старт/Стоп и поиски — [023](../../delivery/tasks/023-named-searches.md) **done**. Tender.Pro — [024](../../delivery/tasks/024-tender-pro-adapter.md) **done**. Query и limit — в карточке именованного поиска, не на кнопке Старт. Сессия cookies — **по площадке**. Список Tender.Pro без cookies; файлы — с `cookies.tender-pro.txt`.
+### Площадки — единый словарь статусов
+
+Шаблон primary: `{platform_name}: {session_label}`. Имена файлов cookies **не** в primary.  
+Не смешивать статус сессии и тогл «Участвует» в одной фразе.
+
+| Key | String |
+| --- | --- |
+| platform_participate | Участвует |
+| platform_rostender | РосТендер |
+| platform_tender_pro | Tender.Pro |
+| platform_roseltorg | Росэлторг |
+| session_status_ok | сессия в порядке |
+| session_status_missing | нет сессии |
+| session_status_expired | сессия устарела |
+| session_status_list_without_login | вход для списка не нужен |
+| session_status_unknown | статус неизвестен |
+| session_hint_docs | Как обновить сессию — в инструкции |
+| platforms_none_enabled | Нет включённых площадок |
+| platforms_none_enabled_body | Включите хотя бы одну площадку в блоке «Площадки». |
+
+Спец-кейс Tender.Pro: primary = `Tender.Pro: вход для списка не нужен` (норма, не ошибка). Файлы лотов без сессии — hint в docs, не в строке статуса списка.
+
+### Группы поиска
+
+Заголовок секции = `run_section_groups` (не второй `groups_title` в UI).
+
+| Key | String |
+| --- | --- |
+| groups_queue | В очереди |
+| groups_add | Новая группа |
+| groups_save | Сохранить |
+| groups_cancel | Отмена |
+| groups_delete | Удалить |
+| groups_edit | Править |
+| groups_name | Имя |
+| groups_queries | Плюс — запросы (по одному на строку) |
+| groups_exclude | Минус — отсечь по заголовку |
+| groups_exclude_hint | Минус отсекает строки списка этой группы до доски. На другие группы не действует. |
+| groups_limit | Лимит |
+| groups_limit_hint | 0 — без потолка |
+| groups_empty | Нет групп поиска |
+| groups_empty_body | Создайте группу с плюс-запросами — она пойдёт на все включённые площадки. |
+| groups_none_queued | Нет групп в очереди |
+| groups_none_queued_body | Включите «В очереди» хотя бы у одной группы. |
+| groups_save_failed | Не удалось сохранить группу |
+| groups_duplicate_name | Группа с таким именем уже есть |
+| groups_delete_confirm | Удалить эту группу? |
+| groups_drawer_title | Группа поиска |
+| groups_drawer_close_aria | Закрыть |
+
+Приоритет empty на экране: нет групп → нет площадок → нет в очереди (не показывать сразу два).
+
+### Ошибки Старта
+
+| Key | String |
+| --- | --- |
+| run_error_already | Прогон уже идёт |
+| run_error_cookies | Нет сессии площадки — обновите сессию по инструкции |
+| run_error_failed | Не удалось запустить прогон. Обновите страницу и повторите. |
+| run_error_empty_queue | Включите хотя бы одну группу и одну площадку |
+
+### Диагностика (свёрнуто)
+
+| Key | String |
+| --- | --- |
+| diagnostics_title | Диагностика |
+| diagnostics_expand | Показать |
+| diagnostics_collapse | Скрыть |
+| log_title | Лог |
+| log_empty | Записей пока нет |
+| run_path_label | Папка прогона |
+| run_path_copy | Копировать |
+| run_path_copied | Скопировано |
+
+`run_path_*` — **только** внутри диагностики (или не рендерить). Не в секции «Управление». Не возвращать лейбл «Путь прогона».
+
+### Legacy keys (AS-IS runtime до 049 — не для нового UI)
+
+Не использовать в TO-BE primary: `session_ok`, `session_rostender_*` с «cookies OK», `session_tender_pro` с именем файла, `searches_*` с «Площадка» в drawer, `run_path_label` вне диагностики.
+
+| Key | String (historical) |
+| --- | --- |
+| searches_title | Поиски |
+| searches_platform | Площадка |
+| searches_tender_pro_docs | (MVP; не primary TO-BE) |
+| session_rostender_ok | РосТендер: cookies OK |
+| session_tender_pro | Tender.Pro: список без cookies; файлы — с cookies.tender-pro.txt |
+
+Tech показывает `L1` / `L2` / `L3` в счётчиках — это норма. Старт/Стоп и группы — после [049](../../delivery/tasks/049-search-groups-ui.md). Сессия — **по площадке**, единый словарь. Query/exclude/limit — в группе, не на кнопке Старт.
 
 ---
 

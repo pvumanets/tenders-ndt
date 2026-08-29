@@ -30,7 +30,9 @@ Code and product rules live **in this repo**. Do not duplicate scoring/scope rul
 | Решения владельца (простой язык) | [discovery/owner-decisions.md](./discovery/owner-decisions.md) (`active`; lock 2026-08-27) |
 | Ключевые слова поиска | [discovery/search-keywords.md](./discovery/search-keywords.md) (`active`) |
 | Ревью решений: узкие места (пропуски + ИИ) | [discovery/decision-risks-review.md](./discovery/decision-risks-review.md) (`draft`; cross-skill review 2026-08-26) |
-| Named searches + очередь (NEXT+) | [discovery/named-searches.md](./discovery/named-searches.md) (`accepted`; код 023/024 **done**) |
+| Группы поиска × площадки (TO-BE) | [discovery/search-groups.md](./discovery/search-groups.md) (`draft` → runtime 048 **done**; UI 049) |
+| Named searches + очередь (AS-IS / history) | [discovery/named-searches.md](./discovery/named-searches.md) (`superseded`; код 023/024 **done**) |
+| Search groups API | [delivery/search-groups-api.md](./delivery/search-groups-api.md) (`accepted`; 048 **done**) |
 | Platforms registry | [discovery/platforms.md](./discovery/platforms.md) |
 | СИБУР SRM зонд (NEXT+) | [discovery/sibur-srm-probe.md](./discovery/sibur-srm-probe.md) (`draft`; cookies = `cookies.sibur.txt`, не в md) |
 | OnlineContract зонд (NEXT+) | [discovery/onlinecontract-probe.md](./discovery/onlinecontract-probe.md) (`draft`; cookies = `cookies.onlinecontract.txt`, не в md) |

@@ -1,10 +1,10 @@
 # Sales Inbox — API и storage
 
 **status:** accepted  
-**last-review-date:** 2026-08-27  
+**last-review-date:** 2026-08-29  
 **канон:** lock [`../discovery/owner-decisions.md`](../discovery/owner-decisions.md) 2026-08-27; P12 [032](./tasks/032-api-canon-sync.md)  
 **продукт:** [`../discovery/sales-inbox.md`](../discovery/sales-inbox.md)  
-**поиски / очередь:** [`../discovery/named-searches.md`](../discovery/named-searches.md)  
+**поиски AS-IS:** [`../discovery/named-searches.md`](../discovery/named-searches.md) (`superseded`) · **TO-BE группы:** [`../discovery/search-groups.md`](../discovery/search-groups.md) · [`search-groups-api.md`](./search-groups-api.md)  
 **архитектура:** [`tech-architecture.md`](./tech-architecture.md)  
 **фазы:** [`platform-phases.md`](./platform-phases.md) — P5.2–P7 **done**; поиски [023](./tasks/023-named-searches.md) **done**; Tender.Pro [024](./tasks/024-tender-pro-adapter.md) **done**; NEXT+ [`next-phases.md`](./next-phases.md)
 
@@ -29,7 +29,9 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | Карточка лота | `lots` |
 | viewed / manual_tier / board_hidden | `lot_state` (один ряд на `tender_id`, глобально) |
 | Прогон | `runs` (`query`, `limit_n`, `status`; после 023: `source_platform_id`, `search_id`) |
-| Именованный поиск (023) | `searches` (`name`, `platform_id`, `queries`, `limit_n`, `in_queue`, `sort_order`) |
+| Именованный поиск (023 AS-IS) | `searches` (`name`, `platform_id`, `queries`, `exclude`, `limit_n`, `in_queue`, `sort_order`) |
+| Группа поиска (TO-BE 048) | `search_groups` — без `platform_id`; см. [`search-groups-api.md`](./search-groups-api.md) |
+| Площадка enable (TO-BE 048) | `platform_settings` (`platform_id`, `enabled`) |
 | Учётки Scout | `users` (password_hash; bootstrap из `.env`) |
 | Сессия Scout | `sessions` (`token_hash` = sha256 opaque cookie; TTL 7 суток) |
 | Мета документов | `documents`; байты — том `docs/{tender_id}/` |
@@ -101,7 +103,7 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 | `GET` | `/api/results` | Legacy список по одному run (AS-IS HTML на деве) |
 | `GET` | `/api/results/{tender_id}` | Legacy карточка |
 
-### Именованные поиски (023 **done**)
+### Именованные поиски (023 **done** — AS-IS runtime)
 
 Тело поиска (GET list item / POST / PUT):
 
@@ -117,11 +119,13 @@ SoT: **Postgres**, не `operator-state.json`. Все `/api/*` кроме `GET /
 }
 ```
 
-`platform_id` сейчас: `rostender` \| `tender-pro`. `queries` — непустой массив строк. Имя уникально. Сиды — [`../discovery/named-searches.md`](../discovery/named-searches.md).
+`platform_id` сейчас: `rostender` \| `tender-pro` \| `roseltorg`. `queries` — непустой массив строк. Имя уникально. Сиды — [`../discovery/named-searches.md`](../discovery/named-searches.md).
 
 **`limit_n`:** optional soft stop; **`0` = без потолка** (lock 2026-08-27; код [030](./tasks/030-search-coverage.md)). Продуктового must-cap 1000 нет.
 
 Очередь: `POST /api/run/start` без настроек в body. Один шаг очереди = один `runs` (`search_id`, `source_platform_id`). Ошибка шага → `skipped`/`error`, очередь дальше. Стоп рвёт хвост. Пусто → `empty_queue`.
+
+**TO-BE:** группы × площадки — [`search-groups-api.md`](./search-groups-api.md) ([048](./tasks/048-search-groups-backend.md)). `/api/searches*` deprecate после миграции.
 
 ## REST — Sales Inbox (P5.4)
 
@@ -220,7 +224,7 @@ AS-IS до 029: download только для score ≥ 4.
 | --- | --- |
 | Экран входа | `/api/auth/*` |
 | Вкладка «Лоты» | `/api/inbox*` |
-| Вкладка «Прогон» | `GET /api/status`, `POST /api/run/start`, `POST /api/run/stop`; CRUD `/api/searches*` (023) |
+| Вкладка «Прогон» | AS-IS shim: CRUD `/api/searches*` (048). TO-BE UI: `/api/search-groups*`, `/api/platforms*` ([`search-groups-api.md`](./search-groups-api.md)); IA 4 блока — [`operator-ui.md`](./operator-ui.md) |
 | Bitrix | **не** в приёмке |
 
 **Клиент (lock, без смены FastAPI):**

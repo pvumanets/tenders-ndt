@@ -1,17 +1,14 @@
-"""Enable Tender.Pro / Росэлторг seed packages in queue when session is available."""
+"""Enable Tender.Pro / Росэлторг platforms when session cookies are available."""
 from __future__ import annotations
 
 import os
 from pathlib import Path
 
-from sqlalchemy import select
-
 from app.db.config import database_url
-from app.db.models import NamedSearch
+from app.db.models import PlatformSetting
 from app.db.session import session_factory
 from app.worker.platform_ids import PLATFORM_ROSELTORG, PLATFORM_TENDER_PRO
 from app.worker.roseltorg import cookies_present as roseltorg_cookies_present
-from app.worker.search_seeds import search_seed_rows
 
 
 def _repo_root() -> Path:
@@ -26,34 +23,32 @@ def tender_pro_cookies_present() -> bool:
     return path.is_file() and path.stat().st_size > 0
 
 
-def _sync_platform_queue(*, platform_id: str, want: bool) -> None:
+def _set_platform_enabled(platform_id: str, want: bool) -> None:
     if not database_url():
-        return
-    names = {row["name"] for row in search_seed_rows() if row["platform_id"] == platform_id}
-    if not names:
         return
     factory = session_factory()
     with factory() as session:
-        rows = session.scalars(
-            select(NamedSearch).where(
-                NamedSearch.platform_id == platform_id,
-                NamedSearch.name.in_(names),
-            )
-        ).all()
-        changed = False
-        for row in rows:
-            if bool(row.in_queue) != want:
-                row.in_queue = want
-                changed = True
-        if changed:
+        row = session.get(PlatformSetting, platform_id)
+        if row is None:
+            session.add(PlatformSetting(platform_id=platform_id, enabled=want))
+            session.commit()
+            return
+        if bool(row.enabled) != want:
+            row.enabled = want
             session.commit()
 
 
 def sync_tender_pro_queue_from_cookies() -> None:
-    """If cookies exist, put Tender.Pro seed packages into the run queue."""
-    _sync_platform_queue(platform_id=PLATFORM_TENDER_PRO, want=tender_pro_cookies_present())
+    """Enable Tender.Pro when cookies exist; never auto-disable on boot.
+
+    Operator may enable TP for list-without-login via PUT /api/platforms;
+    missing cookie files must not undo that on restart.
+    """
+    if tender_pro_cookies_present():
+        _set_platform_enabled(PLATFORM_TENDER_PRO, True)
 
 
 def sync_roseltorg_queue_from_credentials() -> None:
-    """If Росэлторг Netscape cookies exist, put seed packages into the run queue."""
-    _sync_platform_queue(platform_id=PLATFORM_ROSELTORG, want=roseltorg_cookies_present())
+    """Enable Росэлторг when Netscape cookies exist; never auto-disable on boot."""
+    if roseltorg_cookies_present():
+        _set_platform_enabled(PLATFORM_ROSELTORG, True)

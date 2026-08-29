@@ -1,4 +1,4 @@
-"""Smoke: searches CRUD, unique name, empty_queue, 409. Cleans qa_smoke_*."""
+"""Smoke: searches shim + search-groups CRUD, empty_queue, 409. Cleans qa_smoke_*."""
 from __future__ import annotations
 
 from uuid import uuid4
@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.api.main import app
 from app.api.state import STATE
-from app.db.models import NamedSearch, Run, ScoutSession, User
+from app.db.models import Run, ScoutSession, SearchGroup, User
 from tests.conftest import SMOKE_PREFIX
 
 _PASS = "qa-smoke-searches-pass"
@@ -47,9 +47,9 @@ def _cleanup(factory: sessionmaker[Session], *, username: str, search_name: str)
         if user is not None:
             session.execute(delete(ScoutSession).where(ScoutSession.user_id == user.id))
             session.delete(user)
-        row = session.scalar(select(NamedSearch).where(NamedSearch.name == search_name))
+        row = session.scalar(select(SearchGroup).where(SearchGroup.name == search_name))
         if row is not None:
-            session.execute(delete(Run).where(Run.search_id == row.id))
+            session.execute(delete(Run).where(Run.search_group_id == row.id))
             session.delete(row)
         session.commit()
 
@@ -81,6 +81,18 @@ def test_searches_crud_unique_empty_queue_conflict(smoke_db: sessionmaker[Sessio
             assert "РосТендер — страховка" in names
             assert "Tender.Pro — методы" in names
             assert "Tender.Pro — страховка" in names
+            groups = client.get("/api/search-groups")
+            assert groups.status_code == 200
+            group_names = {item["name"] for item in groups.json()["items"]}
+            assert "услуги НК" in group_names
+            assert "методы" in group_names
+            platforms = client.get("/api/platforms")
+            assert platforms.status_code == 200
+            assert {p["platform_id"] for p in platforms.json()["items"]} >= {
+                "rostender",
+                "tender-pro",
+                "roseltorg",
+            }
             created = client.post(
                 "/api/searches",
                 json={
@@ -140,8 +152,11 @@ def test_searches_crud_unique_empty_queue_conflict(smoke_db: sessionmaker[Sessio
                     client.put(f"/api/searches/{item['id']}", json=_body(item))
             deleted = client.delete(f"/api/searches/{search_id}")
             assert deleted.status_code == 204
-            leftover = {item["name"] for item in client.get("/api/searches").json()["items"]}
-            assert search_name not in leftover
+            # Shim DELETE dequeues the shared group; it must not wipe queries/name.
+            after = client.get("/api/searches").json()["items"]
+            named = [item for item in after if search_name in item["name"]]
+            assert named, "shim delete must keep the search group"
+            assert all(item["in_queue"] is False for item in named)
     finally:
         STATE.running = False
         _cleanup(smoke_db, username=username, search_name=search_name)

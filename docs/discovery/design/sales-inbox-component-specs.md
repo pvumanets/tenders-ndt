@@ -181,14 +181,23 @@ Bitrix-фильтры — out приёмки демо.
 - Иконка: компактный бейдж (PDF/DOC/XLS/IMG/ZIP), не крупный MUI glyph.  
 - No fake card gallery; simple list.
 
-### `TechRunPanel` family
+### `TechRunPanel` family (TO-BE W-run)
 
-- Denser, still light theme (not AS-IS dark).  
-- `TechPhaseBar`: phase label + progress text (`собрано N / 1000`).  
-- `TechCounters`: L1 / L2 / L3 / noise as plain metrics — ok to show codes here.  
-- `TechLog`: monospace 12px, error lines `#C62828`.  
-- `RunPathCopy`: path in readonly field + button.  
-- `RunControls`: Start = accent filled; Stop = outline critical/muted.
+- Denser, light theme (not AS-IS dark).  
+- **Section order:** Управление → Группы → Площадки → Диагностика.  
+- **Sections:** title + 24–32px gap + hairline — not four nested Papers.  
+- `RunControls`: Start = accent filled; Stop = outline.  
+- `RunQueueSummary`: preflight queue math; running current step `группа × площадка`.  
+- `TechPhaseBar`: **hero** phase (+ step); list/cards progress muted.  
+- `TechCounters`: **L1** larger/heavier; L2/L3/noise muted.  
+- `RunReport`: only when `done`/`stopped` (or collapsed «Отчёт») — not idle/running hero row.  
+- `SearchGroupList`: Switch «В очереди»; no platform column; no wrapping plus chips.  
+- `SearchGroupDrawer`: name / plus / minus / limit / queue; **no** platform select.  
+- `PlatformEnableList` + `PlatformSessionHint`: Switch primary; one muted status word; cookie filenames only in Диагностика.  
+- `TechDiagnostics`: collapsed by default; **auto-expand on error**; contains `TechLog` + optional `RunPathCopy` («Папка прогона»).  
+- **While running:** lock group/platform Switches + CRUD. Sticky Управление.  
+- Equal row height ~ personal list; FormControlLabel + Switch.  
+- AS-IS monolith `TechRunPanel` — replace in [049](../../delivery/tasks/049-search-groups-ui.md).
 
 ### Empty / error
 
