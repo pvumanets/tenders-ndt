@@ -23,7 +23,7 @@ Rules and AI are **different lenses**. AI must not receive rules output as input
 
 ## Code (after 039) — [`app/ai/provod.py`](../../../app/ai/provod.py)
 
-**Models:** `claude-sonnet-4-6` → fallback `openai-gpt-5-4` on same `api.provod.ai`.
+**Models:** `claude-sonnet-4-6` → `openai-gpt-5-4` → `gemini-2.5-flash` on same `api.provod.ai` (env `PROVOD_MODEL_CHAIN`).
 
 **System (`_SYSTEM`):** paste-ready from accepted [`ai-master-prompt.md`](../../../docs/delivery/ai-master-prompt.md).
 

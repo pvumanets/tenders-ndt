@@ -10,8 +10,16 @@ from typing import Any, Callable
 import httpx
 
 PROVOD_BASE_URL = os.environ.get("PROVOD_BASE_URL", "https://api.provod.ai").rstrip("/")
-PRIMARY_MODEL = "claude-sonnet-4-6"
-FALLBACK_MODEL = "openai-gpt-5-4"
+# Default aliases smoke-verified 2026-08-29 on api.provod.ai (same host only).
+# Primary ~55s; fallbacks ~1–2s. Override via PROVOD_MODEL_CHAIN=a,b,c
+_DEFAULT_MODEL_CHAIN = (
+    "claude-sonnet-4-6",
+    "openai-gpt-5-4",
+    "gemini-2.5-flash",
+)
+PRIMARY_MODEL = _DEFAULT_MODEL_CHAIN[0]
+FALLBACK_MODEL = _DEFAULT_MODEL_CHAIN[1]
+_CHAT_TIMEOUT = 120.0
 _TIERS = frozenset({"L1", "L2", "L3"})
 _DESC_MAX = 800
 
@@ -63,6 +71,15 @@ class AiTierError(Exception):
         self.message = message
 
 
+def model_chain() -> tuple[str, ...]:
+    """Ordered aliases on api.provod.ai. Env PROVOD_MODEL_CHAIN overrides default."""
+    raw = os.environ.get("PROVOD_MODEL_CHAIN", "").strip()
+    if not raw:
+        return _DEFAULT_MODEL_CHAIN
+    parts = [p.strip() for p in raw.split(",") if p.strip()]
+    return tuple(parts) if parts else _DEFAULT_MODEL_CHAIN
+
+
 def provod_api_key() -> str | None:
     key = os.environ.get("PROVOD_API_KEY", "").strip()
     return key or None
@@ -95,19 +112,24 @@ def _chat_once(
     model: str,
     user_content: str,
 ) -> AiTierResult:
-    resp = client.post(
-        f"{PROVOD_BASE_URL}/v1/chat/completions",
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        json={
-            "model": model,
-            "temperature": 0,
-            "messages": [
-                {"role": "system", "content": _SYSTEM},
-                {"role": "user", "content": user_content},
-            ],
-        },
-        timeout=60.0,
-    )
+    try:
+        resp = client.post(
+            f"{PROVOD_BASE_URL}/v1/chat/completions",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            json={
+                "model": model,
+                "temperature": 0,
+                "messages": [
+                    {"role": "system", "content": _SYSTEM},
+                    {"role": "user", "content": user_content},
+                ],
+            },
+            timeout=_CHAT_TIMEOUT,
+        )
+    except httpx.TimeoutException as exc:
+        raise AiTierError("timeout") from exc
+    except httpx.TransportError as exc:
+        raise AiTierError("transport") from exc
     if resp.status_code >= 400:
         raise AiTierError(f"http_{resp.status_code}")
     body = resp.json()
@@ -152,19 +174,28 @@ def review_tier(
         customer_name=customer_name,
         description=description,
     )
+    chain = model_chain()
+    last_error: AiTierError | None = None
+
     if post_chat is not None:
-        try:
-            return post_chat(model=PRIMARY_MODEL, user_content=prompt)
-        except AiTierError:
-            return post_chat(model=FALLBACK_MODEL, user_content=prompt)
+        for model in chain:
+            try:
+                return post_chat(model=model, user_content=prompt)
+            except AiTierError as exc:
+                last_error = exc
+        assert last_error is not None
+        raise last_error
 
     own = http_client is None
     client = http_client or httpx.Client()
     try:
-        try:
-            return _chat_once(client=client, key=key, model=PRIMARY_MODEL, user_content=prompt)
-        except AiTierError:
-            return _chat_once(client=client, key=key, model=FALLBACK_MODEL, user_content=prompt)
+        for model in chain:
+            try:
+                return _chat_once(client=client, key=key, model=model, user_content=prompt)
+            except AiTierError as exc:
+                last_error = exc
+        assert last_error is not None
+        raise last_error
     finally:
         if own:
             client.close()
