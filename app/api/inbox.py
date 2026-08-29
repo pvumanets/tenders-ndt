@@ -445,6 +445,18 @@ def _ensure_lot_state(session, tender_id: str) -> LotState:
     return state
 
 
+def _lot_description(lot: Lot) -> str | None:
+    """Optional purchase description from lot.raw (no dedicated column)."""
+    raw = lot.raw
+    if not isinstance(raw, dict):
+        return None
+    desc = raw.get("description")
+    if not isinstance(desc, str):
+        return None
+    text = desc.strip()
+    return text or None
+
+
 def run_ai_review(body: Any) -> dict[str, Any]:
     """POST /api/inbox/ai-review — operator-triggered; never called from runner."""
     from app.ai.provod import AiTierError, review_tier
@@ -489,17 +501,16 @@ def run_ai_review(body: Any) -> dict[str, Any]:
         for lot, state in pairs:
             if state is not None and state.board_hidden:
                 continue
-            rules_tier = (state.rules_tier if state and state.rules_tier else None) or lot.tier
             now = datetime.now(timezone.utc)
             state = _ensure_lot_state(session, lot.tender_id)
+            # rules_tier for UI diff (038) only — never sent to the model
             if not state.rules_tier:
                 state.rules_tier = lot.tier
             try:
                 result = review_tier(
                     title=lot.title,
-                    rules_tier=rules_tier,
-                    fit_reason=lot.fit_reason,
-                    platform_id=lot.source_platform_id,
+                    customer_name=clean_customer_name(lot.customer_name),
+                    description=_lot_description(lot),
                 )
                 state.ai_tier = result.tier
                 state.ai_reason_ru = result.reason_ru
