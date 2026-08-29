@@ -126,7 +126,7 @@ def test_scrape_queries_union_open_dedup(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_roseltorg_seeds_gated() -> None:
     off = [r for r in search_seed_rows(roseltorg_in_queue=False) if r["platform_id"] == "roseltorg"]
     on = [r for r in search_seed_rows(roseltorg_in_queue=True) if r["platform_id"] == "roseltorg"]
-    assert len(off) == 4
+    assert len(off) == 5
     assert all(r["in_queue"] is False for r in off)
     assert all(r["in_queue"] is True for r in on)
-    assert off[0]["name"].startswith("Росэлторг")
+    assert off[0]["name"] == "Росэлторг — услуги НК"

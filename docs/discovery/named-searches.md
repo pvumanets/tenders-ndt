@@ -1,9 +1,9 @@
 # Именованные поиски и очередь прогонов
 
 **status:** accepted  
-**last-review-date:** 2026-08-28  
-**owner lock:** 2026-08-19 (имена поисков + очередь Старта; первая чужая ЭТП = Tender.Pro) · **2026-08-27** (без лимита 1000; пакеты — [`search-keywords.md`](./search-keywords.md)) · **2026-08-28** (плюс/минус — [`search-system-v2.md`](./search-system-v2.md))  
-**код:** [023](../delivery/tasks/023-named-searches.md) **done** → [024](../delivery/tasks/024-tender-pro-adapter.md) **done**. Поле `exclude` — [036](../delivery/tasks/036-search-plus-minus.md) (docs ready; код follow-up).  
+**last-review-date:** 2026-08-29  
+**owner lock:** 2026-08-19 (имена поисков + очередь Старта; первая чужая ЭТП = Tender.Pro) · **2026-08-27** (без лимита 1000; пакеты — [`search-keywords.md`](./search-keywords.md)) · **2026-08-28** (плюс/минус — [`search-system-v2.md`](./search-system-v2.md)) · **2026-08-29** (shared A–E на все ЭТП — [041](../delivery/tasks/041-shared-search-packages.md))  
+**код:** [023](../delivery/tasks/023-named-searches.md) **done** → [024](../delivery/tasks/024-tender-pro-adapter.md) **done** · [040](../delivery/tasks/040-roseltorg-adapter.md) **done** · [041](../delivery/tasks/041-shared-search-packages.md) shared lexicon.  
 **зонд Tender.Pro:** [`tender-pro-probe.md`](./tender-pro-probe.md)  
 **реестр ЭТП:** [`platforms.md`](./platforms.md)  
 **API:** [`../delivery/sales-inbox-api.md`](../delivery/sales-inbox-api.md)
@@ -42,9 +42,9 @@
 | --- | --- |
 | `id` | UUID |
 | `name` | человеческое; уникально в инстансе |
-| `platform_id` | ровно одна ЭТП: сейчас `rostender` \| `tender-pro`; позже slug из [`platforms.md`](./platforms.md) |
-| `queries` | массив строк, минимум 1; порядок **слож → прост** (плюс; [`search-keywords.md`](./search-keywords.md)) |
-| **`exclude`** | **целевой (v2):** массив минус-фраз; может быть `[]`; режет title **на списке** до скоринга ([`search-system-v2.md`](./search-system-v2.md)). **AS-IS код:** поля ещё нет |
+| `platform_id` | ровно одна ЭТП: `rostender` \| `tender-pro` \| `roseltorg`; позже slug из [`platforms.md`](./platforms.md) |
+| `queries` | массив строк, минимум 1; порядок **слож → прост**; **канон A–E общий** ([`search-keywords.md`](./search-keywords.md) · [041](../delivery/tasks/041-shared-search-packages.md)) |
+| **`exclude`** | массив минус-фраз; режет title **на списке** до скоринга ([`search-system-v2.md`](./search-system-v2.md)); на одноимённом пакете одинаков для всех ЭТП |
 | `limit_n` | optional soft stop; **`0` = без потолка** ([030](../delivery/tasks/030-search-coverage.md) done) |
 | `in_queue` | попадет в следующий Старт |
 | `sort_order` | порядок в очереди |
@@ -53,11 +53,9 @@
 
 Смысл `queries[]`:
 
-- **rostender** — каждая строка = `keywords` (канон: [`search-keywords.md`](./search-keywords.md))
-- **tender-pro** — каждая строка = `good_name` (уровни B→C из search-keywords)
+- **все площадки** — одни и те же плюс-фразы пакетов A–E ([`search-keywords.md`](./search-keywords.md)); адаптер ЭТП подставляет поле поиска площадки (`keywords` / `good_name` / CORP `query` и т.д.)
 
-Внутри одного поиска (целевой v2): все query → union → дедуп → **`exclude` по title** → без обрезки limit → скоринг L1–L3 → ingest **tier ∈ {L1,L2,L3}**.  
-**AS-IS runtime:** без `exclude`; после union сразу скоринг.
+Внутри одного поиска (v2): все query → union → дедуп → **`exclude` по title** → без обрезки limit → скоринг L1–L3 → ingest **tier ∈ {L1,L2,L3}**.
 
 `exclude[]` действует **только** на выдачу **этого** поиска; другие поиски в очереди не наследуют минусы (детсад+радиограф через пакет B сохраняется).
 
@@ -65,8 +63,8 @@ Q25 **держим:** query, exclude и limit живут в карточке п�
 
 ### Сиды
 
-Плюс A–E: [`search-keywords.md`](./search-keywords.md). Минус по пакетам: [`search-system-v2.md`](./search-system-v2.md).  
-**Сиды (030 done):** A–E на rostender в очереди; Tender.Pro — `in_queue` при cookies.
+Плюс/минус A–E: [`search-keywords.md`](./search-keywords.md) · [`search-system-v2.md`](./search-system-v2.md).  
+**Сиды (041):** на rostender / tender-pro / roseltorg — полный A–E из одного SoT; TP/РЭ `in_queue` при cookies / USER+PASSWORD.
 
 ## Очередь и прогон
 

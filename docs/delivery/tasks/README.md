@@ -1,8 +1,8 @@
 # Tasks / backlog
 
 **status:** active  
-**last-review-date:** 2026-08-28  
-**P17:** [036](./036-search-plus-minus.md) **done** · [037](./037-score-no-inject.md) **done** · [038](./038-ai-reviewed-tab.md) **done** · [039](./039-ai-master-prompt.md) **done**
+**last-review-date:** 2026-08-29  
+**P17:** [036](./036-search-plus-minus.md) **done** · [037](./037-score-no-inject.md) **done** · [038](./038-ai-reviewed-tab.md) **done** · [039](./039-ai-master-prompt.md) **done** · [040](./040-roseltorg-adapter.md) **done** · [041](./041-shared-search-packages.md) **done**
 
 Владелец смотрит **эту таблицу**. Карточка = детали и acceptance. Cursor Plans ≠ канон.
 
@@ -60,6 +60,7 @@
 | 038 | Вкладка «Разобрано с помощью ИИ» | task | done | NEXT+ | | [038-ai-reviewed-tab.md](./038-ai-reviewed-tab.md) |
 | 039 | Мастер-промпт ИИ + wire provod | task | done | NEXT+ | | [039-ai-master-prompt.md](./039-ai-master-prompt.md) |
 | 040 | Адаптер Росэлторг CORP | task | done | NEXT+ | | [040-roseltorg-adapter.md](./040-roseltorg-adapter.md) |
+| 041 | Общие слова поиска A–E на все площадки | task | done | NEXT+ | | [041-shared-search-packages.md](./041-shared-search-packages.md) |
 
 ### Очередь
 
@@ -76,5 +77,6 @@
 - **038** — вкладка ИИ вместо галочки — **done** (2026-08-28).
 - **039** — мастер-промпт ИИ + wire независимого provod — **done** (2026-08-29); wipe+AI на проде — после merge/deploy (D4).
 - **040** — адаптер Росэлторг CORP — **done** (merge `feat/040-roseltorg-adapter`); VPS deploy — `--sync` + `--deploy` по команде.
+- **041** — общие слова A–E на все ЭТП (канон Ростендер) — **done** (2026-08-29).
 - **ЭТП учётки:** канон [`../../discovery/platforms.md`](../../discovery/platforms.md) + [`../auth-cookies.md`](../auth-cookies.md). Следующие адаптеры: B2B → OilB2B → Северсталь.
 - Порядок фаз: [`../next-phases.md`](../next-phases.md). **P13 wipe + полный прогон** — **done** (2026-08-27).
