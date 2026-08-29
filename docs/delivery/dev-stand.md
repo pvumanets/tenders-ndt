@@ -37,3 +37,7 @@
 Перед кодом API/DB и перед `pytest -m smoke`: если health не 200 — `.\scripts\dev-up.ps1`. Pytest docker **не** стартует сам. `skipped (no DB)` при живом Docker и заполненном `.env` — ошибка процесса (не зелёный отчёт). Скип допустим только если Docker нет или `.env` не заполнен — тогда отчёт **blocked**, owner заполняет `.env`.
 
 Smoke бьёт в тот же Postgres (или `SCOUT_TEST_DATABASE_URL`); только ряды `qa_smoke_*`.
+
+## Search groups (0015+)
+
+После `alembic upgrade head`: таблицы `search_groups` + `platform_settings`. Сиды A–E insert-only при старте API. Wipe прода / полный сброс — только по команде владельца ([050](./tasks/050-search-groups-qa.md)).
