@@ -521,13 +521,14 @@ def run_ai_review(body: Any) -> dict[str, Any]:
                 state.ai_error = str(exc.message)
                 failed += 1
             session.flush()
+            # Commit per lot so a later timeout/500 does not roll back earlier successes.
+            session.commit()
             docs = list(
                 session.scalars(select(Document).where(Document.tender_id == lot.tender_id)).all()
             )
             items.append(
                 serialize_lot(lot, state, documents=docs, include_documents=True)
             )
-        session.commit()
 
     STATE.set_ai_failures(failed)
     if failed:
