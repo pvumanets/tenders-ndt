@@ -121,6 +121,9 @@ def refresh_session(*, probe_roseltorg_live: bool = True) -> str:
             STATE.set_session("expired", platform_id=PLATFORM_ROSELTORG)
         else:
             STATE.set_session("ok", platform_id=PLATFORM_ROSELTORG)
+    else:
+        # File present; skip live probe on status/platforms poll.
+        STATE.set_session("ok", platform_id=PLATFORM_ROSELTORG)
     return STATE.snapshot()["session"]
 
 
