@@ -501,6 +501,8 @@ def run_ai_review(body: Any) -> dict[str, Any]:
         for lot, state in pairs:
             if state is not None and state.board_hidden:
                 continue
+            if is_deadline_expired(lot.deadline_msk):
+                continue
             now = datetime.now(timezone.utc)
             state = _ensure_lot_state(session, lot.tender_id)
             # rules_tier for UI diff (038) only — never sent to the model

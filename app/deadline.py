@@ -52,6 +52,31 @@ def is_deadline_expired(deadline_msk: str | None, today: date | None = None) -> 
     return due < today_msk_date(today)
 
 
+def drop_past_deadline_rows(
+    rows: list[dict],
+    *,
+    today: date | None = None,
+) -> tuple[list[dict], int]:
+    """Remove rows with a known deadline strictly before today MSK.
+
+    Undated rows are kept (list scrape may lack deadline; board hides undated separately).
+    Used after card enrich so platforms that only learn the date on the card
+    (e.g. Roseltorg www list) do not land past-deadline lots in the inbox.
+    """
+    kept: list[dict] = []
+    dropped = 0
+    for row in rows:
+        raw = row.get("deadline_msk")
+        text = str(raw).strip() if raw is not None else None
+        if text == "":
+            text = None
+        if is_deadline_expired(text, today=today):
+            dropped += 1
+            continue
+        kept.append(row)
+    return kept, dropped
+
+
 def deadline_iso(text: str | None) -> str | None:
     parsed = deadline_date(text)
     if parsed is not None:
