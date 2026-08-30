@@ -37,7 +37,11 @@ class RunState:
     queue: list[dict[str, Any]] = field(default_factory=list)
     queue_index: int = 0
     log: deque[dict[str, str]] = field(default_factory=lambda: deque(maxlen=100))
+    pipeline: str = "manual"
+    ai_review_done: int = 0
+    ai_review_total: int = 0
     _expired_baseline: set[str] = field(default_factory=set, repr=False)
+    _affected_ids: set[str] = field(default_factory=set, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def snapshot(self) -> dict[str, Any]:
@@ -76,10 +80,15 @@ class RunState:
                 "current_platform_id": self.queue[self.queue_index].get("platform_id")
                 if self.queue and 0 <= self.queue_index < len(self.queue)
                 else None,
+                "pipeline": self.pipeline,
+                "ai_review_done": self.ai_review_done,
+                "ai_review_total": self.ai_review_total,
                 "log": list(self.log),
             }
 
-    def reset_for_queue(self, *, items: list[dict[str, Any]], run_dir: str) -> None:
+    def reset_for_queue(
+        self, *, items: list[dict[str, Any]], run_dir: str, pipeline: str = "manual"
+    ) -> None:
         with self._lock:
             self.phase = "P1"
             self.running = True
@@ -91,10 +100,14 @@ class RunState:
             self.ai_failures = 0
             self.http_retries = 0
             self._expired_baseline = set()
+            self._affected_ids = set()
             self.cards_done = 0
             self.cards_total = 0
             self.run_dir = run_dir
             self.last_error = None
+            self.pipeline = pipeline if pipeline in {"manual", "auto"} else "manual"
+            self.ai_review_done = 0
+            self.ai_review_total = 0
             self.query = items[0]["name"] if items else ""
             self.queue = [dict(item) for item in items]
             self.queue_index = 0
@@ -133,6 +146,26 @@ class RunState:
     def set_ai_failures(self, count: int) -> None:
         with self._lock:
             self.ai_failures = int(count)
+
+    def set_ai_progress(self, done: int, total: int) -> None:
+        with self._lock:
+            self.ai_review_done = int(done)
+            self.ai_review_total = int(total)
+
+    def add_affected_ids(self, ids: list[str] | set[str]) -> None:
+        with self._lock:
+            for tid in ids:
+                text = str(tid).strip()
+                if text:
+                    self._affected_ids.add(text)
+
+    def affected_ids(self) -> set[str]:
+        with self._lock:
+            return set(self._affected_ids)
+
+    def current_pipeline(self) -> str:
+        with self._lock:
+            return self.pipeline
 
     def set_queue_index(self, index: int) -> None:
         with self._lock:

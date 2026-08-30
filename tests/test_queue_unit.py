@@ -60,6 +60,34 @@ def test_start_run_already_running(idle_run_state: None) -> None:
 
 
 @pytest.mark.unit
+def test_start_run_ticker_skips_already_running_without_raise(
+    monkeypatch: pytest.MonkeyPatch, idle_run_state: None
+) -> None:
+    skipped: list[str] = []
+    monkeypatch.setattr(
+        "app.api.schedule.record_slot_skip",
+        lambda reason, **_k: skipped.append(reason),
+    )
+    STATE.running = True
+    assert runner.start_run(pipeline="auto", from_ticker=True) is False
+    assert skipped == ["already_running"]
+
+
+@pytest.mark.unit
+def test_start_run_ticker_empty_queue_without_raise(
+    monkeypatch: pytest.MonkeyPatch, idle_run_state: None
+) -> None:
+    skipped: list[str] = []
+    monkeypatch.setattr(search_groups_api, "get_queued_steps", lambda: [])
+    monkeypatch.setattr(
+        "app.api.schedule.record_slot_skip",
+        lambda reason, **_k: skipped.append(reason),
+    )
+    assert runner.start_run(pipeline="auto", from_ticker=True) is False
+    assert skipped == ["empty_queue"]
+
+
+@pytest.mark.unit
 def test_tender_pro_step_runs_adapter(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(runner, "_run_tender_pro", lambda **_kw: "done")
     status = runner._run_one_search(

@@ -87,6 +87,22 @@ class PlatformSetting(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
 
+class ScheduleSettings(Base):
+    """Singleton id=1 — daily auto-run slot (MSK)."""
+
+    __tablename__ = "schedule_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    time_msk: Mapped[str] = mapped_column(String(5), nullable=False, default="07:00", server_default="07:00")
+    last_fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_skip_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class Run(Base):
     __tablename__ = "runs"
 
@@ -94,6 +110,9 @@ class Run(Base):
     query: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     limit_n: Mapped[int] = mapped_column(Integer, nullable=False)
+    pipeline: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="manual", server_default="manual"
+    )
     source_platform_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     search_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     search_group_id: Mapped[UUID | None] = mapped_column(
@@ -171,6 +190,7 @@ class LotState(Base):
         DateTime(timezone=True), nullable=True
     )
     ai_wrong_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_trigger: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
 
 class Document(Base):

@@ -13,6 +13,7 @@ from app.api.inbox import (
     deadline_iso,
     is_deadline_expired,
     list_inbox,
+    parse_ai_trigger,
     parse_board_hidden_body,
     parse_priority_body,
     parse_query_date,
@@ -70,6 +71,7 @@ def test_inbox_routes_include_documents() -> None:
     assert "/api/inbox/{tender_id}/board-hidden" in paths
     assert "/api/inbox/{tender_id}/documents" in paths
     assert "/api/inbox/{tender_id}/documents/{filename}" in paths
+    assert "/api/schedule" in paths
 
 
 @pytest.mark.unit
@@ -111,6 +113,12 @@ def test_list_inbox_rejects_bad_query_before_db() -> None:
         parse_unread("maybe")
     with pytest.raises(InboxQueryError, match="invalid_date"):
         parse_query_date("2026-13-01")
+    with pytest.raises(InboxQueryError, match="invalid_ai_trigger"):
+        parse_ai_trigger("both")
+    with pytest.raises(InboxQueryError, match="invalid_ai_trigger"):
+        list_inbox(ai_trigger="both")
+    assert parse_ai_trigger("auto") == "auto"
+    assert parse_ai_trigger("manual") == "manual"
 
 
 @pytest.mark.unit
@@ -134,6 +142,7 @@ def test_serialize_lot_deadline_expired_and_board_hidden() -> None:
     live = serialize_lot(_lot(deadline_msk="27.08.2026"), None, today=today)
     assert live["deadline_expired"] is False
     assert live["board_hidden"] is False
+    assert live["ai_trigger"] is None
     expired = serialize_lot(_lot(deadline_msk="26.08.2026"), None, today=today)
     assert expired["deadline_expired"] is True
     state = LotState(tender_id="45289101", board_hidden=True)

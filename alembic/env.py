@@ -1,13 +1,13 @@
-"""Alembic env — URL only from DATABASE_URL (not from alembic.ini)."""
+"""Alembic env — URL from DATABASE_URL or host POSTGRES_* (not from alembic.ini)."""
 from __future__ import annotations
 
-import os
 from logging.config import fileConfig
 
 from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
+from app.db.config import database_url as app_database_url
 from app.db.models import Base
 
 load_dotenv()
@@ -20,7 +20,7 @@ target_metadata = Base.metadata
 
 
 def _database_url() -> str:
-    url = os.environ.get("DATABASE_URL", "").strip()
+    url = app_database_url()
     if not url:
         raise RuntimeError("DATABASE_URL is not set")
     return url

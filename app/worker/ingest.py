@@ -62,6 +62,8 @@ class IngestResult:
     new_count: int = 0
     already_count: int = 0
     updated_count: int = 0
+    new_ids: tuple[str, ...] = ()
+    updated_ids: tuple[str, ...] = ()
 
 
 def inbox_rows(rows: list[dict]) -> list[dict]:
@@ -237,6 +239,7 @@ def ingest_run(
     source_platform_id: str = SOURCE_PLATFORM_ID,
     search_id: UUID | None = None,
     search_group_id: UUID | None = None,
+    pipeline: str = "manual",
 ) -> IngestResult | None:
     """Write one run + insert/update-on-diff inbox lots. None if DATABASE_URL is unset."""
     if not database_url():
@@ -251,6 +254,7 @@ def ingest_run(
             query=query,
             status=status,
             limit_n=limit_n,
+            pipeline=pipeline if pipeline in {"manual", "auto"} else "manual",
             source_platform_id=source_platform_id,
             search_id=search_id,
             search_group_id=search_group_id,
@@ -263,6 +267,8 @@ def ingest_run(
         new_count = 0
         already_count = 0
         updated_count = 0
+        new_ids: list[str] = []
+        updated_ids: list[str] = []
         if candidates:
             values_list = [
                 lot_values(
@@ -285,9 +291,11 @@ def ingest_run(
                 if old is None:
                     to_insert.append(vals)
                     new_count += 1
+                    new_ids.append(vals["tender_id"])
                 elif lot_differs(old, vals, row):
                     to_update.append((vals, row))
                     updated_count += 1
+                    updated_ids.append(vals["tender_id"])
                 else:
                     already_count += 1
 
@@ -317,6 +325,8 @@ def ingest_run(
             new_count=new_count,
             already_count=already_count,
             updated_count=updated_count,
+            new_ids=tuple(new_ids),
+            updated_ids=tuple(updated_ids),
         )
 
 

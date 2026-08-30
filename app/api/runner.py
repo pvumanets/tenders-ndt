@@ -128,30 +128,52 @@ def refresh_session(*, probe_roseltorg_live: bool = True) -> str:
     return STATE.snapshot()["session"]
 
 
-def start_run() -> None:
+def start_run(*, pipeline: str = "manual", from_ticker: bool = False) -> bool:
     global _thread
+    if pipeline not in {"manual", "auto"}:
+        raise RuntimeError("invalid_pipeline")
     with _lock:
         if STATE.snapshot()["running"]:
+            if from_ticker:
+                from app.api.schedule import SKIP_ALREADY_RUNNING, record_slot_skip
+
+                record_slot_skip(SKIP_ALREADY_RUNNING)
+                return False
             raise RuntimeError("already_running")
         try:
             items = search_groups_api.get_queued_steps()
         except RuntimeError as exc:
             if str(exc) == "database_unconfigured":
+                if from_ticker:
+                    from app.api.schedule import SKIP_EMPTY_QUEUE, record_slot_skip
+
+                    record_slot_skip(SKIP_EMPTY_QUEUE)
+                    return False
                 raise RuntimeError("empty_queue") from exc
             raise
         if not items:
+            if from_ticker:
+                from app.api.schedule import SKIP_EMPTY_QUEUE, record_slot_skip
+
+                record_slot_skip(SKIP_EMPTY_QUEUE)
+                return False
             raise RuntimeError("empty_queue")
         refresh_session()
         run_dir = _repo_root() / "runs" / date.today().isoformat()
         run_dir.mkdir(parents=True, exist_ok=True)
-        STATE.reset_for_queue(items=items, run_dir=str(run_dir))
-        STATE.log_msg(f"Queue: {len(items)} step(s)")
+        STATE.reset_for_queue(items=items, run_dir=str(run_dir), pipeline=pipeline)
+        if pipeline == "auto":
+            from app.api.schedule import record_slot_fire
+
+            record_slot_fire()
+        STATE.log_msg(f"Queue: {len(items)} step(s) ({pipeline})")
         _thread = threading.Thread(
             target=_run_queue,
-            kwargs={"items": items, "run_dir": run_dir},
+            kwargs={"items": items, "run_dir": run_dir, "pipeline": pipeline},
             daemon=True,
         )
         _thread.start()
+        return True
 
 
 def request_stop() -> None:
@@ -199,6 +221,7 @@ def _ingest_step(
             started_at=started_at,
             source_platform_id=str(item.get("platform_id") or PLATFORM_ROSTENDER),
             search_group_id=search_group_id,
+            pipeline=STATE.current_pipeline(),
         )
         if result is None:
             STATE.log_msg("Ingest skipped (database unconfigured)", level="warn")
@@ -208,6 +231,7 @@ def _ingest_step(
                 already=result.already_count,
                 updated=result.updated_count,
             )
+            STATE.add_affected_ids(list(result.new_ids) + list(result.updated_ids))
             STATE.log_msg(
                 "Ingest: "
                 f"{result.lot_count} lots (L1–L3); "
@@ -259,7 +283,7 @@ def _download_docs(rows: list[dict], *, platform_id: str) -> None:
         STATE.log_msg(f"Docs error: {type(exc).__name__}: {exc}", level="error")
 
 
-def _run_queue(*, items: list[dict], run_dir: Path) -> None:
+def _run_queue(*, items: list[dict], run_dir: Path, pipeline: str = "manual") -> None:
     overall = "done"
     try:
         baseline = snapshot_expired_tender_ids()
@@ -295,6 +319,14 @@ def _run_queue(*, items: list[dict], run_dir: Path) -> None:
         STATE.finish("error", error=f"{type(exc).__name__}: {exc}")
         return
     STATE.finish(overall)
+    if pipeline == "auto" and overall in {"done", "partial"}:
+        prefer = STATE.affected_ids()
+        try:
+            from app.api.inbox import run_auto_ai_review
+
+            run_auto_ai_review(prefer)
+        except Exception as exc:  # noqa: BLE001
+            STATE.log_msg(f"Auto AI: {type(exc).__name__}: {exc}", level="error")
 
 
 def _run_one_search(*, item: dict, run_dir: Path) -> str:
