@@ -6,6 +6,7 @@ import { copy } from "./copy";
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -129,5 +130,51 @@ describe("AppTabs", () => {
     expect(screen.getByText(copy.settings_section_groups)).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: copy.cookies_submit }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: copy.run_start })).not.toBeInTheDocument();
+  });
+
+  it("keeps polling status when schedule GET fails", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const fetchMock = vi.fn(async (input: RequestInfo) => {
+      const url = String(input);
+      if (url.includes("/api/me")) {
+        return jsonResponse(200, { username: "digital", display_name: "Digital" });
+      }
+      if (url.includes("/api/inbox")) {
+        return jsonResponse(200, { items: [] });
+      }
+      if (url.includes("/api/status")) {
+        return jsonResponse(200, {
+          phase: "idle",
+          running: false,
+          pipeline: "manual",
+          ai_review_done: 0,
+          ai_review_total: 0,
+        });
+      }
+      if (url.includes("/api/search-groups")) {
+        return jsonResponse(200, { items: [] });
+      }
+      if (url.includes("/api/platforms")) {
+        return jsonResponse(200, { items: [] });
+      }
+      if (url.includes("/api/schedule")) {
+        return jsonResponse(404, { detail: "not_found" });
+      }
+      return jsonResponse(200, {});
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<App />);
+    expect(await screen.findByText(copy.tab_auto)).toBeInTheDocument();
+    const statusBefore = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes("/api/status"),
+    ).length;
+    expect(statusBefore).toBeGreaterThan(0);
+
+    await vi.advanceTimersByTimeAsync(8000);
+    const statusAfter = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes("/api/status"),
+    ).length;
+    expect(statusAfter).toBeGreaterThan(statusBefore);
   });
 });

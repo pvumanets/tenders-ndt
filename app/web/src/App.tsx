@@ -282,18 +282,30 @@ function AppInner() {
     let timer: number | undefined;
 
     const tick = () => {
-      Promise.all([fetchStatus(), fetchSearchGroups(), fetchPlatforms(), fetchSchedule()])
+      Promise.all([
+        fetchStatus(),
+        fetchSearchGroups(),
+        fetchPlatforms(),
+        fetchSchedule().catch((err: unknown) => {
+          if (err instanceof UnauthorizedError) throw err;
+          return null;
+        }),
+      ])
         .then(([status, groupItems, platformItems, scheduleItem]) => {
           if (cancelled) return;
           setTech(status);
           setGroups(groupItems);
           setPlatforms(platformItems);
-          setSchedule(scheduleItem);
+          if (scheduleItem) setSchedule(scheduleItem);
           timer = window.setTimeout(tick, status.running ? STATUS_POLL_MS : STATUS_POLL_MS * 4);
         })
         .catch((err: unknown) => {
           if (cancelled) return;
-          if (err instanceof UnauthorizedError) onUnauthorized();
+          if (err instanceof UnauthorizedError) {
+            onUnauthorized();
+            return;
+          }
+          timer = window.setTimeout(tick, STATUS_POLL_MS * 4);
         });
     };
     tick();
