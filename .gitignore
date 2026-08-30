@@ -8,6 +8,13 @@
 cookies*.txt
 *.cookies
 
+# Product canon / agent — local disk only (not on public origin)
+/docs/
+/AGENTS.md
+/.cursor/
+*.md
+!/README.md
+
 # Python
 .venv/
 venv/
