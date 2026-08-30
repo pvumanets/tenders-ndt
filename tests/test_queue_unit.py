@@ -141,6 +141,61 @@ def test_queue_continues_after_tender_pro_error(
 
 
 @pytest.mark.unit
+def test_auto_queue_keeps_running_during_ai(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    idle_run_state: None,
+) -> None:
+    seen_running: list[bool] = []
+
+    def fake_ai(_prefer: set[str]) -> dict:
+        seen_running.append(bool(STATE.snapshot()["running"]))
+        return {"processed": 0, "failed": 0, "items": []}
+
+    monkeypatch.setattr(runner, "_run_one_search", lambda **_kw: "done")
+    monkeypatch.setattr("app.api.inbox.run_auto_ai_review", fake_ai)
+    items = [
+        {
+            "id": str(uuid4()),
+            "name": "РосТендер НК",
+            "platform_id": "rostender",
+            "status": "pending",
+        },
+    ]
+    STATE.reset_for_queue(items=items, run_dir=str(tmp_path), pipeline="auto")
+    runner._run_queue(items=items, run_dir=tmp_path, pipeline="auto")
+    assert seen_running == [True]
+    snap = STATE.snapshot()
+    assert snap["running"] is False
+    assert snap["phase"] == "done"
+
+
+@pytest.mark.unit
+def test_start_run_clears_running_if_thread_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    idle_run_state: None,
+) -> None:
+    monkeypatch.setattr(
+        search_groups_api,
+        "get_queued_steps",
+        lambda: [{"id": str(uuid4()), "name": "НК", "platform_id": "rostender"}],
+    )
+    monkeypatch.setattr(runner, "refresh_session", lambda: "ok")
+    monkeypatch.setattr(runner, "_repo_root", lambda: tmp_path)
+
+    class BoomThread:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            raise RuntimeError("thread_failed")
+
+    monkeypatch.setattr(runner.threading, "Thread", BoomThread)
+    with pytest.raises(RuntimeError, match="thread_failed"):
+        runner.start_run()
+    assert STATE.snapshot()["running"] is False
+    assert STATE.snapshot()["phase"] == "error"
+
+
+@pytest.mark.unit
 def test_soft_stop_after_p2_ingests_board_rows(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

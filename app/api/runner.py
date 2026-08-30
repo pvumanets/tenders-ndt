@@ -161,18 +161,25 @@ def start_run(*, pipeline: str = "manual", from_ticker: bool = False) -> bool:
         refresh_session()
         run_dir = _repo_root() / "runs" / date.today().isoformat()
         run_dir.mkdir(parents=True, exist_ok=True)
-        STATE.reset_for_queue(items=items, run_dir=str(run_dir), pipeline=pipeline)
+        try:
+            STATE.reset_for_queue(items=items, run_dir=str(run_dir), pipeline=pipeline)
+            STATE.log_msg(f"Queue: {len(items)} step(s) ({pipeline})")
+            _thread = threading.Thread(
+                target=_run_queue,
+                kwargs={"items": items, "run_dir": run_dir, "pipeline": pipeline},
+                daemon=True,
+            )
+            _thread.start()
+        except Exception:
+            STATE.finish("error", error="start_failed")
+            raise
         if pipeline == "auto":
             from app.api.schedule import record_slot_fire
 
-            record_slot_fire()
-        STATE.log_msg(f"Queue: {len(items)} step(s) ({pipeline})")
-        _thread = threading.Thread(
-            target=_run_queue,
-            kwargs={"items": items, "run_dir": run_dir, "pipeline": pipeline},
-            daemon=True,
-        )
-        _thread.start()
+            try:
+                record_slot_fire()
+            except Exception as exc:  # noqa: BLE001 — queue already running
+                STATE.log_msg(f"Schedule fire mark: {type(exc).__name__}", level="warn")
         return True
 
 
@@ -318,7 +325,6 @@ def _run_queue(*, items: list[dict], run_dir: Path, pipeline: str = "manual") ->
         STATE.log_msg(f"{type(exc).__name__}: {exc}", level="error")
         STATE.finish("error", error=f"{type(exc).__name__}: {exc}")
         return
-    STATE.finish(overall)
     if pipeline == "auto" and overall in {"done", "partial"}:
         prefer = STATE.affected_ids()
         try:
@@ -327,6 +333,7 @@ def _run_queue(*, items: list[dict], run_dir: Path, pipeline: str = "manual") ->
             run_auto_ai_review(prefer)
         except Exception as exc:  # noqa: BLE001
             STATE.log_msg(f"Auto AI: {type(exc).__name__}: {exc}", level="error")
+    STATE.finish(overall)
 
 
 def _run_one_search(*, item: dict, run_dir: Path) -> str:
