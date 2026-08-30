@@ -1,6 +1,8 @@
 export type SalesTier = "L1" | "L2" | "L3";
 export type ViewMode = "cards" | "table";
-export type AppTab = "lots" | "ai" | "run";
+export type AppTab = "auto" | "manual" | "settings";
+export type AiTrigger = "auto" | "manual";
+export type RunPipeline = "manual" | "auto";
 
 export type DocFile = {
   name: string;
@@ -36,6 +38,7 @@ export type InboxLot = {
   ai_reason_ru: string;
   ai_error: string | null;
   ai_wrong: boolean;
+  ai_trigger: AiTrigger | null;
 };
 
 export type SearchGroup = {
@@ -73,10 +76,20 @@ export type QueueStep = {
   status: QueueStepStatus;
 };
 
+export type ScheduleSettings = {
+  enabled: boolean;
+  time_msk: string;
+  last_fired_at: string | null;
+  last_skip_reason: string | null;
+  last_attempt_at: string | null;
+  next_fire_at: string | null;
+};
+
 export type TechStatus = {
   phase: string;
   phase_label: string;
   running: boolean;
+  pipeline: RunPipeline;
   list_done: number;
   list_total: number;
   cards_done: number;
@@ -84,6 +97,8 @@ export type TechStatus = {
   counters: { L1: number; L2: number; L3: number; noise: number };
   run_report: { new: number; already: number; updated: number; expired: number };
   ai_failures: number;
+  ai_review_done: number;
+  ai_review_total: number;
   http_retries: number;
   session: "ok" | "expired" | "missing";
   sessions?: { rostender?: string; "tender-pro"?: string; roseltorg?: string };

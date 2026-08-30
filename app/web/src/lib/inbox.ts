@@ -1,4 +1,5 @@
 import type {
+  AiTrigger,
   InboxLot,
   PlatformRow,
   PlatformSession,
@@ -6,6 +7,7 @@ import type {
   QueueStep,
   QueueStepStatus,
   SalesTier,
+  ScheduleSettings,
   SearchGroup,
   TechStatus,
 } from "../types";
@@ -46,6 +48,7 @@ export type InboxListQuery = {
   ingested_from?: string;
   ingested_to?: string;
   ai_reviewed?: boolean;
+  ai_trigger?: AiTrigger;
 };
 
 type ApiLot = Partial<InboxLot> & {
@@ -77,6 +80,9 @@ type StatusSnapshot = {
   current_search_name?: string | null;
   current_group_id?: string | null;
   current_platform_id?: string | null;
+  pipeline?: string;
+  ai_review_done?: number;
+  ai_review_total?: number;
 };
 
 async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
@@ -130,6 +136,7 @@ export function normalizeLot(raw: ApiLot): InboxLot {
     ai_reason_ru: text(raw.ai_reason_ru),
     ai_error: raw.ai_error ? text(raw.ai_error) : null,
     ai_wrong: Boolean(raw.ai_wrong),
+    ai_trigger: raw.ai_trigger === "auto" || raw.ai_trigger === "manual" ? raw.ai_trigger : null,
   };
 }
 
@@ -147,6 +154,7 @@ export function buildInboxSearchParams(query: InboxListQuery): URLSearchParams {
   if (query.ingested_from) params.set("ingested_from", query.ingested_from);
   if (query.ingested_to) params.set("ingested_to", query.ingested_to);
   if (query.ai_reviewed) params.set("ai_reviewed", "1");
+  if (query.ai_trigger) params.set("ai_trigger", query.ai_trigger);
   return params;
 }
 
@@ -488,6 +496,8 @@ export function mapRunStatus(raw: StatusSnapshot): TechStatus {
       expired: raw.run_report?.expired ?? 0,
     },
     ai_failures: raw.ai_failures ?? 0,
+    ai_review_done: raw.ai_review_done ?? 0,
+    ai_review_total: raw.ai_review_total ?? 0,
     http_retries: raw.http_retries ?? 0,
     session: sessionUi(raw.session),
     sessions: raw.sessions,
@@ -498,6 +508,7 @@ export function mapRunStatus(raw: StatusSnapshot): TechStatus {
     current_search_name: raw.current_search_name ?? "",
     current_group_id: raw.current_group_id ?? undefined,
     current_platform_id: raw.current_platform_id ?? undefined,
+    pipeline: raw.pipeline === "auto" ? "auto" : "manual",
     log: Array.isArray(raw.log) ? raw.log : [],
   };
 }
@@ -538,4 +549,61 @@ export async function stopRun(): Promise<void> {
   const res = await apiFetch("/api/run/stop", { method: "POST" });
   if (res.ok) return;
   throwRunControl(await readDetail(res));
+}
+
+function parseSchedule(raw: Partial<ScheduleSettings>): ScheduleSettings {
+  return {
+    enabled: Boolean(raw.enabled),
+    time_msk: text(raw.time_msk) || "07:00",
+    last_fired_at: raw.last_fired_at ? text(raw.last_fired_at) : null,
+    last_skip_reason: raw.last_skip_reason ? text(raw.last_skip_reason) : null,
+    last_attempt_at: raw.last_attempt_at ? text(raw.last_attempt_at) : null,
+    next_fire_at: raw.next_fire_at ? text(raw.next_fire_at) : null,
+  };
+}
+
+export async function fetchSchedule(): Promise<ScheduleSettings> {
+  const res = await apiFetch("/api/schedule");
+  if (!res.ok) throw new Error("schedule_load_failed");
+  return parseSchedule((await res.json()) as Partial<ScheduleSettings>);
+}
+
+export async function putSchedule(body: {
+  enabled?: boolean;
+  time_msk?: string;
+}): Promise<ScheduleSettings> {
+  const res = await apiFetch("/api/schedule", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 400) throw new Error("invalid_time_msk");
+  if (!res.ok) throw new Error("schedule_save_failed");
+  return parseSchedule((await res.json()) as Partial<ScheduleSettings>);
+}
+
+export type CookiesUploadResult = {
+  platform_id: string;
+  session: PlatformSession;
+};
+
+export async function postPlatformCookies(
+  platformId: string,
+  cookies: unknown,
+): Promise<CookiesUploadResult> {
+  if (!Array.isArray(cookies) || cookies.length === 0) {
+    throw new Error("invalid_cookies_json");
+  }
+  const res = await apiFetch(`/api/platforms/${encodeURIComponent(platformId)}/cookies`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cookies),
+  });
+  if (res.status === 400) throw new Error("invalid_cookies_json");
+  if (!res.ok) throw new Error("cookies_upload_failed");
+  const body = (await res.json()) as { platform_id?: string; session?: string };
+  return {
+    platform_id: text(body.platform_id) || platformId,
+    session: parsePlatformSession(body.session),
+  };
 }

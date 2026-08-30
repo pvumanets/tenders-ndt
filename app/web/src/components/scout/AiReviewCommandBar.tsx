@@ -1,65 +1,48 @@
-import { Box, Button, ToggleButton, ToggleButtonGroup } from "@mui/material";
-import ViewWeekOutlinedIcon from "@mui/icons-material/ViewWeekOutlined";
-import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
-import type { ViewMode } from "../../types";
+import { Box, Button, Typography } from "@mui/material";
 import { copy } from "../../copy";
 import { stripe } from "../../theme/palette";
-import { viewCommandBarLayout } from "../../vendor/personal/layout/view-command-bar";
-import ViewCommandBar from "../../vendor/personal/shell/ViewCommandBar";
 
 export default function AiReviewCommandBar({
-  view,
-  onView,
   onAiReview,
   aiBusy = false,
+  aiDone = 0,
+  aiTotal = 0,
 }: {
-  view: ViewMode;
-  onView: (v: ViewMode) => void;
   onAiReview: () => void;
   aiBusy?: boolean;
+  aiDone?: number;
+  aiTotal?: number;
 }) {
+  const inProgress = aiTotal > 0 && aiDone < aiTotal;
+
   return (
-    <Box sx={{ mb: viewCommandBarLayout.marginBottom }}>
-      <ViewCommandBar
-        sticky
-        sx={{
-          flexWrap: "wrap",
-          gridTemplateColumns: { xs: "1fr", md: "1fr auto" },
-          mb: 1,
-        }}
+    <Box
+      sx={{
+        mb: 1.5,
+        display: "flex",
+        alignItems: "center",
+        gap: 1.5,
+        flexWrap: "wrap",
+      }}
+    >
+      <Button
+        variant="contained"
+        size="small"
+        disabled={aiBusy || inProgress}
+        onClick={onAiReview}
+        sx={{ flexShrink: 0, bgcolor: stripe.blurple }}
       >
-        <ViewCommandBar.Start sx={{ flex: 1, minWidth: 0 }}>
-          <span />
-        </ViewCommandBar.Start>
-        <ViewCommandBar.End sx={{ width: { xs: "100%", md: "auto" }, justifyContent: "flex-end", gap: 1 }}>
-          <ToggleButtonGroup
-            exclusive
-            size="small"
-            value={view}
-            onChange={(_, v: ViewMode | null) => {
-              if (v) onView(v);
-            }}
-          >
-            <ToggleButton value="cards">
-              <ViewWeekOutlinedIcon sx={{ mr: 0.5, fontSize: 16 }} />
-              {copy.view_cards}
-            </ToggleButton>
-            <ToggleButton value="table">
-              <TableRowsOutlinedIcon sx={{ mr: 0.5, fontSize: 16 }} />
-              {copy.view_table}
-            </ToggleButton>
-          </ToggleButtonGroup>
-          <Button
-            variant="contained"
-            size="small"
-            disabled={aiBusy}
-            onClick={onAiReview}
-            sx={{ flexShrink: 0, bgcolor: stripe.blurple }}
-          >
-            {aiBusy ? copy.action_ai_review_busy : copy.action_ai_review}
-          </Button>
-        </ViewCommandBar.End>
-      </ViewCommandBar>
+        {aiBusy && !inProgress ? copy.action_ai_review_busy : copy.action_ai_review}
+      </Button>
+      {inProgress ? (
+        <Typography variant="body2" sx={{ color: stripe.textMuted }}>
+          {copy.ai_eta_progress.replace("{n}", String(aiDone)).replace("{m}", String(aiTotal))}
+        </Typography>
+      ) : aiTotal > 0 && aiDone >= aiTotal ? (
+        <Typography variant="body2" sx={{ color: stripe.textMuted }}>
+          {copy.ai_eta_done}
+        </Typography>
+      ) : null}
     </Box>
   );
 }

@@ -82,6 +82,21 @@ export default function LotMiniCard({
               }}
             />
           ) : null}
+          {showAiHint && lot.ai_reviewed ? (
+            <Chip
+              size="small"
+              label={copy.chip_ai_reviewed}
+              variant="outlined"
+              sx={{
+                alignSelf: "flex-start",
+                mt: hasManual ? 0.5 : 0,
+                height: theme.density.chip.height,
+                fontSize: `${theme.density.chip.fontSize}px`,
+                borderColor: stripe.border,
+                color: stripe.textMuted,
+              }}
+            />
+          ) : null}
           {moveLabel ? (
             <Chip
               size="small"
