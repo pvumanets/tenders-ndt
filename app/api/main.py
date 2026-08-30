@@ -1,6 +1,8 @@
 """FastAPI operator UI — P5.5 inbox + docs download from volume, Scout session."""
 from __future__ import annotations
 
+import asyncio
+import json
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -14,6 +16,7 @@ from pydantic import BaseModel, Field, ValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api import auth, inbox, platforms as platforms_api, results, runner, search_groups as search_groups_api
+from app.api import schedule as schedule_api
 from app.api import searches as searches_api
 from app.api.state import STATE
 from app.db.bootstrap import bootstrap_users
@@ -43,6 +46,15 @@ def _legacy_enabled() -> bool:
     }
 
 
+async def _schedule_loop() -> None:
+    while True:
+        await asyncio.sleep(30)
+        try:
+            schedule_api.tick_once()
+        except Exception:  # noqa: BLE001 — ticker must not kill the api
+            pass
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     runner.refresh_session()
@@ -59,7 +71,15 @@ async def lifespan(_app: FastAPI):
         sync_roseltorg_queue_from_credentials()
     except Exception:  # noqa: BLE001 — startup must not die on optional sync
         pass
-    yield
+    task = asyncio.create_task(_schedule_loop())
+    try:
+        yield
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title="ndt-tender-scout", version="0.5.5", lifespan=lifespan)
@@ -135,11 +155,22 @@ def api_status():
 
 
 @app.post("/api/run/start")
-def api_start():
+async def api_start(request: Request):
+    pipeline = "manual"
+    raw_bytes = await request.body()
+    if raw_bytes:
+        try:
+            raw = json.loads(raw_bytes)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="invalid_pipeline") from None
+        if isinstance(raw, dict) and raw.get("pipeline") is not None:
+            pipeline = str(raw.get("pipeline"))
+    if pipeline not in {"manual", "auto"}:
+        raise HTTPException(status_code=400, detail="invalid_pipeline")
     if STATE.snapshot()["running"]:
         raise HTTPException(status_code=409, detail="already_running")
     try:
-        runner.start_run()
+        runner.start_run(pipeline=pipeline)
     except RuntimeError as e:
         if str(e) == "missing_cookies":
             raise HTTPException(status_code=400, detail="missing_cookies") from e
@@ -147,8 +178,32 @@ def api_start():
             raise HTTPException(status_code=409, detail="already_running") from e
         if str(e) == "empty_queue":
             raise HTTPException(status_code=400, detail="empty_queue") from e
+        if str(e) == "invalid_pipeline":
+            raise HTTPException(status_code=400, detail="invalid_pipeline") from e
         raise HTTPException(status_code=400, detail=str(e)) from e
     return {"ok": True, "status": STATE.snapshot()}
+
+
+@app.get("/api/schedule")
+def api_schedule_get():
+    try:
+        return schedule_api.get_schedule()
+    except RuntimeError as exc:
+        if str(exc) == "database_unconfigured":
+            raise HTTPException(status_code=503, detail="db_down") from exc
+        raise
+
+
+@app.put("/api/schedule")
+def api_schedule_put(body: dict | None = None):
+    try:
+        return schedule_api.put_schedule(body or {})
+    except schedule_api.ScheduleError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        if str(exc) == "database_unconfigured":
+            raise HTTPException(status_code=503, detail="db_down") from exc
+        raise
 
 
 @app.post("/api/run/stop")
@@ -319,6 +374,7 @@ def api_inbox(
     ingested_from: str | None = Query(default=None),
     ingested_to: str | None = Query(default=None),
     ai_reviewed: str | None = Query(default=None),
+    ai_trigger: str | None = Query(default=None),
 ):
     try:
         return inbox.list_inbox(
@@ -330,6 +386,7 @@ def api_inbox(
             ingested_from=ingested_from,
             ingested_to=ingested_to,
             ai_reviewed=ai_reviewed,
+            ai_trigger=ai_trigger,
         )
     except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
         _inbox_http(exc)

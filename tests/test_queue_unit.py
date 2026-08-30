@@ -60,6 +60,34 @@ def test_start_run_already_running(idle_run_state: None) -> None:
 
 
 @pytest.mark.unit
+def test_start_run_ticker_skips_already_running_without_raise(
+    monkeypatch: pytest.MonkeyPatch, idle_run_state: None
+) -> None:
+    skipped: list[str] = []
+    monkeypatch.setattr(
+        "app.api.schedule.record_slot_skip",
+        lambda reason, **_k: skipped.append(reason),
+    )
+    STATE.running = True
+    assert runner.start_run(pipeline="auto", from_ticker=True) is False
+    assert skipped == ["already_running"]
+
+
+@pytest.mark.unit
+def test_start_run_ticker_empty_queue_without_raise(
+    monkeypatch: pytest.MonkeyPatch, idle_run_state: None
+) -> None:
+    skipped: list[str] = []
+    monkeypatch.setattr(search_groups_api, "get_queued_steps", lambda: [])
+    monkeypatch.setattr(
+        "app.api.schedule.record_slot_skip",
+        lambda reason, **_k: skipped.append(reason),
+    )
+    assert runner.start_run(pipeline="auto", from_ticker=True) is False
+    assert skipped == ["empty_queue"]
+
+
+@pytest.mark.unit
 def test_tender_pro_step_runs_adapter(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(runner, "_run_tender_pro", lambda **_kw: "done")
     status = runner._run_one_search(
@@ -110,6 +138,61 @@ def test_queue_continues_after_tender_pro_error(
     assert snap["queue"][1]["status"] == "done"
     assert snap["running"] is False
     assert snap["phase"] == "partial"
+
+
+@pytest.mark.unit
+def test_auto_queue_keeps_running_during_ai(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    idle_run_state: None,
+) -> None:
+    seen_running: list[bool] = []
+
+    def fake_ai(_prefer: set[str]) -> dict:
+        seen_running.append(bool(STATE.snapshot()["running"]))
+        return {"processed": 0, "failed": 0, "items": []}
+
+    monkeypatch.setattr(runner, "_run_one_search", lambda **_kw: "done")
+    monkeypatch.setattr("app.api.inbox.run_auto_ai_review", fake_ai)
+    items = [
+        {
+            "id": str(uuid4()),
+            "name": "РосТендер НК",
+            "platform_id": "rostender",
+            "status": "pending",
+        },
+    ]
+    STATE.reset_for_queue(items=items, run_dir=str(tmp_path), pipeline="auto")
+    runner._run_queue(items=items, run_dir=tmp_path, pipeline="auto")
+    assert seen_running == [True]
+    snap = STATE.snapshot()
+    assert snap["running"] is False
+    assert snap["phase"] == "done"
+
+
+@pytest.mark.unit
+def test_start_run_clears_running_if_thread_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    idle_run_state: None,
+) -> None:
+    monkeypatch.setattr(
+        search_groups_api,
+        "get_queued_steps",
+        lambda: [{"id": str(uuid4()), "name": "НК", "platform_id": "rostender"}],
+    )
+    monkeypatch.setattr(runner, "refresh_session", lambda: "ok")
+    monkeypatch.setattr(runner, "_repo_root", lambda: tmp_path)
+
+    class BoomThread:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            raise RuntimeError("thread_failed")
+
+    monkeypatch.setattr(runner.threading, "Thread", BoomThread)
+    with pytest.raises(RuntimeError, match="thread_failed"):
+        runner.start_run()
+    assert STATE.snapshot()["running"] is False
+    assert STATE.snapshot()["phase"] == "error"
 
 
 @pytest.mark.unit

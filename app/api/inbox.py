@@ -122,6 +122,58 @@ def parse_ai_reviewed(value: str | None) -> bool | None:
     raise InboxQueryError("invalid_ai_reviewed")
 
 
+def parse_ai_trigger(value: str | None) -> str | None:
+    if value is None or value.strip() == "":
+        return None
+    key = value.strip().lower()
+    if key in {"auto", "manual"}:
+        return key
+    raise InboxQueryError("invalid_ai_trigger")
+
+
+def lot_eligible_for_auto_ai(
+    *,
+    tier: str,
+    deadline_msk: str | None,
+    board_hidden: bool,
+    ai_reviewed_at: datetime | None,
+) -> bool:
+    if tier not in INBOX_TIERS:
+        return False
+    if board_hidden:
+        return False
+    if ai_reviewed_at is not None:
+        return False
+    if is_deadline_expired(deadline_msk):
+        return False
+    return True
+
+
+def select_auto_ai_ids(
+    candidates: list[dict[str, Any]],
+    *,
+    prefer_ids: set[str],
+) -> list[str]:
+    """Prefer ∩ eligible. Empty prefer after a successful auto queue → no-op."""
+    if not prefer_ids:
+        return []
+    out: list[str] = []
+    for row in candidates:
+        tid = str(row.get("tender_id") or "").strip()
+        if tid not in prefer_ids:
+            continue
+        if lot_eligible_for_auto_ai(
+            tier=str(row.get("tier") or ""),
+            deadline_msk=row.get("deadline_msk") if isinstance(row.get("deadline_msk"), str) else None,
+            board_hidden=bool(row.get("board_hidden")),
+            ai_reviewed_at=row.get("ai_reviewed_at")
+            if isinstance(row.get("ai_reviewed_at"), datetime)
+            else None,
+        ):
+            out.append(tid)
+    return out
+
+
 def _effective_tier(lot: Lot, state: LotState | None) -> str:
     if state is not None and state.manual_tier:
         return state.manual_tier
@@ -203,6 +255,7 @@ def serialize_lot(
         "ai_reason_ru": state.ai_reason_ru if state is not None else None,
         "ai_error": state.ai_error if state is not None else None,
         "ai_wrong": bool(state is not None and state.ai_wrong_at is not None),
+        "ai_trigger": state.ai_trigger if state is not None else None,
     }
     if include_documents:
         rows = documents if documents is not None else []
@@ -231,11 +284,13 @@ def list_inbox(
     ingested_from: str | None = None,
     ingested_to: str | None = None,
     ai_reviewed: str | None = None,
+    ai_trigger: str | None = None,
     today: date | None = None,
 ) -> dict[str, Any]:
     unread_flag = parse_unread(unread)
     tier_filter = parse_tier_filter(tier)
     ai_flag = parse_ai_reviewed(ai_reviewed)
+    trigger = parse_ai_trigger(ai_trigger)
     dl_from = parse_query_date(deadline_from)
     dl_to = parse_query_date(deadline_to)
     ing_from = parse_query_date(ingested_from)
@@ -258,6 +313,8 @@ def list_inbox(
             stmt = stmt.where(
                 or_(LotState.ai_reviewed_at.is_(None), LotState.tender_id.is_(None))
             )
+        if trigger is not None:
+            stmt = stmt.where(LotState.ai_trigger == trigger)
         if needle:
             pattern = f"%{needle}%"
             stmt = stmt.where(
@@ -457,11 +514,79 @@ def _lot_description(lot: Lot) -> str | None:
     return text or None
 
 
-def run_ai_review(body: Any) -> dict[str, Any]:
-    """POST /api/inbox/ai-review — operator-triggered; never called from runner."""
+def _apply_ai_review(
+    pairs: list[tuple[Lot, LotState | None]],
+    *,
+    trigger: str,
+    skip_hidden_expired: bool = True,
+) -> dict[str, Any]:
     from app.ai.provod import AiTierError, review_tier
+    from app.api.notify import notify_auto_l1
     from app.api.state import STATE
 
+    factory = session_factory()
+    processed = 0
+    failed = 0
+    items: list[dict[str, Any]] = []
+    l1_ids: list[str] = []
+    work = list(pairs)
+    STATE.set_ai_progress(0, len(work))
+    with factory() as session:
+        for index, (lot, state) in enumerate(work):
+            if skip_hidden_expired:
+                if state is not None and state.board_hidden:
+                    STATE.set_ai_progress(index + 1, len(work))
+                    continue
+                if is_deadline_expired(lot.deadline_msk):
+                    STATE.set_ai_progress(index + 1, len(work))
+                    continue
+            now = datetime.now(timezone.utc)
+            lot = session.get(Lot, lot.tender_id)
+            if lot is None:
+                STATE.set_ai_progress(index + 1, len(work))
+                continue
+            state = _ensure_lot_state(session, lot.tender_id)
+            if not state.rules_tier:
+                state.rules_tier = lot.tier
+            try:
+                result = review_tier(
+                    title=lot.title,
+                    customer_name=clean_customer_name(lot.customer_name),
+                    description=_lot_description(lot),
+                )
+                state.ai_tier = result.tier
+                state.ai_reason_ru = result.reason_ru
+                state.ai_reviewed_at = now
+                state.ai_error = None
+                state.ai_trigger = trigger
+                processed += 1
+                if trigger == "auto" and result.tier == "L1":
+                    l1_ids.append(lot.tender_id)
+            except AiTierError as exc:
+                state.ai_error = str(exc.message)
+                failed += 1
+            session.flush()
+            session.commit()
+            docs = list(
+                session.scalars(select(Document).where(Document.tender_id == lot.tender_id)).all()
+            )
+            items.append(
+                serialize_lot(lot, state, documents=docs, include_documents=True)
+            )
+            STATE.set_ai_progress(index + 1, len(work))
+
+    STATE.set_ai_failures(failed)
+    if failed:
+        STATE.log_msg(f"ИИ: сбоев {failed}, успешно {processed}", level="warn")
+    else:
+        STATE.log_msg(f"ИИ: разобрано {processed}")
+    if trigger == "auto":
+        notify_auto_l1(l1_ids)
+    return {"processed": processed, "failed": failed, "items": items}
+
+
+def run_ai_review(body: Any) -> dict[str, Any]:
+    """POST /api/inbox/ai-review — operator-triggered; never called from runner."""
     ids: list[str] | None = None
     if body is None or body == {}:
         ids = None
@@ -477,9 +602,7 @@ def run_ai_review(body: Any) -> dict[str, Any]:
         raise InboxQueryError("invalid_body")
 
     factory = session_factory()
-    processed = 0
-    failed = 0
-    items: list[dict[str, Any]] = []
+    failed_missing = 0
     with factory() as session:
         if ids is None:
             stmt = (
@@ -494,50 +617,44 @@ def run_ai_review(body: Any) -> dict[str, Any]:
             for tid in ids:
                 lot = session.get(Lot, tid)
                 if lot is None or not _in_pool(lot):
-                    failed += 1
+                    failed_missing += 1
                     continue
                 pairs.append((lot, session.get(LotState, tid)))
 
-        for lot, state in pairs:
-            if state is not None and state.board_hidden:
-                continue
-            if is_deadline_expired(lot.deadline_msk):
-                continue
-            now = datetime.now(timezone.utc)
-            state = _ensure_lot_state(session, lot.tender_id)
-            # rules_tier for UI diff (038) only — never sent to the model
-            if not state.rules_tier:
-                state.rules_tier = lot.tier
-            try:
-                result = review_tier(
-                    title=lot.title,
-                    customer_name=clean_customer_name(lot.customer_name),
-                    description=_lot_description(lot),
-                )
-                state.ai_tier = result.tier
-                state.ai_reason_ru = result.reason_ru
-                state.ai_reviewed_at = now
-                state.ai_error = None
-                processed += 1
-            except AiTierError as exc:
-                state.ai_error = str(exc.message)
-                failed += 1
-            session.flush()
-            # Commit per lot so a later timeout/500 does not roll back earlier successes.
-            session.commit()
-            docs = list(
-                session.scalars(select(Document).where(Document.tender_id == lot.tender_id)).all()
-            )
-            items.append(
-                serialize_lot(lot, state, documents=docs, include_documents=True)
-            )
+    result = _apply_ai_review(pairs, trigger="manual")
+    result["failed"] = int(result.get("failed") or 0) + failed_missing
+    return result
 
-    STATE.set_ai_failures(failed)
-    if failed:
-        STATE.log_msg(f"ИИ: сбоев {failed}, успешно {processed}", level="warn")
-    else:
-        STATE.log_msg(f"ИИ: разобрано {processed}")
-    return {"processed": processed, "failed": failed, "items": items}
+
+def run_auto_ai_review(prefer_ids: set[str]) -> dict[str, Any]:
+    """After auto queue: prefer ∩ eligible. Empty prefer → no-op. Sets ai_trigger=auto."""
+    from app.api.state import STATE
+
+    if not prefer_ids:
+        STATE.log_msg("Auto AI: no-op (empty prefer)")
+        return {"processed": 0, "failed": 0, "items": []}
+    factory = session_factory()
+    with factory() as session:
+        stmt = (
+            select(Lot, LotState)
+            .outerjoin(LotState, LotState.tender_id == Lot.tender_id)
+            .where(Lot.tender_id.in_(tuple(prefer_ids)))
+        )
+        pairs: list[tuple[Lot, LotState | None]] = []
+        for lot, state in session.execute(stmt).all():
+            hidden = bool(state.board_hidden) if state is not None else False
+            reviewed = state.ai_reviewed_at if state is not None else None
+            if lot_eligible_for_auto_ai(
+                tier=lot.tier,
+                deadline_msk=lot.deadline_msk,
+                board_hidden=hidden,
+                ai_reviewed_at=reviewed,
+            ):
+                pairs.append((lot, state))
+    if not pairs:
+        STATE.log_msg("Auto AI: no-op (no eligible lots)")
+        return {"processed": 0, "failed": 0, "items": []}
+    return _apply_ai_review(pairs, trigger="auto", skip_hidden_expired=False)
 
 
 def mark_ai_wrong(tender_id: str, body: Any) -> dict[str, Any]:
