@@ -14,9 +14,11 @@ import type { TechStatus } from "../../types";
 export default function TechDiagnostics({
   status,
   forceOpen = false,
+  title = copy.run_section_diagnostics,
 }: {
   status: TechStatus;
   forceOpen?: boolean;
+  title?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -29,7 +31,7 @@ export default function TechDiagnostics({
     <Box>
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
         <Typography variant="subtitle2" sx={{ flex: 1 }}>
-          {copy.run_section_diagnostics}
+          {title}
         </Typography>
         <Button size="small" onClick={() => setOpen((v) => !v)}>
           {open ? copy.diagnostics_collapse : copy.diagnostics_expand}

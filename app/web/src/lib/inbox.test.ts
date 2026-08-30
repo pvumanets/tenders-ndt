@@ -36,19 +36,23 @@ describe("buildInboxSearchParams", () => {
     expect(params.get("deadline_from")).toBeNull();
   });
 
-  it("sets unread, q and dates", () => {
+  it("sets unread, q, dates and ai_trigger", () => {
     const params = buildInboxSearchParams({
       unread: true,
       tier: "L1",
       q: "узк",
       deadline_from: "2026-08-13",
       deadline_to: "2026-08-20",
+      ai_reviewed: true,
+      ai_trigger: "auto",
     });
     expect(params.get("unread")).toBe("true");
     expect(params.get("tier")).toBe("L1");
     expect(params.get("q")).toBe("узк");
     expect(params.get("deadline_from")).toBe("2026-08-13");
     expect(params.get("deadline_to")).toBe("2026-08-20");
+    expect(params.get("ai_reviewed")).toBe("1");
+    expect(params.get("ai_trigger")).toBe("auto");
   });
 });
 
@@ -78,6 +82,9 @@ describe("mapRunStatus", () => {
     expect(status.queue).toHaveLength(1);
     expect(status.current_search_name).toBe("РосТендер НК");
     expect(status.run_report).toEqual({ new: 2, already: 5, updated: 1, expired: 3 });
+    expect(status.pipeline).toBe("manual");
+    expect(status.ai_review_done).toBe(0);
+    expect(status.ai_review_total).toBe(0);
   });
 
   it("defaults run_report when missing", () => {
@@ -109,6 +116,19 @@ describe("mapRunStatus", () => {
     expect(status.queue[0].platform_id).toBe("tender-pro");
     expect(status.current_group_id).toBe("g1");
     expect(status.current_platform_id).toBe("tender-pro");
+  });
+
+  it("maps pipeline and AI N/M", () => {
+    const status = mapRunStatus({
+      phase: "done",
+      running: true,
+      pipeline: "auto",
+      ai_review_done: 4,
+      ai_review_total: 12,
+    });
+    expect(status.pipeline).toBe("auto");
+    expect(status.ai_review_done).toBe(4);
+    expect(status.ai_review_total).toBe(12);
   });
 });
 

@@ -207,6 +207,9 @@ export default function InboxCommandBar({
   onIngestedTo,
   view,
   onView,
+  showAiReviewedFilter = false,
+  aiReviewedOnly = false,
+  onAiReviewedOnly,
 }: {
   unreadOnly: boolean;
   onUnreadOnly: (v: boolean) => void;
@@ -228,10 +231,14 @@ export default function InboxCommandBar({
   onIngestedTo: (v: string) => void;
   view: ViewMode;
   onView: (v: ViewMode) => void;
+  showAiReviewedFilter?: boolean;
+  aiReviewedOnly?: boolean;
+  onAiReviewedOnly?: (v: boolean) => void;
 }) {
   const [priorityEl, setPriorityEl] = useState<HTMLElement | null>(null);
   const [deadlineEl, setDeadlineEl] = useState<HTMLElement | null>(null);
   const [ingestedEl, setIngestedEl] = useState<HTMLElement | null>(null);
+  const [aiEl, setAiEl] = useState<HTMLElement | null>(null);
 
   function togglePriority(tier: SalesTier) {
     onPriority(priority.includes(tier) ? priority.filter((t) => t !== tier) : [...priority, tier]);
@@ -311,6 +318,13 @@ export default function InboxCommandBar({
             badgeContent={ingestedPreset === "any" ? 0 : 1}
             onClick={(e) => setIngestedEl(e.currentTarget)}
           />
+          {showAiReviewedFilter ? (
+            <FilterTriggerButton
+              label={copy.filter_ai_reviewed_trigger}
+              badgeContent={aiReviewedOnly ? 1 : 0}
+              onClick={(e) => setAiEl(e.currentTarget)}
+            />
+          ) : null}
         </ViewCommandBar.Start>
 
         <ViewCommandBar.End sx={{ width: { xs: "100%", md: "auto" }, justifyContent: "flex-end" }}>
@@ -409,6 +423,23 @@ export default function InboxCommandBar({
           />
         ) : null}
       </FilterMenuPopover>
+
+      {showAiReviewedFilter && onAiReviewedOnly ? (
+        <FilterMenuPopover
+          open={Boolean(aiEl)}
+          anchorEl={aiEl}
+          onClose={() => setAiEl(null)}
+          title={copy.filter_ai_reviewed_trigger}
+          resetVisible={aiReviewedOnly}
+          onReset={() => onAiReviewedOnly(false)}
+        >
+          <CheckRow
+            checked={aiReviewedOnly}
+            label={copy.filter_ai_reviewed_trigger}
+            onToggle={() => onAiReviewedOnly(!aiReviewedOnly)}
+          />
+        </FilterMenuPopover>
+      ) : null}
 
       <TextField
         fullWidth

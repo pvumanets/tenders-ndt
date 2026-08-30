@@ -46,6 +46,7 @@ function lot(partial: Partial<InboxLot> & Pick<InboxLot, "tender_id" | "tier">):
     ai_reason_ru: "",
     ai_error: null,
     ai_wrong: false,
+    ai_trigger: null,
     ...partial,
   };
 }
