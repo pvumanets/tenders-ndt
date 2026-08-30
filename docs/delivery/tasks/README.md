@@ -71,6 +71,7 @@
 | 048 | Backend: search_groups + platforms.enabled | task | done | NEXT+ | | [048-search-groups-backend.md](./048-search-groups-backend.md) |
 | 049 | Frontend: Прогон 4 секции + группы | task | done | NEXT+ | | [049-search-groups-ui.md](./049-search-groups-ui.md) |
 | 050 | QA: группы × площадки + wipe/seeds notes | task | done | NEXT+ | | [050-search-groups-qa.md](./050-search-groups-qa.md) |
+| 052 | Fix: не ingest/ИИ прошлый срок после enrich | task | done | NEXT+ | | [052-drop-past-deadline.md](./052-drop-past-deadline.md) |
 
 ### Очередь
 
@@ -94,5 +95,6 @@
 - **048** — backend search_groups + platform_settings + queue expand — **done** (2026-08-29).
 - **049** — React Прогон: 4 секции + группы/площадки — **done** (2026-08-29).
 - **050** — QA групп×площадок (empty_queue оба случая, suites, ops notes) — **done** (2026-08-29). Epic 044–050 closed.
+- **052** — drop past deadline before ingest + skip in AI (Roseltorg list hole) — **done** (2026-08-30).
 - **ЭТП учётки:** канон [`../../discovery/platforms.md`](../../discovery/platforms.md) + [`../auth-cookies.md`](../auth-cookies.md). Следующие адаптеры: B2B → OilB2B → Северсталь.
 - Порядок фаз: [`../next-phases.md`](../next-phases.md). **P13 wipe + полный прогон** — **done** (2026-08-27).

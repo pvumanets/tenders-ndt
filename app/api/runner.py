@@ -18,6 +18,7 @@ from app.worker import tender_pro as tender_pro_worker
 from app.worker.artifacts import write_artifacts
 from app.worker.card_scrape import enrich_cards
 from app.worker.docs import download_docs_enabled, download_inbox_docs
+from app.deadline import drop_past_deadline_rows
 from app.worker.ingest import ingest_run, redact_db_error, snapshot_expired_tender_ids
 from app.worker.list_scrape import AuthError, probe_rostender_cookies, scrape_queries
 from app.worker.platform_ids import (
@@ -176,6 +177,12 @@ def _ingest_step(
     started_at: datetime,
     error: str | None = None,
 ) -> None:
+    rows, dropped_past = drop_past_deadline_rows(rows)
+    if dropped_past:
+        STATE.log_msg(
+            f"Отсев просроченного срока перед ingest: {dropped_past}",
+            level="warn",
+        )
     search_group_id: UUID | None = None
     raw_id = item.get("group_id") or item.get("id")
     if raw_id:
