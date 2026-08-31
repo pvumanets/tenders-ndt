@@ -87,13 +87,13 @@ describe("rules vs ai board tiers", () => {
     ai_tier: "L3",
   });
 
-  it("rules board keeps L1 after AI demoted to L3", () => {
+  it("rulesBoardTier keeps L1 after AI demoted to L3", () => {
     const buckets = boardBuckets([moved], rulesBoardTier);
     expect(buckets.L1).toEqual(["moved"]);
     expect(buckets.L3).toEqual([]);
   });
 
-  it("ai board shows L3 after AI review", () => {
+  it("aiBoardTier (Manual + Auto boards) shows L3 after AI review", () => {
     const buckets = boardBuckets([moved], aiBoardTier);
     expect(buckets.L1).toEqual([]);
     expect(buckets.L3).toEqual(["moved"]);

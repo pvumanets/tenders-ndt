@@ -438,13 +438,13 @@ export default function InboxCommandBar({
           open={Boolean(aiEl)}
           anchorEl={aiEl}
           onClose={() => setAiEl(null)}
-          title={copy.filter_ai_reviewed_trigger}
+          title={copy.filter_ai_reviewed_menu_title}
           resetVisible={aiReviewedOnly}
           onReset={() => onAiReviewedOnly(false)}
         >
           <CheckRow
             checked={aiReviewedOnly}
-            label={copy.filter_ai_reviewed_trigger}
+            label={copy.filter_ai_reviewed}
             onToggle={() => onAiReviewedOnly(!aiReviewedOnly)}
           />
         </FilterMenuPopover>
