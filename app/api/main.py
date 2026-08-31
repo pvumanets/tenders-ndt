@@ -518,3 +518,18 @@ if _assets.is_dir():
 _platforms = _dist / "platforms"
 if _platforms.is_dir():
     app.mount("/platforms", StaticFiles(directory=str(_platforms)), name="spa-platforms")
+_brand = _dist / "brand"
+if _brand.is_dir():
+    app.mount("/brand", StaticFiles(directory=str(_brand)), name="spa-brand")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    for candidate in (
+        _dist / "favicon.ico",
+        _dist / "brand" / "favicon.ico",
+        STATIC_DIR / "favicon.ico",
+    ):
+        if candidate.is_file():
+            return FileResponse(candidate)
+    raise HTTPException(status_code=404, detail="not_found")
