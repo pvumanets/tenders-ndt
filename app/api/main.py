@@ -509,12 +509,29 @@ def index():
     return FileResponse(STATIC_DIR / "index.html")
 
 
+_dist = _web_dist()
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    for candidate in (
+        _dist / "favicon.ico",
+        _dist / "brand" / "favicon.ico",
+        STATIC_DIR / "favicon.ico",
+    ):
+        if candidate.is_file():
+            return FileResponse(candidate)
+    raise HTTPException(status_code=404, detail="not_found")
+
+
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-_dist = _web_dist()
 _assets = _dist / "assets"
 if _assets.is_dir():
     app.mount("/assets", StaticFiles(directory=str(_assets)), name="spa-assets")
 _platforms = _dist / "platforms"
 if _platforms.is_dir():
     app.mount("/platforms", StaticFiles(directory=str(_platforms)), name="spa-platforms")
+_brand = _dist / "brand"
+if _brand.is_dir():
+    app.mount("/brand", StaticFiles(directory=str(_brand)), name="spa-brand")
