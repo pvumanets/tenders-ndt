@@ -24,7 +24,7 @@ import type {
 } from "./types";
 import { copy } from "./copy";
 import { deadlineQuery, ingestedQuery, mskTodayIso } from "./lib/date-filters";
-import { aiBoardTier, rulesBoardTier, tierMoved } from "./lib/format";
+import { aiBoardTier, tierMoved } from "./lib/format";
 import {
   RunControlError,
   SearchControlError,
@@ -440,13 +440,11 @@ function AppInner() {
     }
   }
 
-  const boardTierFn = tab === "auto" ? aiBoardTier : rulesBoardTier;
-
   const filtered = useMemo(() => {
     const visible = lots.filter((lot) => !lot.board_hidden);
     if (priority.length < 2) return visible;
-    return visible.filter((lot) => priority.includes(boardTierFn(lot)));
-  }, [lots, priority, boardTierFn]);
+    return visible.filter((lot) => priority.includes(aiBoardTier(lot)));
+  }, [lots, priority]);
 
   const selected = lots.find((l) => l.tender_id === selectedId) ?? null;
   const emptyKind: "error" | "no-unread" | "no-data" | "no-match" =
@@ -575,7 +573,6 @@ function AppInner() {
   );
 
   function renderBoard(mode: "auto" | "manual") {
-    const boardTier = mode === "auto" ? aiBoardTier : rulesBoardTier;
     if (lotsState === "error") return <InboxEmpty tab={mode} kind="error" />;
     if (lotsLoading) return <Box sx={{ flex: 1, bgcolor: stripe.surfaceSubtle }} />;
     if (filtered.length === 0) return <InboxEmpty tab={mode} kind={emptyKind} />;
@@ -585,9 +582,8 @@ function AppInner() {
           lots={filtered}
           selectedId={selectedId}
           onOpen={setSelectedId}
-          boardTier={boardTier}
-          showAiHint={mode === "manual"}
-          showTierMove={mode === "auto"}
+          boardTier={aiBoardTier}
+          showTierMove
         />
       );
     }
@@ -596,8 +592,8 @@ function AppInner() {
         lots={filtered}
         selectedId={selectedId}
         onOpen={setSelectedId}
-        boardTier={boardTier}
-        showTierMove={mode === "auto"}
+        boardTier={aiBoardTier}
+        showTierMove
       />
     );
   }
@@ -703,7 +699,7 @@ function AppInner() {
             {selected ? (
               <TenderDrawer
                 lot={selected}
-                drawerMode="rules"
+                drawerMode="ai"
                 onClose={() => setSelectedId(null)}
                 onToggleViewed={onToggleViewed}
                 onSetPriority={onSetPriority}

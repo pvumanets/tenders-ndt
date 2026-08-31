@@ -200,6 +200,7 @@ export const copy = {
   manual_no_mail_hint: "С ручного прогона письма не уходят — только авторазбор.",
   manual_session_muted: "Если сессия площадки устарела — обновите её в Настройках.",
   filter_ai_reviewed_trigger: "С ИИ",
+  filter_ai_reviewed_menu_title: "Разбор ИИ",
   chip_ai_reviewed: "ИИ",
   empty_manual_title: "Нет лотов",
   empty_manual_body: "Нажмите «Старт», чтобы запустить прогон.",
