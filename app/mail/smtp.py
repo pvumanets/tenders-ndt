@@ -36,6 +36,7 @@ def send_mail(
     """
     Send one message. Returns 'sent' | 'smtp_unconfigured' | 'smtp_failed'.
     Does not raise. Never include cookie values / jar / passwords in subject/body.
+    Port 465 uses SMTP_SSL; other ports use SMTP + optional STARTTLS.
     """
     host = (os.getenv("SMTP_HOST") or "").strip()
     to_addr = (to or "").strip()
@@ -67,12 +68,18 @@ def send_mail(
         recipients.append(cc_addr)
 
     try:
-        with smtplib.SMTP(host, port, timeout=30) as smtp:
-            if use_tls:
-                smtp.starttls()
-            if user:
-                smtp.login(user, password)
-            smtp.send_message(msg, to_addrs=recipients)
+        if port == 465:
+            with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:
+                if user:
+                    smtp.login(user, password)
+                smtp.send_message(msg, to_addrs=recipients)
+        else:
+            with smtplib.SMTP(host, port, timeout=30) as smtp:
+                if use_tls:
+                    smtp.starttls()
+                if user:
+                    smtp.login(user, password)
+                smtp.send_message(msg, to_addrs=recipients)
         return "sent"
     except Exception as exc:  # noqa: BLE001
         log.warning("smtp_failed: %s", type(exc).__name__)
