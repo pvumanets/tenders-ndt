@@ -79,12 +79,12 @@ function stubApi() {
 }
 
 describe("App inbox gate", () => {
-  it("shows login, not tabs, when inbox returns 401", async () => {
+  it("shows login, not tabs, when /api/me returns 401", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo) => {
         const url = String(input);
-        if (url.includes("/api/me") || url.includes("/api/inbox")) {
+        if (url.includes("/api/me")) {
           return jsonResponse(401, { detail: "unauthorized" });
         }
         return jsonResponse(200, {});
@@ -96,6 +96,52 @@ describe("App inbox gate", () => {
     expect(await screen.findByLabelText(copy.login_username)).toBeInTheDocument();
     expect(screen.queryByText(copy.tab_auto)).not.toBeInTheDocument();
     expect(screen.queryByText("УЗК труб")).not.toBeInTheDocument();
+  });
+
+  it("returns to login when inbox returns 401 after me succeeds", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo) => {
+        const url = String(input);
+        if (url.includes("/api/me")) {
+          return jsonResponse(200, { username: "digital", display_name: "Digital" });
+        }
+        if (url.includes("/api/inbox")) {
+          return jsonResponse(401, { detail: "unauthorized" });
+        }
+        if (url.includes("/api/status")) {
+          return jsonResponse(200, {
+            phase: "idle",
+            running: false,
+            pipeline: "manual",
+            ai_review_done: 0,
+            ai_review_total: 0,
+          });
+        }
+        if (url.includes("/api/search-groups")) {
+          return jsonResponse(200, { items: [] });
+        }
+        if (url.includes("/api/platforms")) {
+          return jsonResponse(200, { items: [] });
+        }
+        if (url.includes("/api/schedule")) {
+          return jsonResponse(200, {
+            enabled: true,
+            time_msk: "07:00",
+            last_fired_at: null,
+            last_skip_reason: null,
+            last_attempt_at: null,
+            next_fire_at: null,
+          });
+        }
+        return jsonResponse(200, {});
+      }),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByLabelText(copy.login_username)).toBeInTheDocument();
+    expect(screen.queryByText(copy.tab_auto)).not.toBeInTheDocument();
   });
 });
 
