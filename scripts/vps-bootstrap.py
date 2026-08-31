@@ -55,6 +55,8 @@ COPY_ENV_KEYS = (
     "MAIL_OPS_TO",
     "MAIL_L1_TO",
     "MAIL_L1_CC",
+    "SMTP_RELAY_URL",
+    "SMTP_RELAY_SECRET",
 )
 SKIP_ENV_PREFIXES = ("SCOUT_VPS_",)
 COOKIE_GLOBS = ("cookies*.txt",)

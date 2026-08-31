@@ -1,9 +1,15 @@
-"""Thin SMTP send. Values only from env; never log secrets."""
+"""Thin SMTP send. Values only from env; never log secrets.
+
+Direct SMTP (nic.ru) or HTTP relay (SMTP_RELAY_URL) when VPS cannot reach mail host.
+"""
 from __future__ import annotations
 
+import json
 import logging
 import os
 import smtplib
+import urllib.error
+import urllib.request
 from email.message import EmailMessage
 
 log = logging.getLogger("uvicorn.error")
@@ -13,17 +19,60 @@ def smtp_host_configured() -> bool:
     return bool((os.getenv("SMTP_HOST") or "").strip())
 
 
+def relay_configured() -> bool:
+    url = (os.getenv("SMTP_RELAY_URL") or "").strip()
+    secret = (os.getenv("SMTP_RELAY_SECRET") or "").strip()
+    return bool(url and secret)
+
+
 def smtp_configured() -> bool:
-    """Ops alert configured (host + MAIL_OPS_TO)."""
-    host = (os.getenv("SMTP_HOST") or "").strip()
+    """Ops alert configured (relay or host + MAIL_OPS_TO)."""
     mail_to = (os.getenv("MAIL_OPS_TO") or "").strip()
-    return bool(host and mail_to)
+    return bool(mail_to and (relay_configured() or smtp_host_configured()))
 
 
 def l1_mail_configured() -> bool:
-    host = (os.getenv("SMTP_HOST") or "").strip()
     mail_to = (os.getenv("MAIL_L1_TO") or "").strip()
-    return bool(host and mail_to)
+    return bool(mail_to and (relay_configured() or smtp_host_configured()))
+
+
+def _send_via_relay(
+    *,
+    to: str,
+    subject: str,
+    body: str,
+    cc: str | None,
+) -> str:
+    base = (os.getenv("SMTP_RELAY_URL") or "").strip().rstrip("/")
+    secret = (os.getenv("SMTP_RELAY_SECRET") or "").strip()
+    url = f"{base}/send"
+    payload = json.dumps(
+        {"to": to, "subject": subject, "body": body, "cc": cc or None}
+    ).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {secret}",
+            "User-Agent": "ndt-tender-scout-mail",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            data = json.loads(raw) if raw else {}
+            if data.get("ok"):
+                return "sent"
+            log.warning("smtp_relay_failed: bad_payload")
+            return "smtp_failed"
+    except urllib.error.HTTPError as exc:
+        log.warning("smtp_relay_failed: HTTPError_%s", exc.code)
+        return "smtp_failed"
+    except Exception as exc:  # noqa: BLE001
+        log.warning("smtp_relay_failed: %s", type(exc).__name__)
+        return "smtp_failed"
 
 
 def send_mail(
@@ -36,11 +85,18 @@ def send_mail(
     """
     Send one message. Returns 'sent' | 'smtp_unconfigured' | 'smtp_failed'.
     Does not raise. Never include cookie values / jar / passwords in subject/body.
-    Port 465 uses SMTP_SSL; other ports use SMTP + optional STARTTLS.
+    Prefers SMTP_RELAY_URL when set; else direct SMTP (465=SSL, else STARTTLS).
     """
-    host = (os.getenv("SMTP_HOST") or "").strip()
     to_addr = (to or "").strip()
-    if not host or not to_addr:
+    if not to_addr:
+        log.info("smtp_unconfigured")
+        return "smtp_unconfigured"
+
+    if relay_configured():
+        return _send_via_relay(to=to_addr, subject=subject, body=body, cc=cc)
+
+    host = (os.getenv("SMTP_HOST") or "").strip()
+    if not host:
         log.info("smtp_unconfigured")
         return "smtp_unconfigured"
 
