@@ -98,7 +98,7 @@ def test_cookies_upload_smoke(
             assert bad.json()["detail"] in {"empty_cookies", "invalid_cookies_json"}
             _assert_no_secret(bad.json())
 
-            unknown = client.post("/api/platforms/b2b-center/cookies", json=payload)
+            unknown = client.post("/api/platforms/oilb2bcs/cookies", json=payload)
             assert unknown.status_code == 404
             assert unknown.json() == {"detail": "not_found"}
             _assert_no_secret(unknown.json())

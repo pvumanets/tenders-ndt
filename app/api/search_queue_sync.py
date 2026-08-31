@@ -1,4 +1,4 @@
-"""Enable Tender.Pro / Росэлторг platforms when session cookies are available."""
+"""Enable Tender.Pro / Росэлторг / B2B-Center platforms when session cookies are available."""
 from __future__ import annotations
 
 import os
@@ -7,7 +7,12 @@ from pathlib import Path
 from app.db.config import database_url
 from app.db.models import PlatformSetting
 from app.db.session import session_factory
-from app.worker.platform_ids import PLATFORM_ROSELTORG, PLATFORM_TENDER_PRO
+from app.worker.b2b_center import cookies_present as b2b_center_cookies_present
+from app.worker.platform_ids import (
+    PLATFORM_B2B_CENTER,
+    PLATFORM_ROSELTORG,
+    PLATFORM_TENDER_PRO,
+)
 from app.worker.roseltorg import cookies_present as roseltorg_cookies_present
 
 
@@ -52,3 +57,9 @@ def sync_roseltorg_queue_from_credentials() -> None:
     """Enable Росэлторг when Netscape cookies exist; never auto-disable on boot."""
     if roseltorg_cookies_present():
         _set_platform_enabled(PLATFORM_ROSELTORG, True)
+
+
+def sync_b2b_center_queue_from_cookies() -> None:
+    """Enable B2B-Center when Netscape cookies exist; never auto-disable on boot."""
+    if b2b_center_cookies_present():
+        _set_platform_enabled(PLATFORM_B2B_CENTER, True)

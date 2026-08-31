@@ -18,9 +18,11 @@ from app.worker.cookies import (
     write_netscape_cookies,
 )
 from app.worker.list_scrape import probe_rostender_cookies
+from app.worker import b2b_center as b2b_center_worker
 from app.worker import roseltorg as roseltorg_worker
 from app.worker import tender_pro as tender_pro_worker
 from app.worker.platform_ids import (
+    PLATFORM_B2B_CENTER,
     PLATFORM_ROSELTORG,
     PLATFORM_ROSTENDER,
     PLATFORM_TENDER_PRO,
@@ -44,7 +46,9 @@ class PlatformPatch(BaseModel):
     enabled: bool = Field(...)
 
 
-_COOKIE_PLATFORMS = frozenset({PLATFORM_ROSTENDER, PLATFORM_TENDER_PRO, PLATFORM_ROSELTORG})
+_COOKIE_PLATFORMS = frozenset(
+    {PLATFORM_ROSTENDER, PLATFORM_TENDER_PRO, PLATFORM_ROSELTORG, PLATFORM_B2B_CENTER}
+)
 
 
 def _session_for_platform(platform_id: str, sessions: dict[str, Any], rostender: str) -> str:
@@ -94,6 +98,9 @@ def _probe_platform(platform_id: str) -> str:
     if platform_id == PLATFORM_ROSELTORG:
         base = os.getenv("ROSELTORG_BASE_URL", roseltorg_worker.DEFAULT_BASE)
         return roseltorg_worker.probe_roseltorg_session(cookies_file=path, base=base)
+    if platform_id == PLATFORM_B2B_CENTER:
+        base = os.getenv("B2B_CENTER_BASE_URL", b2b_center_worker.DEFAULT_BASE)
+        return b2b_center_worker.probe_b2b_center_session(path, base)
     return "missing"
 
 
