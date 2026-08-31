@@ -191,6 +191,9 @@ class LotState(Base):
     )
     ai_wrong_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_trigger: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    l1_mailed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class Document(Base):

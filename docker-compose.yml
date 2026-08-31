@@ -32,9 +32,9 @@ services:
       ROSELTORG_COOKIES_FILE: /app/cookies.roseltorg.txt
     volumes:
       - ./runs:/app/runs
-      - ./cookies.rostender.txt:/app/cookies.rostender.txt:ro
-      - ./cookies.tender-pro.txt:/app/cookies.tender-pro.txt:ro
-      - ./cookies.roseltorg.txt:/app/cookies.roseltorg.txt:ro
+      - ./cookies.rostender.txt:/app/cookies.rostender.txt:rw
+      - ./cookies.tender-pro.txt:/app/cookies.tender-pro.txt:rw
+      - ./cookies.roseltorg.txt:/app/cookies.roseltorg.txt:rw
       - docs_data:/data/docs
     depends_on:
       db:

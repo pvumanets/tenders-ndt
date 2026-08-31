@@ -9,7 +9,7 @@ from pathlib import Path
 
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi import Body, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
@@ -348,6 +348,23 @@ def api_platforms_update(platform_id: str, body: dict):
         return platforms_api.set_platform_enabled(platform_id, enabled=patch.enabled)
     except platforms_api.PlatformNotFound as exc:
         raise HTTPException(status_code=404, detail="not_found") from exc
+    except RuntimeError as exc:
+        if str(exc) == "database_unconfigured":
+            raise HTTPException(status_code=503, detail="db_down") from exc
+        raise
+
+
+@app.post("/api/platforms/{platform_id}/cookies")
+def api_platforms_cookies(platform_id: str, body: object = Body(...)):
+    try:
+        return platforms_api.upload_platform_cookies(platform_id, body)
+    except platforms_api.PlatformNotFound as exc:
+        raise HTTPException(status_code=404, detail="not_found") from exc
+    except platforms_api.CookieUploadError as exc:
+        detail = str(exc) or "invalid_cookies_json"
+        if detail == "cookies_write_failed":
+            raise HTTPException(status_code=500, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=detail) from exc
     except RuntimeError as exc:
         if str(exc) == "database_unconfigured":
             raise HTTPException(status_code=503, detail="db_down") from exc
