@@ -611,6 +611,12 @@ function AppInner() {
         sx={{ borderBottom: `1px solid ${stripe.border}`, bgcolor: stripe.surface }}
       >
         <Toolbar sx={{ minHeight: 48, gap: 1, py: 1, flexWrap: "wrap" }}>
+          <Box
+            component="img"
+            src="/brand/logo.png"
+            alt=""
+            sx={{ width: 28, height: 28, flexShrink: 0 }}
+          />
           <Typography variant="h2" sx={{ flexGrow: 1, minWidth: 0 }}>
             {copy.product_title}
           </Typography>
