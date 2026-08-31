@@ -50,9 +50,17 @@ export default function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
           bgcolor: stripe.surface,
         }}
       >
-        <Typography variant="h2" sx={{ mb: 2 }}>
-          {copy.product_title}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 2 }}>
+          <Box
+            component="img"
+            src="/brand/logo.png"
+            alt=""
+            sx={{ width: 40, height: 40, flexShrink: 0 }}
+          />
+          <Typography variant="h2" sx={{ m: 0 }}>
+            {copy.product_title}
+          </Typography>
+        </Box>
         <Box component="form" onSubmit={onSubmit}>
           <FieldRow label={copy.login_username}>
             <TextField
