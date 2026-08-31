@@ -685,11 +685,8 @@ function AppInner() {
               aiDone={tech.ai_review_done}
               aiTotal={tech.ai_review_total}
             />
-            <Typography variant="body2" sx={{ color: stripe.textMuted, mb: 0.5 }}>
-              {copy.manual_no_mail_hint}
-            </Typography>
-            <Typography variant="body2" sx={{ color: stripe.textMuted, mb: 1.5 }}>
-              {copy.manual_session_muted}
+            <Typography variant="body2" sx={{ color: stripe.textMuted, mb: 1 }}>
+              {copy.manual_no_mail_hint} {copy.manual_session_muted}
             </Typography>
             {commandBar}
             {renderBoard("manual")}

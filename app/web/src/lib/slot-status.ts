@@ -34,9 +34,12 @@ export function formatMskDateTime(stamp: string): string {
   }).format(parsed);
 }
 
-export function isAutoAiInProgress(status: Pick<TechStatus, "pipeline" | "running" | "ai_review_done" | "ai_review_total">): boolean {
-  if (status.pipeline === "auto" && status.running) return true;
-  return status.pipeline === "auto" && status.ai_review_total > 0 && status.ai_review_done < status.ai_review_total;
+export function isAutoAiInProgress(
+  status: Pick<TechStatus, "pipeline" | "running" | "ai_review_done" | "ai_review_total">,
+): boolean {
+  // Only while scrape/AI auto run is live. Stale AI counters after finish() must not
+  // keep "Идёт авторазбор…" on Settings / Auto.
+  return status.pipeline === "auto" && status.running;
 }
 
 export function slotVariant(

@@ -89,7 +89,7 @@ describe("ManualRunControls", () => {
       phase_label: copy.phase_done,
       run_report: { new: 1, already: 2, updated: 3, expired: 4 },
     });
-    expect(screen.getByText(`${copy.run_report_new}: 1`)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`${copy.run_report_new}: 1`))).toBeInTheDocument();
   });
 
   it("hides run report while idle", () => {
@@ -97,7 +97,23 @@ describe("ManualRunControls", () => {
       ...idle,
       run_report: { new: 1, already: 2, updated: 3, expired: 4 },
     });
-    expect(screen.queryByText(`${copy.run_report_new}: 1`)).not.toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(`${copy.run_report_new}: 1`))).not.toBeInTheDocument();
+  });
+
+  it("keeps controls compact without sticky full panel", () => {
+    const { container } = render(
+      <ThemeRegistry>
+        <ManualRunControls
+          status={idle}
+          queuedGroups={1}
+          enabledPlatforms={1}
+          onStart={vi.fn()}
+          onStop={vi.fn()}
+        />
+      </ThemeRegistry>,
+    );
+    const root = container.firstElementChild as HTMLElement;
+    expect(getComputedStyle(root).position).not.toBe("sticky");
   });
 });
 
