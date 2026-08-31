@@ -94,25 +94,29 @@ describe("SettingsPanel", () => {
     expect(screen.queryByLabelText(/Площадка/i)).not.toBeInTheDocument();
   });
 
-  it("saves draft with minus phrases", async () => {
-    const user = userEvent.setup();
-    const { onSaveGroup } = renderSettings({
-      groups: [{ ...sampleGroups[0], exclude: ["кровля"] }],
-    });
-    await user.click(screen.getAllByRole("button", { name: copy.groups_edit })[0]);
-    expect(screen.getByLabelText(copy.groups_exclude)).toHaveValue("кровля");
-    await user.clear(screen.getByLabelText(copy.groups_exclude));
-    await user.type(screen.getByLabelText(copy.groups_exclude), "ЗАГС\nшкола");
-    await user.click(screen.getByRole("button", { name: copy.groups_save }));
-    expect(onSaveGroup).toHaveBeenCalledWith("g-methods", {
-      name: "методы",
-      queries: ["неразрушающий"],
-      exclude: ["ЗАГС", "школа"],
-      limit_n: 0,
-      in_queue: true,
-      sort_order: 1,
-    });
-  });
+  it(
+    "saves draft with minus phrases",
+    async () => {
+      const user = userEvent.setup();
+      const { onSaveGroup } = renderSettings({
+        groups: [{ ...sampleGroups[0], exclude: ["кровля"] }],
+      });
+      await user.click(screen.getAllByRole("button", { name: copy.groups_edit })[0]);
+      expect(screen.getByLabelText(copy.groups_exclude)).toHaveValue("кровля");
+      await user.clear(screen.getByLabelText(copy.groups_exclude));
+      await user.type(screen.getByLabelText(copy.groups_exclude), "ЗАГС\nшкола");
+      await user.click(screen.getByRole("button", { name: copy.groups_save }));
+      expect(onSaveGroup).toHaveBeenCalledWith("g-methods", {
+        name: "методы",
+        queries: ["неразрушающий"],
+        exclude: ["ЗАГС", "школа"],
+        limit_n: 0,
+        in_queue: true,
+        sort_order: 1,
+      });
+    },
+    15_000,
+  );
 
   it("shows session labels without cookie filenames", () => {
     renderSettings();

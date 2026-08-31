@@ -60,6 +60,43 @@ def test_start_run_already_running(idle_run_state: None) -> None:
 
 
 @pytest.mark.unit
+def test_start_run_sets_pipeline_manual(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    idle_run_state: None,
+) -> None:
+    monkeypatch.setattr(
+        search_groups_api,
+        "get_queued_steps",
+        lambda: [
+            {
+                "id": str(uuid4()),
+                "name": "НК",
+                "platform_id": "rostender",
+                "queries": ["ВИК"],
+                "limit_n": 0,
+            }
+        ],
+    )
+    monkeypatch.setattr(runner, "refresh_session", lambda: "ok")
+    monkeypatch.setattr(runner, "_repo_root", lambda: tmp_path)
+
+    class IdleThread:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        def start(self) -> None:
+            return None
+
+    monkeypatch.setattr(runner.threading, "Thread", IdleThread)
+    assert runner.start_run() is True
+    snap = STATE.snapshot()
+    assert snap["pipeline"] == "manual"
+    assert snap["running"] is True
+    STATE.finish("done")
+
+
+@pytest.mark.unit
 def test_start_run_ticker_skips_already_running_without_raise(
     monkeypatch: pytest.MonkeyPatch, idle_run_state: None
 ) -> None:
