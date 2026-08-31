@@ -106,8 +106,15 @@ def test_upload_cookies_writes_and_probes(
     assert _SECRET_VALUE in jar.read_text(encoding="utf-8")
     assert STATE.snapshot()["sessions"]["rostender"] == "ok"
 
+    b2b_jar = tmp_path / "cookies.b2b-center.txt"
+    monkeypatch.setenv("B2B_CENTER_COOKIES_FILE", str(b2b_jar))
+    b2b = platforms_api.upload_platform_cookies("b2b-center", _locor_items())
+    assert b2b == {"platform_id": "b2b-center", "session": "ok", "probed": True}
+    _assert_no_cookie_values(b2b)
+    assert b2b_jar.is_file()
+
     with pytest.raises(platforms_api.PlatformNotFound):
-        platforms_api.upload_platform_cookies("b2b-center", _locor_items())
+        platforms_api.upload_platform_cookies("oilb2bcs", _locor_items())
     with pytest.raises(platforms_api.CookieUploadError, match="empty_cookies"):
         platforms_api.upload_platform_cookies("rostender", [])
     with pytest.raises(platforms_api.CookieUploadError, match="invalid_cookies_json"):

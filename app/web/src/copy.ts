@@ -139,6 +139,7 @@ export const copy = {
   platform_rostender: "РосТендер",
   platform_tender_pro: "Tender.Pro",
   platform_roseltorg: "Росэлторг",
+  platform_b2b_center: "B2B-Center",
   session_status_ok: "сессия в порядке",
   session_status_missing: "нет сессии",
   session_status_expired: "сессия устарела",
