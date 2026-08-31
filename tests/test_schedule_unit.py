@@ -111,3 +111,54 @@ def test_tick_once_skips_when_running(monkeypatch: pytest.MonkeyPatch) -> None:
         assert row.last_skip_reason == SKIP_ALREADY_RUNNING
     finally:
         STATE.running = False
+
+
+@pytest.mark.unit
+def test_tick_once_fires_when_due_and_idle(monkeypatch: pytest.MonkeyPatch) -> None:
+    from datetime import timezone as tz
+
+    from app.db.models import ScheduleSettings
+
+    row = ScheduleSettings(
+        id=1,
+        enabled=True,
+        time_msk="07:00",
+        last_attempt_at=None,
+        last_fired_at=None,
+        updated_at=datetime.now(tz.utc),
+    )
+
+    class _Sess:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+        def get(self, *_a, **_k):
+            return row
+
+        def add(self, *_a):
+            return None
+
+        def flush(self):
+            return None
+
+        def commit(self):
+            return None
+
+    class _Factory:
+        def __call__(self):
+            return _Sess()
+
+    monkeypatch.setattr("app.api.schedule.session_factory", lambda: _Factory())
+    STATE.running = False
+    due = datetime(2026, 8, 30, 7, 0, tzinfo=now_msk().tzinfo)
+    started: list[bool] = []
+
+    def start_auto() -> bool:
+        started.append(True)
+        return True
+
+    assert tick_once(now=due, start_auto=start_auto) == "fired"
+    assert started == [True]
