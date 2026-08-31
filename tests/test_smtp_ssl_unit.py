@@ -33,6 +33,8 @@ def _patch_env(monkeypatch: pytest.MonkeyPatch, *, port: str) -> None:
 
 def test_send_mail_port_465_uses_smtp_ssl(monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_env(monkeypatch, port="465")
+    monkeypatch.delenv("SMTP_RELAY_URL", raising=False)
+    monkeypatch.delenv("SMTP_RELAY_SECRET", raising=False)
     client = MagicMock()
     calls: list[tuple[Any, ...]] = []
 
@@ -58,6 +60,8 @@ def test_send_mail_port_465_uses_smtp_ssl(monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_send_mail_port_587_uses_starttls(monkeypatch: pytest.MonkeyPatch) -> None:
     _patch_env(monkeypatch, port="587")
+    monkeypatch.delenv("SMTP_RELAY_URL", raising=False)
+    monkeypatch.delenv("SMTP_RELAY_SECRET", raising=False)
     client = MagicMock()
     calls: list[tuple[Any, ...]] = []
 
@@ -79,3 +83,29 @@ def test_send_mail_port_587_uses_starttls(monkeypatch: pytest.MonkeyPatch) -> No
     client.starttls.assert_called_once()
     client.login.assert_called_once_with("sender@example.test", _FAKE_PASS)
     client.send_message.assert_called_once()
+
+
+def test_send_mail_prefers_relay(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SMTP_RELAY_URL", "http://relay.example.test:8799")
+    monkeypatch.setenv("SMTP_RELAY_SECRET", "relay-secret-qa060")
+    monkeypatch.setenv("SMTP_HOST", "smtp.example.test")
+
+    class _Resp:
+        def __enter__(self) -> "_Resp":
+            return self
+
+        def __exit__(self, *a: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"ok":true}'
+
+    def fake_urlopen(req: Any, timeout: float = 0) -> _Resp:
+        assert req.full_url.endswith("/send")
+        assert req.get_header("Authorization") == "Bearer relay-secret-qa060"
+        return _Resp()
+
+    monkeypatch.setattr(smtp_mod.urllib.request, "urlopen", fake_urlopen)
+    status = smtp_mod.send_mail(to="to@example.test", subject="t", body="b")
+    assert status == "sent"
+    assert smtp_mod.relay_configured() is True

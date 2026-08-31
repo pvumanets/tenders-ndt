@@ -175,6 +175,8 @@ def test_notify_smtp_unconfigured_leaves_mailed_null(
     session = _FakeSession({lot.tender_id: (lot, state)})
     _patch_factory(monkeypatch, session)
     monkeypatch.delenv("SMTP_HOST", raising=False)
+    monkeypatch.delenv("SMTP_RELAY_URL", raising=False)
+    monkeypatch.delenv("SMTP_RELAY_SECRET", raising=False)
     monkeypatch.setenv("MAIL_L1_TO", "lead@example.test")
 
     with caplog.at_level("INFO"):
