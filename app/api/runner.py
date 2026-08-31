@@ -11,6 +11,7 @@ from uuid import UUID
 from dotenv import load_dotenv
 
 from app.api import search_groups as search_groups_api
+from app.api.notify import notify_ops_session
 from app.api.state import STATE
 from app.scoring.pipeline import rescore_rows, score_rows
 from app.worker import roseltorg as roseltorg_worker
@@ -123,8 +124,11 @@ def refresh_session(*, probe_roseltorg_live: bool = True) -> str:
         else:
             STATE.set_session("ok", platform_id=PLATFORM_ROSELTORG)
     else:
-        # File present; skip live probe on status/platforms poll.
-        STATE.set_session("ok", platform_id=PLATFORM_ROSELTORG)
+        # File present; skip live probe on poll — do not invent ok over a
+        # fresh upload/run probe (expired/missing must stick until live check).
+        current = str((STATE.snapshot().get("sessions") or {}).get(PLATFORM_ROSELTORG) or "")
+        if current in {"unknown", "", "missing", "missing_cookies"}:
+            STATE.set_session("ok", platform_id=PLATFORM_ROSELTORG)
     return STATE.snapshot()["session"]
 
 
@@ -263,9 +267,20 @@ def _download_docs(rows: list[dict], *, platform_id: str) -> None:
     if platform_id == PLATFORM_ROSELTORG and not cookies.is_file():
         STATE.log_msg("Docs: Росэлторг cookies missing — skip files", level="warn")
         return
-    if platform_id == PLATFORM_TENDER_PRO and not cookies.is_file():
-        STATE.log_msg("Docs: Tender.Pro cookies missing — skip files", level="warn")
-        return
+    if platform_id == PLATFORM_TENDER_PRO:
+        if not cookies.is_file():
+            STATE.log_msg("Docs: Tender.Pro cookies missing — skip files", level="warn")
+            return
+        tp_base = os.getenv("TENDER_PRO_BASE_URL", tender_pro_worker.DEFAULT_BASE)
+        tp_probe = tender_pro_worker.probe_tender_pro_cookies(
+            cookies, tp_base, on_retry=_http_retry_callback
+        )
+        if tp_probe != "ok":
+            STATE.log_msg(
+                f"Docs: Tender.Pro session {tp_probe} — skip files",
+                level="warn",
+            )
+            return
     if platform_id == PLATFORM_ROSTENDER and not cookies.is_file():
         STATE.log_msg("Docs: rostender cookies missing — skip files", level="warn")
         return
@@ -392,6 +407,7 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
         else:
             STATE.set_session("expired")
         STATE.log_msg("Rostender session not ok — skip step", level="warn")
+        notify_ops_session(platform_id=PLATFORM_ROSTENDER, session=probe)
         _ingest_step(
             item=item,
             status="skipped",
@@ -526,26 +542,15 @@ def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
     tp_probe = tender_pro_worker.probe_tender_pro_cookies(
         tp_cookies, base, on_retry=_http_retry_callback
     )
+    # List + public cards run without jar; docs skip when probe != ok (055).
     if tp_probe == "missing":
         STATE.set_session("missing_cookies", platform_id=PLATFORM_TENDER_PRO)
-        STATE.log_msg("Tender.Pro cookies missing — skip step", level="warn")
-        _ingest_step(
-            item=item,
-            status="skipped",
-            rows=[],
-            started_at=datetime.now(timezone.utc),
-        )
-        return "skipped"
-    if tp_probe == "expired":
+        STATE.log_msg("Tender.Pro cookies missing — list without login", level="warn")
+    elif tp_probe == "expired":
         STATE.set_session("expired", platform_id=PLATFORM_TENDER_PRO)
-        STATE.log_msg("Tender.Pro session expired — skip step", level="warn")
-        _ingest_step(
-            item=item,
-            status="skipped",
-            rows=[],
-            started_at=datetime.now(timezone.utc),
-        )
-        return "skipped"
+        STATE.log_msg("Tender.Pro session expired — list without login", level="warn")
+    else:
+        STATE.set_session("ok", platform_id=PLATFORM_TENDER_PRO)
     queries = [str(q) for q in (item.get("queries") or []) if str(q).strip()]
     exclude = [str(x) for x in (item.get("exclude") or []) if str(x).strip()]
     limit = int(item.get("limit_n") or 0)
@@ -658,9 +663,11 @@ def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
 def _run_roseltorg(*, item: dict, run_dir: Path) -> str:
     cookies = _cookies_path(PLATFORM_ROSELTORG)
     base = os.getenv("ROSELTORG_BASE_URL", roseltorg_worker.DEFAULT_BASE)
+
     if not roseltorg_worker.cookies_present():
         STATE.set_session("missing_cookies", platform_id=PLATFORM_ROSELTORG)
         STATE.log_msg("Росэлторг: нет cookies.roseltorg.txt — skip", level="warn")
+        notify_ops_session(platform_id=PLATFORM_ROSELTORG, session="missing")
         _ingest_step(
             item=item,
             status="skipped",
@@ -674,6 +681,7 @@ def _run_roseltorg(*, item: dict, run_dir: Path) -> str:
     if probe == "missing":
         STATE.set_session("missing_cookies", platform_id=PLATFORM_ROSELTORG)
         STATE.log_msg("Росэлторг: cookies пустые — skip", level="warn")
+        notify_ops_session(platform_id=PLATFORM_ROSELTORG, session="missing")
         _ingest_step(
             item=item,
             status="skipped",
@@ -684,6 +692,7 @@ def _run_roseltorg(*, item: dict, run_dir: Path) -> str:
     if probe == "expired":
         STATE.set_session("expired", platform_id=PLATFORM_ROSELTORG)
         STATE.log_msg("Росэлторг: сессия www недоступна — skip", level="warn")
+        notify_ops_session(platform_id=PLATFORM_ROSELTORG, session="expired")
         _ingest_step(
             item=item,
             status="skipped",
