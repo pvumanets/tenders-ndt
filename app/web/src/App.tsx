@@ -654,8 +654,10 @@ function AppInner() {
             <Typography variant="body2" sx={{ color: stripe.textMuted, mb: 1.5 }}>
               {copy.auto_mail_hint}
             </Typography>
-            {commandBar}
-            {renderBoard("auto")}
+            <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+              {commandBar}
+              {renderBoard("auto")}
+            </Box>
             {selected ? (
               <TenderDrawer
                 lot={selected}
@@ -688,8 +690,10 @@ function AppInner() {
             <Typography variant="body2" sx={{ color: stripe.textMuted, mb: 1 }}>
               {copy.manual_no_mail_hint} {copy.manual_session_muted}
             </Typography>
-            {commandBar}
-            {renderBoard("manual")}
+            <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+              {commandBar}
+              {renderBoard("manual")}
+            </Box>
             {selected ? (
               <TenderDrawer
                 lot={selected}
