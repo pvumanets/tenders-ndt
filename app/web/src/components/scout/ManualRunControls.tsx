@@ -31,100 +31,86 @@ export default function ManualRunControls({
       status.phase === "stopped" ||
       status.phase === "partial" ||
       status.phase === "error");
+  const progressLine = [
+    copy.progress_list
+      .replace("{n}", String(status.list_done))
+      .replace("{total}", String(status.list_total)),
+    copy.progress_cards
+      .replace("{k}", String(status.cards_done))
+      .replace("{total}", String(status.cards_total)),
+    status.http_retries > 0 ? `${copy.http_retries_label}: ${status.http_retries}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const countersLine = `L1 ${status.counters.L1} · L2 ${status.counters.L2} · L3 ${status.counters.L3} · noise ${status.counters.noise}`;
 
   return (
     <Box
       sx={{
-        position: "sticky",
-        top: 0,
-        zIndex: 2,
-        bgcolor: "background.paper",
-        pb: 2,
-        mb: 1.5,
+        mb: 1,
+        pb: 1,
         borderBottom: `1px solid ${stripe.border}`,
       }}
     >
-      <Typography variant="subtitle2" sx={{ mb: 1.5 }}>
+      <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
         {copy.run_section_controls}
       </Typography>
-      <Stack spacing={1.5}>
-        <RunControls
-          canStart={canStart}
-          canStop={canStop}
-          busy={busy}
-          running={status.running}
-          onStart={onStart}
-          onStop={onStop}
-        />
+      <Stack spacing={0.75}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          sx={{ alignItems: { sm: "flex-start" } }}
+        >
+          <RunControls
+            canStart={canStart}
+            canStop={canStop}
+            busy={busy}
+            running={status.running}
+            onStart={onStart}
+            onStop={onStop}
+          />
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <RunQueueSummary
+              status={status}
+              queuedGroups={queuedGroups}
+              enabledPlatforms={enabledPlatforms}
+            />
+            <Typography variant="body2" color="secondary" sx={{ fontWeight: 600 }}>
+              {status.phase_label || copy.phase_idle}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+              {progressLine}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+              {status.running ? copy.run_running_hint : copy.run_idle_hint}
+            </Typography>
+          </Box>
+        </Stack>
         {error ? <Alert severity="error">{error}</Alert> : null}
         {!status.running && (queuedGroups === 0 || enabledPlatforms === 0) ? (
           <Typography variant="body2" sx={{ color: stripe.textMuted }}>
             {copy.empty_manual_queue}
           </Typography>
         ) : null}
-        <RunQueueSummary
-          status={status}
-          queuedGroups={queuedGroups}
-          enabledPlatforms={enabledPlatforms}
-        />
-        <Typography variant="body2" color="text.secondary">
-          {status.running ? copy.run_running_hint : copy.run_idle_hint}
+        <Typography variant="caption" color="text.secondary">
+          {copy.counters_legend}: {countersLine}
         </Typography>
-        <Box>
-          <Typography color="secondary" sx={{ fontWeight: 600 }}>
-            {status.phase_label || copy.phase_idle}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {copy.progress_list
-              .replace("{n}", String(status.list_done))
-              .replace("{total}", String(status.list_total))}{" "}
-            ·{" "}
-            {copy.progress_cards
-              .replace("{k}", String(status.cards_done))
-              .replace("{total}", String(status.cards_total))}
-            {status.http_retries > 0 ? ` · ${copy.http_retries_label}: ${status.http_retries}` : ""}
-          </Typography>
-        </Box>
-        <Box>
-          <Typography variant="caption" color="text.secondary">
-            {copy.counters_legend}
-          </Typography>
-          <Stack direction="row" spacing={2} sx={{ mt: 0.5, alignItems: "baseline" }}>
-            <Typography variant="body1" sx={{ fontWeight: 600 }}>
-              L1 {status.counters.L1}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              L2 {status.counters.L2}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              L3 {status.counters.L3}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              noise {status.counters.noise}
-            </Typography>
-          </Stack>
-        </Box>
         {showReport ? (
           <Box>
             <Typography variant="caption" color="text.secondary">
               {copy.run_report_legend}
             </Typography>
-            <Stack spacing={0.25} sx={{ mt: 0.5 }}>
-              <Typography variant="body2">
-                {copy.run_report_new}: {status.run_report.new}
-              </Typography>
-              <Typography variant="body2">
-                {copy.run_report_already}: {status.run_report.already}
-              </Typography>
-              <Typography variant="body2">
-                {copy.run_report_updated}: {status.run_report.updated}
-              </Typography>
-              <Typography variant="body2">
-                {copy.run_report_expired}: {status.run_report.expired}
-              </Typography>
-            </Stack>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+              {copy.run_report_new}: {status.run_report.new}
+              {" · "}
+              {copy.run_report_already}: {status.run_report.already}
+              {" · "}
+              {copy.run_report_updated}: {status.run_report.updated}
+              {" · "}
+              {copy.run_report_expired}: {status.run_report.expired}
+            </Typography>
             {status.ai_failures > 0 ? (
-              <Alert severity="warning" sx={{ mt: 1 }}>
+              <Alert severity="warning" sx={{ mt: 0.75, py: 0 }}>
                 {copy.ai_banner_failures.replace("{n}", String(status.ai_failures))}
               </Alert>
             ) : null}

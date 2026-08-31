@@ -26,6 +26,27 @@ describe("slotVariant", () => {
     ).toBe("running");
   });
 
+  it("is not running when auto pipeline finished but AI counters look incomplete", () => {
+    expect(
+      slotVariant(schedule, {
+        ...idleStatus,
+        pipeline: "auto",
+        running: false,
+        ai_review_done: 1,
+        ai_review_total: 4,
+      }),
+    ).toBe("idle");
+    expect(
+      slotStatusText(schedule, {
+        ...idleStatus,
+        pipeline: "auto",
+        running: false,
+        ai_review_done: 1,
+        ai_review_total: 4,
+      }),
+    ).toBe(copy.auto_slot_idle.replace("{time}", "07:00"));
+  });
+
   it("shows skip already_running for today's attempt", () => {
     const now = new Date("2026-08-30T10:00:00+03:00");
     const row = {

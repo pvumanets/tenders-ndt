@@ -166,12 +166,14 @@ describe("AppTabs", () => {
     await user.click(screen.getByRole("tab", { name: copy.tab_manual }));
     expect(await screen.findByRole("button", { name: copy.run_start })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: copy.action_ai_review })).toBeInTheDocument();
-    expect(screen.getByText(copy.manual_no_mail_hint)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(copy.manual_no_mail_hint))).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: copy.tab_settings }));
     expect(await screen.findByText(copy.settings_section_schedule)).toBeInTheDocument();
     expect(screen.getByText(copy.settings_section_platforms)).toBeInTheDocument();
     expect(screen.getByText(copy.settings_section_groups)).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: copy.cookies_submit }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: copy.cookies_upload }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: copy.cookies_paste }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: copy.cookies_submit })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: copy.run_start })).not.toBeInTheDocument();
   });
 

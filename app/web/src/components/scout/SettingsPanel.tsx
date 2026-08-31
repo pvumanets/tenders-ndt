@@ -179,6 +179,7 @@ export default function SettingsPanel({
                     <CookieJarUpload
                       platformId={platform.platform_id}
                       locked={configLocked}
+                      session={platform.session}
                       onUploaded={(session) => onCookieSession(platform.platform_id, session)}
                     />
                   </Box>

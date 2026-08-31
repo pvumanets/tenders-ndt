@@ -78,8 +78,10 @@ describe("SettingsPanel", () => {
     expect(screen.getByText(copy.settings_section_groups)).toBeInTheDocument();
     expect(screen.getByText(copy.settings_section_diagnostics)).toBeInTheDocument();
     expect(screen.getByLabelText(copy.schedule_time)).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: copy.cookies_submit }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: copy.cookies_submit })).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: copy.cookies_upload }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: copy.cookies_paste }).length).toBeGreaterThan(0);
+    expect(screen.queryByPlaceholderText(copy.cookies_paste_placeholder)).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("/tmp/run")).not.toBeInTheDocument();
     expect(screen.queryByText(copy.run_path_label)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: copy.run_start })).not.toBeInTheDocument();
@@ -138,6 +140,7 @@ describe("SettingsPanel", () => {
   it("locks schedule and cookies while running", () => {
     renderSettings({ locked: true });
     expect(screen.getByRole("button", { name: copy.schedule_save })).toBeDisabled();
-    expect(screen.getAllByRole("button", { name: copy.cookies_submit })[0]).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: copy.cookies_upload })[0]).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: copy.cookies_paste })[0]).toBeDisabled();
   });
 });

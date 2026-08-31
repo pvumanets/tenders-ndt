@@ -18,10 +18,10 @@ export default function RunControls({
 }) {
   return (
     <Stack direction="row" spacing={1}>
-      <Button variant="contained" disabled={!canStart} onClick={onStart}>
+      <Button size="small" variant="contained" disabled={!canStart} onClick={onStart}>
         {busy && !running ? copy.run_start_busy : copy.run_start}
       </Button>
-      <Button variant="outlined" disabled={!canStop} onClick={onStop}>
+      <Button size="small" variant="outlined" disabled={!canStop} onClick={onStop}>
         {copy.run_stop}
       </Button>
     </Stack>

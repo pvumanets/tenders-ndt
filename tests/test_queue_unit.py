@@ -94,6 +94,24 @@ def test_start_run_sets_pipeline_manual(
     assert snap["pipeline"] == "manual"
     assert snap["running"] is True
     STATE.finish("done")
+    done = STATE.snapshot()
+    assert done["running"] is False
+    assert done["ai_review_done"] == 0
+    assert done["ai_review_total"] == 0
+
+
+@pytest.mark.unit
+def test_finish_clears_ai_progress(idle_run_state: None) -> None:
+    STATE.running = True
+    STATE.pipeline = "auto"
+    STATE.ai_review_done = 2
+    STATE.ai_review_total = 5
+    STATE.finish("done")
+    snap = STATE.snapshot()
+    assert snap["running"] is False
+    assert snap["pipeline"] == "auto"
+    assert snap["ai_review_done"] == 0
+    assert snap["ai_review_total"] == 0
 
 
 @pytest.mark.unit

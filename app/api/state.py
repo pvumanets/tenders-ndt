@@ -232,6 +232,8 @@ class RunState:
         with self._lock:
             self.running = False
             self.phase = phase
+            self.ai_review_done = 0
+            self.ai_review_total = 0
             if error:
                 self.last_error = error
                 self.log.append({"t": _now(), "level": "error", "msg": error})
