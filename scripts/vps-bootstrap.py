@@ -46,6 +46,15 @@ COPY_ENV_KEYS = (
     "PROVOD_API_KEY",
     "PROVOD_BASE_URL",
     "PROVOD_MODEL_CHAIN",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_USER",
+    "SMTP_PASSWORD",
+    "SMTP_FROM",
+    "SMTP_TLS",
+    "MAIL_OPS_TO",
+    "MAIL_L1_TO",
+    "MAIL_L1_CC",
 )
 SKIP_ENV_PREFIXES = ("SCOUT_VPS_",)
 COOKIE_GLOBS = ("cookies*.txt",)
