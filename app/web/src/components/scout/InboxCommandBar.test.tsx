@@ -37,4 +37,14 @@ describe("InboxCommandBar", () => {
     expect(screen.queryByText(copy.filter_ai_reviewed)).not.toBeInTheDocument();
     expect(screen.queryByText(copy.action_ai_review)).not.toBeInTheDocument();
   });
+
+  it("sticks the whole filters+search block for the board scroll parent", () => {
+    const { container } = render(
+      <ThemeRegistry>
+        <InboxCommandBar {...baseProps} priority={[]} />
+      </ThemeRegistry>,
+    );
+    const root = container.firstElementChild as HTMLElement;
+    expect(getComputedStyle(root).position).toBe("sticky");
+  });
 });

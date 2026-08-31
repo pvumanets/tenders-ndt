@@ -261,9 +261,18 @@ export default function InboxCommandBar({
   }
 
   return (
-    <Box sx={{ mb: viewCommandBarLayout.marginBottom }}>
+    <Box
+      sx={{
+        position: "sticky",
+        top: 0,
+        zIndex: 3,
+        mb: viewCommandBarLayout.marginBottom,
+        bgcolor: "background.default",
+        pt: 0.25,
+        pb: 1,
+      }}
+    >
       <ViewCommandBar
-        sticky
         sx={{
           flexWrap: "wrap",
           gridTemplateColumns: { xs: "1fr", md: "1fr auto" },
