@@ -107,6 +107,7 @@ def test_notify_auto_l1_sends_once_and_idempotent(monkeypatch: pytest.MonkeyPatc
     state = _state()
     session = _FakeSession({lot.tender_id: (lot, state)})
     _patch_factory(monkeypatch, session)
+    monkeypatch.setattr(l1_notify, "read_l1_min_price_rub", lambda _s: 100_000)
     monkeypatch.setenv("MAIL_L1_TO", "lead@example.test")
     monkeypatch.setenv("MAIL_L1_CC", "admin@example.test")
     monkeypatch.setenv("SMTP_HOST", "smtp.example.test")
@@ -158,6 +159,7 @@ def test_notify_skips_manual_rules_l2_and_no_ai(monkeypatch: pytest.MonkeyPatch)
         state.tender_id = tid
         session = _FakeSession({tid: (lot, state)})
         _patch_factory(monkeypatch, session)
+        monkeypatch.setattr(l1_notify, "read_l1_min_price_rub", lambda _s: 100_000)
         counts = notify_auto_l1_lots([tid])
         assert counts["sent"] == 0
         assert counts["skipped"] == 1
@@ -174,6 +176,7 @@ def test_notify_smtp_unconfigured_leaves_mailed_null(
     state = _state()
     session = _FakeSession({lot.tender_id: (lot, state)})
     _patch_factory(monkeypatch, session)
+    monkeypatch.setattr(l1_notify, "read_l1_min_price_rub", lambda _s: 100_000)
     monkeypatch.delenv("SMTP_HOST", raising=False)
     monkeypatch.delenv("SMTP_RELAY_URL", raising=False)
     monkeypatch.delenv("SMTP_RELAY_SECRET", raising=False)
@@ -196,6 +199,7 @@ def test_notify_smtp_failed_no_mailed_at(monkeypatch: pytest.MonkeyPatch) -> Non
     state = _state()
     session = _FakeSession({lot.tender_id: (lot, state)})
     _patch_factory(monkeypatch, session)
+    monkeypatch.setattr(l1_notify, "read_l1_min_price_rub", lambda _s: 100_000)
     monkeypatch.setenv("MAIL_L1_TO", "lead@example.test")
     monkeypatch.setenv("SMTP_HOST", "smtp.example.test")
     monkeypatch.setattr(l1_notify, "send_mail", lambda **_k: "smtp_failed")
@@ -219,3 +223,41 @@ def test_notify_auto_l1_empty_and_wrapper(monkeypatch: pytest.MonkeyPatch) -> No
     assert called == []
     notify_auto_l1(["rostender:qa_l1"])
     assert called == [["rostender:qa_l1"]]
+
+
+@pytest.mark.unit
+def test_notify_skips_cheap_l1_below_threshold(monkeypatch: pytest.MonkeyPatch) -> None:
+    from decimal import Decimal
+
+    lot = _lot(price_rub=Decimal("50000"))
+    state = _state()
+    session = _FakeSession({lot.tender_id: (lot, state)})
+    _patch_factory(monkeypatch, session)
+    monkeypatch.setattr(l1_notify, "read_l1_min_price_rub", lambda _s: 100_000)
+    monkeypatch.setenv("MAIL_L1_TO", "lead@example.test")
+    monkeypatch.setenv("SMTP_HOST", "smtp.example.test")
+    calls: list[str] = []
+    monkeypatch.setattr(
+        l1_notify,
+        "send_mail",
+        lambda **_k: calls.append("sent") or "sent",
+    )
+    counts = notify_auto_l1_lots([lot.tender_id])
+    assert counts == {"sent": 0, "skipped": 1, "failed": 0}
+    assert calls == []
+    assert state.l1_mailed_at is None
+
+
+@pytest.mark.unit
+def test_notify_allows_null_price_l1(monkeypatch: pytest.MonkeyPatch) -> None:
+    lot = _lot(price_rub=None)
+    state = _state()
+    session = _FakeSession({lot.tender_id: (lot, state)})
+    _patch_factory(monkeypatch, session)
+    monkeypatch.setattr(l1_notify, "read_l1_min_price_rub", lambda _s: 100_000)
+    monkeypatch.setenv("MAIL_L1_TO", "lead@example.test")
+    monkeypatch.setenv("SMTP_HOST", "smtp.example.test")
+    monkeypatch.setattr(l1_notify, "send_mail", lambda **_k: "sent")
+    counts = notify_auto_l1_lots([lot.tender_id])
+    assert counts["sent"] == 1
+    assert state.l1_mailed_at is not None

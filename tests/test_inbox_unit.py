@@ -14,7 +14,10 @@ from app.api.inbox import (
     is_deadline_expired,
     list_inbox,
     parse_ai_trigger,
+    parse_bitrix_filter,
     parse_board_hidden_body,
+    parse_platform_filter,
+    parse_price_min_rub,
     parse_priority_body,
     parse_query_date,
     parse_unread,
@@ -72,6 +75,7 @@ def test_inbox_routes_include_documents() -> None:
     assert "/api/inbox/{tender_id}/documents" in paths
     assert "/api/inbox/{tender_id}/documents/{filename}" in paths
     assert "/api/schedule" in paths
+    assert "/api/operator-settings" in paths
 
 
 @pytest.mark.unit
@@ -119,6 +123,47 @@ def test_list_inbox_rejects_bad_query_before_db() -> None:
         list_inbox(ai_trigger="both")
     assert parse_ai_trigger("auto") == "auto"
     assert parse_ai_trigger("manual") == "manual"
+
+
+@pytest.mark.unit
+def test_parse_price_platform_bitrix_filters() -> None:
+    assert parse_price_min_rub(None) is None
+    assert parse_price_min_rub("") is None
+    assert parse_price_min_rub("0") is None
+    assert parse_price_min_rub("100000") == 100_000
+    with pytest.raises(InboxQueryError, match="invalid_price_min_rub"):
+        parse_price_min_rub("-1")
+    with pytest.raises(InboxQueryError, match="invalid_price_min_rub"):
+        parse_price_min_rub("abc")
+    assert parse_platform_filter(None) is None
+    assert parse_platform_filter("rostender,roseltorg") == frozenset({"rostender", "roseltorg"})
+    assert parse_bitrix_filter("in") == "in"
+    assert parse_bitrix_filter("out") == "out"
+    with pytest.raises(InboxQueryError, match="invalid_bitrix"):
+        parse_bitrix_filter("maybe")
+
+
+@pytest.mark.unit
+def test_effective_tier_price_cap_and_manual_override() -> None:
+    from datetime import date
+
+    cheap = _lot(tier="L1", price_rub=Decimal("50000"))
+    reviewed = LotState(
+        tender_id=cheap.tender_id,
+        ai_reviewed_at=datetime(2026, 8, 12, tzinfo=timezone.utc),
+        ai_tier="L1",
+    )
+    capped = serialize_lot(cheap, reviewed, today=date(2026, 8, 1), min_price=100_000)
+    assert capped["effective_tier"] == "L2"
+    assert capped["ai_tier"] == "L1"
+
+    manual = LotState(tender_id=cheap.tender_id, manual_tier="L1")
+    uncapped = serialize_lot(cheap, manual, today=date(2026, 8, 1), min_price=100_000)
+    assert uncapped["effective_tier"] == "L1"
+
+    null_price = _lot(tier="L1", price_rub=None)
+    null_item = serialize_lot(null_price, reviewed, today=date(2026, 8, 1), min_price=100_000)
+    assert null_item["effective_tier"] == "L1"
 
 
 @pytest.mark.unit
