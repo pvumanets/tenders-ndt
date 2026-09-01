@@ -23,6 +23,20 @@ def test_parse_extnet_payload() -> None:
 
 
 @pytest.mark.unit
+def test_parse_extnet_with_raw_quotes_in_properties() -> None:
+    body = (
+        '{result:[1,[{"Id":9,"CategoryText":"НК","CustomerText":"ООО",'
+        '"Stop":"2026-09-15T10:00:00.000","State":"Открыта"}],'
+        '[{"planclaim":9,"name":"ВИК","properties":"Model: M30L37, "L":105 mm"}]]}'
+    )
+    parsed = oilb2bcs._parse_extnet_payload(body)
+    assert parsed[0] == 1
+    assert parsed[1][0]["Id"] == 9
+    assert parsed[2][0]["name"] == "ВИК"
+    assert "properties" not in parsed[2][0]
+
+
+@pytest.mark.unit
 def test_rows_from_claims() -> None:
     payload = oilb2bcs._parse_extnet_payload(_EXTNET_BODY)
     assert isinstance(payload, list)

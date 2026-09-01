@@ -26,6 +26,7 @@ _PAGE_SIZE = 50
 _AUTH_COOKIES = frozenset({"ASP.NET_SessionId", ".ASPXAUTH", "SERVERID"})
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _EXTNET_KEY = re.compile(r"(\{|,)(\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*:)")
+_PROPERTIES_FIELD = re.compile(r',"properties":"', re.I)
 
 
 @dataclass
@@ -88,6 +89,32 @@ def _hidden_field(html: str, name: str) -> str:
     return m.group(1) if m else ""
 
 
+def _strip_broken_properties(body: str) -> str:
+    """Drop Ext.NET properties values that embed raw quotes (breaks json.loads)."""
+    out: list[str] = []
+    i = 0
+    while True:
+        m = _PROPERTIES_FIELD.search(body, i)
+        if not m:
+            out.append(body[i:])
+            break
+        out.append(body[i : m.start()])
+        j = m.end()
+        while j < len(body):
+            ch = body[j]
+            if ch == "\\" and j + 1 < len(body):
+                j += 2
+                continue
+            if ch == '"':
+                nxt = body[j + 1 : j + 2]
+                if nxt in {",", "}", "]"}:
+                    j += 1
+                    break
+            j += 1
+        i = j
+    return "".join(out)
+
+
 def _parse_extnet_payload(text: str) -> Any:
     body = text.strip()
     if body.startswith("status="):
@@ -97,8 +124,14 @@ def _parse_extnet_payload(text: str) -> Any:
         if start < 0:
             raise ValueError("oilb2b_invalid_response")
         body = body[start:]
+    body = _strip_broken_properties(body)
     fixed = _EXTNET_KEY.sub(r'\1\2"\3"\4', body)
-    payload = json.loads(fixed)
+    try:
+        payload = json.loads(fixed)
+    except json.JSONDecodeError:
+        # Last resort: truncate oversized free-text that still breaks parse.
+        fixed = re.sub(r',"Comment":"[^"]*(?:"[^",}\]]*)*', "", fixed)
+        payload = json.loads(fixed)
     if isinstance(payload, dict) and "result" in payload:
         return payload["result"]
     return payload
