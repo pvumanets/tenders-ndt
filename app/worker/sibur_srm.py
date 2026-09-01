@@ -135,16 +135,6 @@ def _powl_frame(page: Any) -> Any:
     return page
 
 
-def _page_session_probe(page: Any, *, url: str) -> str:
-    page.goto(url, wait_until="domcontentloaded")
-    page.wait_for_timeout(4000)
-    title = page.title()
-    body = page.inner_text("body")
-    if is_login_page(title=title, body=body):
-        return "expired"
-    return "ok"
-
-
 def _page_scrape_rows(page: Any, *, url: str, base: str) -> list[SiburRow]:
     page.goto(url, wait_until="domcontentloaded")
     page.wait_for_timeout(6000)
@@ -171,36 +161,62 @@ def _page_scrape_rows(page: Any, *, url: str, base: str) -> list[SiburRow]:
     return parse_grid_text(combined, base=base)
 
 
+def _cookie_dict_httpx(path: Path) -> dict[str, str]:
+    out: dict[str, str] = {}
+    try:
+        for item in parse_netscape_cookies(path):
+            name = str(item.get("name") or "")
+            value = str(item.get("value") or "")
+            if name and value:
+                out[name] = value
+    except OSError:
+        return {}
+    return out
+
+
 def probe_sibur_session(
     path: Path | None = None,
     base_url_arg: str | None = None,
     *,
     on_retry=None,
 ) -> str:
-    """ok | missing | expired."""
+    """ok | missing | expired.
+
+    Uses httpx (fast) — Playwright only for scrape_queries / POWL grid.
+    Settings polls must not launch Chromium on 2 GB VPS.
+    """
     cookies_file = path or cookies_path()
     if not cookies_file.is_file():
         return "missing"
-    try:
-        jar = netscape_to_playwright(cookies_file)
-        if not jar:
-            return "missing"
-    except OSError:
+    jar = _cookie_dict_httpx(cookies_file)
+    if not jar:
         return "missing"
     root = (base_url_arg or base_url()).rstrip("/")
     url = nwbc_search_url(base=root)
     try:
-        from playwright.sync_api import sync_playwright
+        import httpx
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=_headless())
-            context = browser.new_context(locale="ru-RU", user_agent=_UA)
-            context.add_cookies(jar)
-            page = context.new_page()
-            page.set_default_timeout(_playwright_timeout_ms())
-            result = _page_session_probe(page, url=url)
-            browser.close()
-            return result
+        with httpx.Client(
+            headers={"User-Agent": _UA, "Accept-Language": "ru-RU,ru;q=0.9"},
+            cookies=jar,
+            follow_redirects=True,
+            timeout=25.0,
+        ) as client:
+            response = client.get(url)
+            title = ""
+            low = response.text.lower()
+            m = re.search(r"<title[^>]*>(.*?)</title>", response.text, re.I | re.S)
+            if m:
+                title = re.sub(r"\s+", " ", m.group(1)).strip()
+            if is_login_page(title=title, body=low):
+                return "expired"
+            if response.status_code in {401, 403}:
+                return "expired"
+            if response.status_code == 200 and (
+                "nwbc" in low or "sap" in low or "поиск" in low
+            ):
+                return "ok"
+            return "expired"
     except Exception:  # noqa: BLE001
         return "expired"
 
