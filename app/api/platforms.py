@@ -22,6 +22,7 @@ from app.worker import b2b_center as b2b_center_worker
 from app.worker import oilb2bcs as oilb2bcs_worker
 from app.worker import roseltorg as roseltorg_worker
 from app.worker import rts_rosatom as rts_rosatom_worker
+from app.worker import sibur_srm as sibur_srm_worker
 from app.worker import tender_pro as tender_pro_worker
 from app.worker.platform_ids import (
     PLATFORM_B2B_CENTER,
@@ -29,6 +30,7 @@ from app.worker.platform_ids import (
     PLATFORM_ROSELTORG,
     PLATFORM_ROSTENDER,
     PLATFORM_RTS_ROSATOM,
+    PLATFORM_SIBUR_SRM,
     PLATFORM_TENDER_PRO,
 )
 from app.worker.search_seeds import PLATFORM_LABELS, PLATFORM_ORDER
@@ -58,6 +60,7 @@ _COOKIE_PLATFORMS = frozenset(
         PLATFORM_B2B_CENTER,
         PLATFORM_RTS_ROSATOM,
         PLATFORM_OILB2BCS,
+        PLATFORM_SIBUR_SRM,
     }
 )
 
@@ -124,6 +127,9 @@ def _probe_platform(platform_id: str) -> str:
     if platform_id == PLATFORM_OILB2BCS:
         base = os.getenv("OILB2BCS_BASE_URL", oilb2bcs_worker.DEFAULT_BASE)
         return oilb2bcs_worker.probe_oilb2bcs_session(path, base)
+    if platform_id == PLATFORM_SIBUR_SRM:
+        base = os.getenv("SIBUR_BASE_URL", sibur_srm_worker.DEFAULT_BASE)
+        return sibur_srm_worker.probe_sibur_session(path, base)
     return "missing"
 
 

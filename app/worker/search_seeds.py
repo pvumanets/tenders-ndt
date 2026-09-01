@@ -106,6 +106,7 @@ PLATFORM_ORDER = (
     "b2b-center",
     "rts-rosatom",
     "oilb2bcs",
+    "sibur-srm",
 )
 PLATFORM_LABELS = {
     "rostender": "РосТендер",
@@ -114,6 +115,7 @@ PLATFORM_LABELS = {
     "b2b-center": "B2B-Center",
     "rts-rosatom": "РТС (Росатом)",
     "oilb2bcs": "OilB2B",
+    "sibur-srm": "СИБУР SRM",
 }
 
 

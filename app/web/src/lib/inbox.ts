@@ -302,6 +302,7 @@ export function platformLabel(platformId: string): string {
   if (platformId === "b2b-center") return copy.platform_b2b_center;
   if (platformId === "rts-rosatom") return copy.platform_rts_rosatom;
   if (platformId === "oilb2bcs") return copy.platform_oilb2bcs;
+  if (platformId === "sibur-srm") return copy.platform_sibur_srm;
   return platformId;
 }
 

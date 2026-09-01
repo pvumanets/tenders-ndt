@@ -18,6 +18,7 @@ from app.worker import b2b_center as b2b_center_worker
 from app.worker import oilb2bcs as oilb2bcs_worker
 from app.worker import roseltorg as roseltorg_worker
 from app.worker import rts_rosatom as rts_rosatom_worker
+from app.worker import sibur_srm as sibur_srm_worker
 from app.worker import tender_pro as tender_pro_worker
 from app.worker.artifacts import write_artifacts
 from app.worker.card_scrape import enrich_cards
@@ -31,6 +32,7 @@ from app.worker.platform_ids import (
     PLATFORM_ROSELTORG,
     PLATFORM_ROSTENDER,
     PLATFORM_RTS_ROSATOM,
+    PLATFORM_SIBUR_SRM,
     PLATFORM_TENDER_PRO,
     prefix_rows,
 )
@@ -57,6 +59,8 @@ def _cookies_path(platform_id: str = PLATFORM_ROSTENDER) -> Path:
         raw = os.getenv("RTS_ROSATOM_COOKIES_FILE", "./cookies.rts-rosatom.txt")
     elif platform_id == PLATFORM_OILB2BCS:
         raw = os.getenv("OILB2BCS_COOKIES_FILE", "./cookies.oilb2bcs.txt")
+    elif platform_id == PLATFORM_SIBUR_SRM:
+        raw = os.getenv("SIBUR_COOKIES_FILE", "./cookies.sibur.txt")
     else:
         raw = os.getenv("ROSTENDER_COOKIES_FILE", "./cookies.rostender.txt")
     path = Path(raw)
@@ -181,6 +185,18 @@ def refresh_session(*, probe_roseltorg_live: bool = True) -> str:
         STATE.set_session("expired", platform_id=PLATFORM_OILB2BCS)
     else:
         STATE.set_session("ok", platform_id=PLATFORM_OILB2BCS)
+
+    sib_cookies = _cookies_path(PLATFORM_SIBUR_SRM)
+    sib_base = os.getenv("SIBUR_BASE_URL", sibur_srm_worker.DEFAULT_BASE)
+    sib_probe = sibur_srm_worker.probe_sibur_session(
+        sib_cookies, sib_base, on_retry=_http_retry_callback
+    )
+    if sib_probe == "missing":
+        STATE.set_session("missing_cookies", platform_id=PLATFORM_SIBUR_SRM)
+    elif sib_probe == "expired":
+        STATE.set_session("expired", platform_id=PLATFORM_SIBUR_SRM)
+    else:
+        STATE.set_session("ok", platform_id=PLATFORM_SIBUR_SRM)
     return STATE.snapshot()["session"]
 
 
@@ -364,6 +380,9 @@ def _download_docs(rows: list[dict], *, platform_id: str) -> None:
     if platform_id == PLATFORM_OILB2BCS:
         STATE.log_msg("Docs: OilB2B — скачивание файлов не поддержано", level="warn")
         return
+    if platform_id == PLATFORM_SIBUR_SRM:
+        STATE.log_msg("Docs: СИБУР SRM — скачивание файлов не поддержано (v1)", level="warn")
+        return
     if platform_id == PLATFORM_ROSTENDER and not cookies.is_file():
         STATE.log_msg("Docs: rostender cookies missing — skip files", level="warn")
         return
@@ -446,6 +465,8 @@ def _run_one_search(*, item: dict, run_dir: Path) -> str:
         return _run_rts_rosatom(item=item, run_dir=run_dir)
     if platform == PLATFORM_OILB2BCS:
         return _run_oilb2bcs(item=item, run_dir=run_dir)
+    if platform == PLATFORM_SIBUR_SRM:
+        return _run_sibur_srm(item=item, run_dir=run_dir)
     if platform == PLATFORM_ROSTENDER:
         return _run_rostender(item=item, run_dir=run_dir)
     STATE.log_msg(f"No adapter for {platform} — skip", level="warn")
@@ -1105,6 +1126,23 @@ def _run_oilb2bcs(*, item: dict, run_dir: Path) -> str:
         require_ok_session=True,
         p1_log="P1: OilB2B GetClaims list…",
         p3_log="P3: OilB2B card markers…",
+    )
+
+
+def _run_sibur_srm(*, item: dict, run_dir: Path) -> str:
+    return _run_cookie_platform(
+        item=item,
+        run_dir=run_dir,
+        platform_id=PLATFORM_SIBUR_SRM,
+        probe_session=sibur_srm_worker.probe_sibur_session,
+        scrape_queries_fn=sibur_srm_worker.scrape_queries,
+        enrich_cards_fn=sibur_srm_worker.enrich_cards,
+        base_env="SIBUR_BASE_URL",
+        default_base=sibur_srm_worker.DEFAULT_BASE,
+        label="СИБУР SRM",
+        require_ok_session=True,
+        p1_log="P1: СИБУР SRM POWL (Playwright)…",
+        p3_log="P3: СИБУР SRM cards (no-op v1)…",
     )
 
 

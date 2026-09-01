@@ -142,6 +142,7 @@ export const copy = {
   platform_b2b_center: "B2B-Center",
   platform_rts_rosatom: "РТС (Росатом)",
   platform_oilb2bcs: "OilB2B",
+  platform_sibur_srm: "СИБУР SRM",
   session_status_ok: "сессия в порядке",
   session_status_missing: "нет сессии",
   session_status_expired: "сессия устарела",

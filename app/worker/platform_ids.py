@@ -9,6 +9,7 @@ PLATFORM_ROSELTORG = "roseltorg"
 PLATFORM_B2B_CENTER = "b2b-center"
 PLATFORM_RTS_ROSATOM = "rts-rosatom"
 PLATFORM_OILB2BCS = "oilb2bcs"
+PLATFORM_SIBUR_SRM = "sibur-srm"
 
 _VOLUME_SEP = "__"
 
