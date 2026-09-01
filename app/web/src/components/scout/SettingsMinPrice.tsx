@@ -87,7 +87,7 @@ export default function SettingsMinPrice({
             "& .MuiSlider-thumb": { width: 18, height: 18 },
           }}
         />
-        <Stack direction="row" justifyContent="space-between" sx={{ px: 0.5 }}>
+        <Stack direction="row" sx={{ px: 0.5, justifyContent: "space-between" }}>
           <Typography variant="caption" sx={{ color: stripe.textMuted }}>
             0 ₽
           </Typography>
