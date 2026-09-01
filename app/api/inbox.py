@@ -10,6 +10,7 @@ from urllib.parse import quote
 from sqlalchemy import or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from app.api.operator_settings import read_l1_min_price_rub
 from app.deadline import deadline_date, deadline_iso, is_deadline_expired, today_msk_date
 from app.db.models import Document, Lot, LotState
 from app.db.session import session_factory
@@ -131,6 +132,69 @@ def parse_ai_trigger(value: str | None) -> str | None:
     raise InboxQueryError("invalid_ai_trigger")
 
 
+def parse_price_min_rub(value: str | None) -> int | None:
+    if value is None or value.strip() == "":
+        return None
+    text = value.strip()
+    try:
+        parsed = int(text)
+    except ValueError as exc:
+        raise InboxQueryError("invalid_price_min_rub") from exc
+    if parsed < 0:
+        raise InboxQueryError("invalid_price_min_rub")
+    if parsed == 0:
+        return None
+    return parsed
+
+
+def parse_platform_filter(value: str | None) -> frozenset[str] | None:
+    if value is None or value.strip() == "":
+        return None
+    parts = [part.strip() for part in value.split(",") if part.strip()]
+    if not parts:
+        return None
+    return frozenset(parts)
+
+
+def parse_bitrix_filter(value: str | None) -> str | None:
+    if value is None or value.strip() == "":
+        return None
+    key = value.strip().lower()
+    if key in {"in", "out"}:
+        return key
+    raise InboxQueryError("invalid_bitrix")
+
+
+def _price_below_min(lot: Lot, min_price: int | None) -> bool:
+    if min_price is None:
+        return False
+    if lot.price_rub is None:
+        return False
+    return lot.price_rub < min_price
+
+
+def _base_tier(lot: Lot, state: LotState | None) -> str:
+    if state is not None and state.manual_tier:
+        return state.manual_tier
+    if state is not None and state.ai_reviewed_at is not None and state.ai_tier in PRIORITY_TIERS:
+        return state.ai_tier
+    return lot.tier
+
+
+def _effective_tier(lot: Lot, state: LotState | None, *, min_price: int | None = None) -> str:
+    if state is not None and state.manual_tier == "L1":
+        return "L1"
+    base = _base_tier(lot, state)
+    if (
+        base == "L1"
+        and min_price is not None
+        and lot.price_rub is not None
+        and lot.price_rub < min_price
+    ):
+        return "L2"
+    return base
+
+
 def lot_eligible_for_auto_ai(
     *,
     tier: str,
@@ -174,14 +238,6 @@ def select_auto_ai_ids(
     return out
 
 
-def _effective_tier(lot: Lot, state: LotState | None) -> str:
-    if state is not None and state.manual_tier:
-        return state.manual_tier
-    if state is not None and state.ai_reviewed_at is not None and state.ai_tier in PRIORITY_TIERS:
-        return state.ai_tier
-    return lot.tier
-
-
 def _in_pool(lot: Lot) -> bool:
     if lot.tier not in INBOX_TIERS:
         return False
@@ -222,6 +278,7 @@ def serialize_lot(
     documents: list[Document] | None = None,
     include_documents: bool = False,
     today: date | None = None,
+    min_price: int | None = None,
 ) -> dict[str, Any]:
     due = deadline_date(lot.deadline_msk)
     today_d = today_msk_date(today)
@@ -232,7 +289,7 @@ def serialize_lot(
         "customer_name": clean_customer_name(lot.customer_name),
         "score": lot.score,
         "tier": lot.tier,
-        "effective_tier": _effective_tier(lot, state),
+        "effective_tier": _effective_tier(lot, state, min_price=min_price),
         "manual_tier": state.manual_tier if state is not None else None,
         "viewed": bool(state.viewed) if state is not None else False,
         "board_hidden": bool(state.board_hidden) if state is not None else False,
@@ -285,12 +342,18 @@ def list_inbox(
     ingested_to: str | None = None,
     ai_reviewed: str | None = None,
     ai_trigger: str | None = None,
+    price_min_rub: str | None = None,
+    platform: str | None = None,
+    bitrix: str | None = None,
     today: date | None = None,
 ) -> dict[str, Any]:
     unread_flag = parse_unread(unread)
     tier_filter = parse_tier_filter(tier)
     ai_flag = parse_ai_reviewed(ai_reviewed)
     trigger = parse_ai_trigger(ai_trigger)
+    price_min = parse_price_min_rub(price_min_rub)
+    platform_ids = parse_platform_filter(platform)
+    bitrix_filter = parse_bitrix_filter(bitrix)
     dl_from = parse_query_date(deadline_from)
     dl_to = parse_query_date(deadline_to)
     ing_from = parse_query_date(ingested_from)
@@ -300,6 +363,7 @@ def list_inbox(
 
     factory = session_factory()
     with factory() as session:
+        l1_min_price = read_l1_min_price_rub(session)
         stmt = (
             select(Lot, LotState)
             .outerjoin(LotState, LotState.tender_id == Lot.tender_id)
@@ -315,6 +379,12 @@ def list_inbox(
             )
         if trigger is not None:
             stmt = stmt.where(LotState.ai_trigger == trigger)
+        if platform_ids is not None:
+            stmt = stmt.where(Lot.source_platform_id.in_(tuple(platform_ids)))
+        if bitrix_filter == "in":
+            stmt = stmt.where(LotState.bitrix_sent_at.is_not(None))
+        elif bitrix_filter == "out":
+            stmt = stmt.where(or_(LotState.bitrix_sent_at.is_(None), LotState.tender_id.is_(None)))
         if needle:
             pattern = f"%{needle}%"
             stmt = stmt.where(
@@ -331,10 +401,12 @@ def list_inbox(
         for lot, state in rows:
             if state is not None and state.board_hidden:
                 continue
+            if _price_below_min(lot, price_min):
+                continue
             due = deadline_date(lot.deadline_msk)
             if due is None:
                 continue
-            if tier_filter != "fit" and _effective_tier(lot, state) != tier_filter:
+            if tier_filter != "fit" and _effective_tier(lot, state, min_price=l1_min_price) != tier_filter:
                 continue
             if not _in_date_range(due, dl_from, dl_to):
                 continue
@@ -353,7 +425,10 @@ def list_inbox(
         live.sort(key=lambda pair: _sort_key_live(pair[0]))
         expired.sort(key=lambda pair: _sort_key_expired(pair[0]), reverse=True)
         filtered = live + expired
-        items = [serialize_lot(lot, state, today=today_d) for lot, state in filtered]
+        items = [
+            serialize_lot(lot, state, today=today_d, min_price=l1_min_price)
+            for lot, state in filtered
+        ]
         return {"items": items, "total": len(items)}
 
 
@@ -367,12 +442,15 @@ def _require_pool_lot(session, tender_id: str) -> Lot:
 def get_inbox_item(tender_id: str) -> dict[str, Any]:
     factory = session_factory()
     with factory() as session:
+        min_price = read_l1_min_price_rub(session)
         lot = _require_pool_lot(session, tender_id)
         state = session.get(LotState, tender_id)
         docs = list(
             session.scalars(select(Document).where(Document.tender_id == tender_id)).all()
         )
-        return serialize_lot(lot, state, documents=docs, include_documents=True)
+        return serialize_lot(
+            lot, state, documents=docs, include_documents=True, min_price=min_price
+        )
 
 
 def set_viewed(tender_id: str, body: Any) -> dict[str, Any]:
@@ -392,11 +470,14 @@ def set_viewed(tender_id: str, body: Any) -> dict[str, Any]:
         session.commit()
         lot = session.get(Lot, tender_id)
         state = session.get(LotState, tender_id)
+        min_price = read_l1_min_price_rub(session)
         docs = list(
             session.scalars(select(Document).where(Document.tender_id == tender_id)).all()
         )
         assert lot is not None
-        return serialize_lot(lot, state, documents=docs, include_documents=True)
+        return serialize_lot(
+            lot, state, documents=docs, include_documents=True, min_price=min_price
+        )
 
 
 def set_priority(tender_id: str, body: Any) -> dict[str, Any]:
@@ -419,11 +500,14 @@ def set_priority(tender_id: str, body: Any) -> dict[str, Any]:
         session.commit()
         lot = session.get(Lot, tender_id)
         state = session.get(LotState, tender_id)
+        min_price = read_l1_min_price_rub(session)
         docs = list(
             session.scalars(select(Document).where(Document.tender_id == tender_id)).all()
         )
         assert lot is not None
-        return serialize_lot(lot, state, documents=docs, include_documents=True)
+        return serialize_lot(
+            lot, state, documents=docs, include_documents=True, min_price=min_price
+        )
 
 
 def set_board_hidden(tender_id: str, body: Any) -> dict[str, Any]:
@@ -450,11 +534,14 @@ def set_board_hidden(tender_id: str, body: Any) -> dict[str, Any]:
         session.commit()
         lot = session.get(Lot, tender_id)
         state = session.get(LotState, tender_id)
+        min_price = read_l1_min_price_rub(session)
         docs = list(
             session.scalars(select(Document).where(Document.tender_id == tender_id)).all()
         )
         assert lot is not None
-        return serialize_lot(lot, state, documents=docs, include_documents=True)
+        return serialize_lot(
+            lot, state, documents=docs, include_documents=True, min_price=min_price
+        )
 
 
 def list_documents(tender_id: str) -> dict[str, Any]:
@@ -532,6 +619,7 @@ def _apply_ai_review(
     work = list(pairs)
     STATE.set_ai_progress(0, len(work))
     with factory() as session:
+        min_price = read_l1_min_price_rub(session)
         for index, (lot, state) in enumerate(work):
             if skip_hidden_expired:
                 if state is not None and state.board_hidden:
@@ -571,7 +659,9 @@ def _apply_ai_review(
                 session.scalars(select(Document).where(Document.tender_id == lot.tender_id)).all()
             )
             items.append(
-                serialize_lot(lot, state, documents=docs, include_documents=True)
+                serialize_lot(
+                    lot, state, documents=docs, include_documents=True, min_price=min_price
+                )
             )
             STATE.set_ai_progress(index + 1, len(work))
 
@@ -680,7 +770,10 @@ def mark_ai_wrong(tender_id: str, body: Any) -> dict[str, Any]:
         state.ai_wrong_at = now
         state.ai_wrong_note = note
         session.commit()
+        min_price = read_l1_min_price_rub(session)
         docs = list(
             session.scalars(select(Document).where(Document.tender_id == tender_id)).all()
         )
-        return serialize_lot(lot, state, documents=docs, include_documents=True)
+        return serialize_lot(
+            lot, state, documents=docs, include_documents=True, min_price=min_price
+        )

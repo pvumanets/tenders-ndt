@@ -1,5 +1,6 @@
 import type {
   AiTrigger,
+  BitrixFilter,
   InboxLot,
   PlatformRow,
   PlatformSession,
@@ -10,6 +11,7 @@ import type {
   ScheduleSettings,
   SearchGroup,
   TechStatus,
+  OperatorSettings,
 } from "../types";
 import { copy } from "../copy";
 
@@ -49,6 +51,9 @@ export type InboxListQuery = {
   ingested_to?: string;
   ai_reviewed?: boolean;
   ai_trigger?: AiTrigger;
+  price_min_rub?: number;
+  platform?: string;
+  bitrix?: Exclude<BitrixFilter, "any">;
 };
 
 type ApiLot = Partial<InboxLot> & {
@@ -104,6 +109,10 @@ export function normalizeLot(raw: ApiLot): InboxLot {
       : null;
   const aiTier =
     raw.ai_tier === "L1" || raw.ai_tier === "L2" || raw.ai_tier === "L3" ? raw.ai_tier : null;
+  const effectiveTier =
+    raw.effective_tier === "L1" || raw.effective_tier === "L2" || raw.effective_tier === "L3"
+      ? raw.effective_tier
+      : null;
   const rulesTier =
     raw.rules_tier === "L1" || raw.rules_tier === "L2" || raw.rules_tier === "L3"
       ? raw.rules_tier
@@ -114,6 +123,7 @@ export function normalizeLot(raw: ApiLot): InboxLot {
     customer_name: text(raw.customer_name),
     score: typeof raw.score === "number" ? raw.score : 0,
     tier,
+    effective_tier: effectiveTier,
     manual_tier: manual,
     viewed: Boolean(raw.viewed),
     board_hidden: Boolean(raw.board_hidden),
@@ -155,6 +165,11 @@ export function buildInboxSearchParams(query: InboxListQuery): URLSearchParams {
   if (query.ingested_to) params.set("ingested_to", query.ingested_to);
   if (query.ai_reviewed) params.set("ai_reviewed", "1");
   if (query.ai_trigger) params.set("ai_trigger", query.ai_trigger);
+  if (query.price_min_rub != null && query.price_min_rub > 0) {
+    params.set("price_min_rub", String(query.price_min_rub));
+  }
+  if (query.platform) params.set("platform", query.platform);
+  if (query.bitrix) params.set("bitrix", query.bitrix);
   return params;
 }
 
@@ -587,6 +602,32 @@ export async function putSchedule(body: {
   if (res.status === 400) throw new Error("invalid_time_msk");
   if (!res.ok) throw new Error("schedule_save_failed");
   return parseSchedule((await res.json()) as Partial<ScheduleSettings>);
+}
+
+function parseOperatorSettings(raw: Partial<OperatorSettings>): OperatorSettings {
+  return {
+    l1_min_price_rub:
+      typeof raw.l1_min_price_rub === "number" ? raw.l1_min_price_rub : 100_000,
+  };
+}
+
+export async function fetchOperatorSettings(): Promise<OperatorSettings> {
+  const res = await apiFetch("/api/operator-settings");
+  if (!res.ok) throw new Error("operator_settings_load_failed");
+  return parseOperatorSettings((await res.json()) as Partial<OperatorSettings>);
+}
+
+export async function putOperatorSettings(body: {
+  l1_min_price_rub: number;
+}): Promise<OperatorSettings> {
+  const res = await apiFetch("/api/operator-settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 400) throw new Error("invalid_l1_min_price_rub");
+  if (!res.ok) throw new Error("operator_settings_save_failed");
+  return parseOperatorSettings((await res.json()) as Partial<OperatorSettings>);
 }
 
 export type CookiesUploadResult = {

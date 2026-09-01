@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import InboxCommandBar from "./InboxCommandBar";
 import { copy } from "../../copy";
 import ThemeRegistry from "../../theme/ThemeRegistry";
@@ -56,6 +56,45 @@ describe("InboxCommandBar", () => {
     expect(screen.getByText(copy.filter_ai_reviewed_menu_title)).toBeInTheDocument();
     expect(screen.getByText(copy.filter_ai_reviewed)).toBeInTheDocument();
     expect(screen.getAllByText(copy.filter_ai_reviewed_trigger)).toHaveLength(1);
+  });
+
+  it("price filter menu show all clears min price", async () => {
+    const user = userEvent.setup();
+    const onPriceMinRub = vi.fn();
+    render(
+      <ThemeRegistry>
+        <InboxCommandBar
+          {...baseProps}
+          priority={[]}
+          priceMinRub={100_000}
+          onPriceMinRub={onPriceMinRub}
+          settingsMinPrice={100_000}
+        />
+      </ThemeRegistry>,
+    );
+    await user.click(screen.getByRole("button", { name: copy.filter_price }));
+    await user.click(screen.getByRole("button", { name: copy.filter_price_show_all }));
+    expect(onPriceMinRub).toHaveBeenCalledWith(null);
+  });
+
+  it("price filter menu links to settings", async () => {
+    const user = userEvent.setup();
+    const onOpenSettings = vi.fn();
+    render(
+      <ThemeRegistry>
+        <InboxCommandBar
+          {...baseProps}
+          priority={[]}
+          priceMinRub={100_000}
+          onPriceMinRub={() => {}}
+          settingsMinPrice={100_000}
+          onOpenSettings={onOpenSettings}
+        />
+      </ThemeRegistry>,
+    );
+    await user.click(screen.getByRole("button", { name: copy.filter_price }));
+    await user.click(screen.getByRole("button", { name: copy.filter_price_settings_link }));
+    expect(onOpenSettings).toHaveBeenCalled();
   });
 
   it("sticks the whole filters+search block for the board scroll parent", () => {

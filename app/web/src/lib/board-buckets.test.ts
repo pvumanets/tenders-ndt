@@ -99,6 +99,20 @@ describe("rules vs ai board tiers", () => {
     expect(buckets.L3).toEqual(["moved"]);
   });
 
+  it("aiBoardTier prefers API effective_tier cap", () => {
+    const capped = lot({
+      tender_id: "capped",
+      tier: "L1",
+      ai_reviewed: true,
+      ai_tier: "L1",
+      effective_tier: "L2",
+    });
+    expect(aiBoardTier(capped)).toBe("L2");
+    const buckets = boardBuckets([capped], aiBoardTier);
+    expect(buckets.L1).toEqual([]);
+    expect(buckets.L2).toEqual(["capped"]);
+  });
+
   it("tierMoved detects change", () => {
     expect(tierMoved(moved)).toBe(true);
     expect(tierMoved(lot({ tender_id: "same", tier: "L2", ai_reviewed: true, ai_tier: "L2" }))).toBe(false);

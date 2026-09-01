@@ -87,6 +87,20 @@ class PlatformSetting(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
 
+class OperatorSettings(Base):
+    """Singleton id=1 — operator inbox policy (071)."""
+
+    __tablename__ = "operator_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    l1_min_price_rub: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=100_000, server_default="100000"
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class ScheduleSettings(Base):
     """Singleton id=1 — daily auto-run slot (MSK)."""
 
@@ -192,6 +206,9 @@ class LotState(Base):
     ai_wrong_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_trigger: Mapped[str | None] = mapped_column(String(16), nullable=True)
     l1_mailed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    bitrix_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 

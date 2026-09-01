@@ -18,8 +18,9 @@ import {
 import { useTheme } from "@mui/material/styles";
 import ViewWeekOutlinedIcon from "@mui/icons-material/ViewWeekOutlined";
 import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
-import type { DeadlinePreset, IngestedPreset, PriorityFilter, SalesTier, ViewMode } from "../../types";
+import type { DeadlinePreset, IngestedPreset, PriorityFilter, SalesTier, ViewMode, PlatformRow, BitrixFilter } from "../../types";
 import { copy } from "../../copy";
+import { formatPrice } from "../../lib/format";
 import { stripe } from "../../theme/palette";
 import { viewCommandBarLayout } from "../../vendor/personal/layout/view-command-bar";
 import FilterTriggerButton from "../../vendor/personal/shell/FilterTriggerButton";
@@ -210,6 +211,15 @@ export default function InboxCommandBar({
   showAiReviewedFilter = false,
   aiReviewedOnly = false,
   onAiReviewedOnly,
+  priceMinRub = null,
+  onPriceMinRub,
+  settingsMinPrice = 100_000,
+  onOpenSettings,
+  platforms = [],
+  platformsSelected = [],
+  onPlatformsSelected,
+  bitrixFilter = "any",
+  onBitrixFilter,
 }: {
   unreadOnly: boolean;
   onUnreadOnly: (v: boolean) => void;
@@ -234,11 +244,23 @@ export default function InboxCommandBar({
   showAiReviewedFilter?: boolean;
   aiReviewedOnly?: boolean;
   onAiReviewedOnly?: (v: boolean) => void;
+  priceMinRub?: number | null;
+  onPriceMinRub?: (v: number | null) => void;
+  settingsMinPrice?: number;
+  onOpenSettings?: () => void;
+  platforms?: PlatformRow[];
+  platformsSelected?: string[];
+  onPlatformsSelected?: (v: string[]) => void;
+  bitrixFilter?: BitrixFilter;
+  onBitrixFilter?: (v: BitrixFilter) => void;
 }) {
   const [priorityEl, setPriorityEl] = useState<HTMLElement | null>(null);
   const [deadlineEl, setDeadlineEl] = useState<HTMLElement | null>(null);
   const [ingestedEl, setIngestedEl] = useState<HTMLElement | null>(null);
   const [aiEl, setAiEl] = useState<HTMLElement | null>(null);
+  const [priceEl, setPriceEl] = useState<HTMLElement | null>(null);
+  const [platformEl, setPlatformEl] = useState<HTMLElement | null>(null);
+  const [bitrixEl, setBitrixEl] = useState<HTMLElement | null>(null);
 
   function togglePriority(tier: SalesTier) {
     onPriority(priority.includes(tier) ? priority.filter((t) => t !== tier) : [...priority, tier]);
@@ -259,6 +281,20 @@ export default function InboxCommandBar({
       onIngestedTo("");
     }
   }
+
+  function togglePlatform(platformId: string) {
+    if (!onPlatformsSelected) return;
+    onPlatformsSelected(
+      platformsSelected.includes(platformId)
+        ? platformsSelected.filter((id) => id !== platformId)
+        : [...platformsSelected, platformId],
+    );
+  }
+
+  const priceActive = priceMinRub != null && priceMinRub > 0;
+  const priceBadge = priceActive ? 1 : 0;
+  const platformBadge = platformsSelected.length;
+  const bitrixBadge = bitrixFilter === "any" ? 0 : 1;
 
   return (
     <Box
@@ -327,6 +363,27 @@ export default function InboxCommandBar({
             badgeContent={ingestedPreset === "any" ? 0 : 1}
             onClick={(e) => setIngestedEl(e.currentTarget)}
           />
+          {onPriceMinRub ? (
+            <FilterTriggerButton
+              label={copy.filter_price}
+              badgeContent={priceBadge}
+              onClick={(e) => setPriceEl(e.currentTarget)}
+            />
+          ) : null}
+          {onPlatformsSelected ? (
+            <FilterTriggerButton
+              label={copy.filter_platform}
+              badgeContent={platformBadge}
+              onClick={(e) => setPlatformEl(e.currentTarget)}
+            />
+          ) : null}
+          {onBitrixFilter ? (
+            <FilterTriggerButton
+              label={copy.filter_bitrix}
+              badgeContent={bitrixBadge}
+              onClick={(e) => setBitrixEl(e.currentTarget)}
+            />
+          ) : null}
           {showAiReviewedFilter ? (
             <FilterTriggerButton
               label={copy.filter_ai_reviewed_trigger}
@@ -432,6 +489,97 @@ export default function InboxCommandBar({
           />
         ) : null}
       </FilterMenuPopover>
+
+      {onPriceMinRub ? (
+        <FilterMenuPopover
+          open={Boolean(priceEl)}
+          anchorEl={priceEl}
+          onClose={() => setPriceEl(null)}
+          title={copy.filter_price}
+          resetVisible={priceActive}
+          onReset={() => onPriceMinRub(null)}
+        >
+          <Typography variant="body2" sx={{ px: 0.5, py: 0.75, color: stripe.navy }}>
+            {priceActive
+              ? copy.filter_price_from.replace("{price}", formatPrice(priceMinRub))
+              : copy.filter_date_any_f}
+          </Typography>
+          <Stack spacing={0.5} sx={{ px: 0.5, pt: 0.5 }}>
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => onPriceMinRub(null)}
+              sx={{ justifyContent: "flex-start" }}
+            >
+              {copy.filter_price_show_all}
+            </Button>
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => onPriceMinRub(settingsMinPrice)}
+              sx={{ justifyContent: "flex-start" }}
+            >
+              {copy.filter_price_from.replace("{price}", formatPrice(settingsMinPrice))}
+            </Button>
+            {onOpenSettings ? (
+              <Link
+                component="button"
+                variant="caption"
+                underline="hover"
+                onClick={() => {
+                  setPriceEl(null);
+                  onOpenSettings();
+                }}
+                sx={{ cursor: "pointer", border: "none", background: "none", textAlign: "left" }}
+              >
+                {copy.filter_price_settings_link}
+              </Link>
+            ) : null}
+          </Stack>
+        </FilterMenuPopover>
+      ) : null}
+
+      {onPlatformsSelected ? (
+        <FilterMenuPopover
+          open={Boolean(platformEl)}
+          anchorEl={platformEl}
+          onClose={() => setPlatformEl(null)}
+          title={copy.filter_platform}
+          resetVisible={platformsSelected.length > 0}
+          onReset={() => onPlatformsSelected([])}
+        >
+          <Stack spacing={0} divider={<Divider flexItem />}>
+            {platforms.map((platform) => (
+              <CheckRow
+                key={platform.platform_id}
+                checked={platformsSelected.includes(platform.platform_id)}
+                label={platform.name}
+                onToggle={() => togglePlatform(platform.platform_id)}
+              />
+            ))}
+          </Stack>
+        </FilterMenuPopover>
+      ) : null}
+
+      {onBitrixFilter ? (
+        <FilterMenuPopover
+          open={Boolean(bitrixEl)}
+          anchorEl={bitrixEl}
+          onClose={() => setBitrixEl(null)}
+          title={copy.filter_bitrix}
+          resetVisible={bitrixFilter !== "any"}
+          onReset={() => onBitrixFilter("any")}
+        >
+          <RadioGroup
+            value={bitrixFilter}
+            onChange={(_, v) => onBitrixFilter(v as BitrixFilter)}
+          >
+            <RadioRow value="any" label={copy.filter_bitrix_any} />
+            <RadioRow value="in" label={copy.filter_bitrix_in} />
+            <RadioRow value="out" label={copy.filter_bitrix_out} />
+          </RadioGroup>
+        </FilterMenuPopover>
+      ) : null}
 
       {showAiReviewedFilter && onAiReviewedOnly ? (
         <FilterMenuPopover

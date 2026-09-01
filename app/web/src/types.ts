@@ -15,6 +15,7 @@ export type InboxLot = {
   customer_name: string;
   score: number;
   tier: SalesTier;
+  effective_tier?: SalesTier | null;
   manual_tier: SalesTier | null;
   viewed: boolean;
   board_hidden: boolean;
@@ -85,6 +86,12 @@ export type ScheduleSettings = {
   last_attempt_at: string | null;
   next_fire_at: string | null;
 };
+
+export type OperatorSettings = {
+  l1_min_price_rub: number;
+};
+
+export type BitrixFilter = "any" | "in" | "out";
 
 export type TechStatus = {
   phase: string;

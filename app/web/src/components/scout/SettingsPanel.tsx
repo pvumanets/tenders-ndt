@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Alert, Box, FormControlLabel, Paper, Stack, Switch, Typography } from "@mui/material";
-import type { PlatformRow, PlatformSession, ScheduleSettings, SearchGroup, TechStatus } from "../../types";
+import type { PlatformRow, PlatformSession, ScheduleSettings, SearchGroup, TechStatus, OperatorSettings } from "../../types";
 import { copy } from "../../copy";
 import type { SearchGroupWrite } from "../../lib/inbox";
 import { stripe } from "../../theme/palette";
@@ -14,6 +14,7 @@ import SearchGroupDrawer, {
 } from "./SearchGroupDrawer";
 import SearchGroupList from "./SearchGroupList";
 import SettingsSchedule from "./SettingsSchedule";
+import SettingsMinPrice from "./SettingsMinPrice";
 import TechDiagnostics from "./TechDiagnostics";
 import { formatPlatformSessionLine } from "../../lib/inbox";
 
@@ -37,12 +38,14 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 export default function SettingsPanel({
   status,
   schedule,
+  operatorSettings,
   groups,
   platforms,
   locked = false,
   groupError = null,
   highlightSessions = false,
   onScheduleSaved,
+  onOperatorSettingsSaved,
   onToggleQueue,
   onTogglePlatform,
   onSaveGroup,
@@ -51,12 +54,14 @@ export default function SettingsPanel({
 }: {
   status: TechStatus;
   schedule: ScheduleSettings;
+  operatorSettings: OperatorSettings;
   groups: SearchGroup[];
   platforms: PlatformRow[];
   locked?: boolean;
   groupError?: string | null;
   highlightSessions?: boolean;
   onScheduleSaved: (next: ScheduleSettings) => void;
+  onOperatorSettingsSaved: (next: OperatorSettings) => void;
   onToggleQueue: (group: SearchGroup, inQueue: boolean) => void;
   onTogglePlatform: (platform: PlatformRow, enabled: boolean) => void;
   onSaveGroup: (id: string | undefined, body: SearchGroupWrite) => Promise<void>;
@@ -118,6 +123,14 @@ export default function SettingsPanel({
             status={status}
             locked={configLocked}
             onSaved={onScheduleSaved}
+          />
+        </Section>
+
+        <Section title={copy.settings_section_min_price}>
+          <SettingsMinPrice
+            settings={operatorSettings}
+            locked={configLocked}
+            onSaved={onOperatorSettingsSaved}
           />
         </Section>
 

@@ -44,6 +44,8 @@ const schedule: ScheduleSettings = {
   next_fire_at: null,
 };
 
+const operatorSettings = { l1_min_price_rub: 100_000 };
+
 function renderSettings(extra?: Partial<Parameters<typeof SettingsPanel>[0]>) {
   const onToggleQueue = extra?.onToggleQueue ?? vi.fn();
   const onTogglePlatform = extra?.onTogglePlatform ?? vi.fn();
@@ -54,11 +56,13 @@ function renderSettings(extra?: Partial<Parameters<typeof SettingsPanel>[0]>) {
       <SettingsPanel
         status={extra?.status ?? idle}
         schedule={extra?.schedule ?? schedule}
+        operatorSettings={extra?.operatorSettings ?? operatorSettings}
         groups={extra?.groups ?? sampleGroups}
         platforms={extra?.platforms ?? samplePlatforms}
         locked={extra?.locked}
         groupError={extra?.groupError}
         onScheduleSaved={extra?.onScheduleSaved ?? vi.fn()}
+        onOperatorSettingsSaved={extra?.onOperatorSettingsSaved ?? vi.fn()}
         onToggleQueue={onToggleQueue}
         onTogglePlatform={onTogglePlatform}
         onSaveGroup={onSaveGroup}
@@ -74,6 +78,7 @@ describe("SettingsPanel", () => {
   it("renders schedule, platforms, groups, cookie upload and collapsed diagnostics", () => {
     renderSettings();
     expect(screen.getByText(copy.settings_section_schedule)).toBeInTheDocument();
+    expect(screen.getByText(copy.settings_section_min_price)).toBeInTheDocument();
     expect(screen.getByText(copy.settings_section_platforms)).toBeInTheDocument();
     expect(screen.getByText(copy.settings_section_groups)).toBeInTheDocument();
     expect(screen.getByText(copy.settings_section_diagnostics)).toBeInTheDocument();
@@ -139,7 +144,9 @@ describe("SettingsPanel", () => {
 
   it("locks schedule and cookies while running", () => {
     renderSettings({ locked: true });
-    expect(screen.getByRole("button", { name: copy.schedule_save })).toBeDisabled();
+    for (const btn of screen.getAllByRole("button", { name: copy.schedule_save })) {
+      expect(btn).toBeDisabled();
+    }
     expect(screen.getAllByRole("button", { name: copy.cookies_upload })[0]).toBeDisabled();
     expect(screen.getAllByRole("button", { name: copy.cookies_paste })[0]).toBeDisabled();
   });

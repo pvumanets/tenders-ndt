@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AppBar,
   Box,
@@ -10,9 +10,11 @@ import {
 } from "@mui/material";
 import type {
   AppTab,
+  BitrixFilter,
   DeadlinePreset,
   InboxLot,
   IngestedPreset,
+  OperatorSettings,
   PlatformRow,
   PlatformSession,
   PriorityFilter,
@@ -34,6 +36,7 @@ import {
   deleteSearchGroup,
   fetchInbox,
   fetchInboxItem,
+  fetchOperatorSettings,
   fetchPlatforms,
   fetchSchedule,
   fetchSearchGroups,
@@ -100,6 +103,10 @@ const idleSchedule: ScheduleSettings = {
   last_skip_reason: null,
   last_attempt_at: null,
   next_fire_at: null,
+};
+
+const idleOperatorSettings: OperatorSettings = {
+  l1_min_price_rub: 100_000,
 };
 
 function InboxEmpty({
@@ -177,6 +184,12 @@ function AppInner() {
   const [groups, setGroups] = useState<SearchGroup[]>([]);
   const [platforms, setPlatforms] = useState<PlatformRow[]>([]);
   const [schedule, setSchedule] = useState<ScheduleSettings>(idleSchedule);
+  const [operatorSettings, setOperatorSettings] = useState<OperatorSettings>(idleOperatorSettings);
+  const [priceMinRub, setPriceMinRub] = useState<number | null>(null);
+  const [operatorSettingsReady, setOperatorSettingsReady] = useState(false);
+  const priceFilterInitialized = useRef(false);
+  const [platformsSelected, setPlatformsSelected] = useState<string[]>([]);
+  const [bitrixFilter, setBitrixFilter] = useState<BitrixFilter>("any");
   const [groupError, setGroupError] = useState<string | null>(null);
   const [highlightSessions, setHighlightSessions] = useState(false);
 
@@ -200,6 +213,9 @@ function AppInner() {
     setLots([]);
     setSelectedId(null);
     setLotsState("idle");
+    setOperatorSettingsReady(false);
+    priceFilterInitialized.current = false;
+    setPriceMinRub(null);
   }
 
   function inboxQuery() {
@@ -214,6 +230,9 @@ function AppInner() {
       ai_trigger: tab === "auto" ? ("auto" as const) : undefined,
       tier: apiTierParam(priority),
       q: debouncedSearch || undefined,
+      price_min_rub: priceMinRub ?? undefined,
+      platform: platformsSelected.length > 0 ? platformsSelected.join(",") : undefined,
+      bitrix: bitrixFilter === "any" ? undefined : bitrixFilter,
       ...dates,
     };
   }
@@ -221,6 +240,7 @@ function AppInner() {
   useEffect(() => {
     if (gate !== "in") return;
     if (tab !== "auto" && tab !== "manual") return;
+    if (!operatorSettingsReady) return;
     let cancelled = false;
     setLotsState((prev) => (prev === "ok" ? prev : "loading"));
     fetchInbox(inboxQuery())
@@ -253,6 +273,10 @@ function AppInner() {
     ingestedPreset,
     ingestedFrom,
     ingestedTo,
+    priceMinRub,
+    platformsSelected,
+    bitrixFilter,
+    operatorSettingsReady,
   ]);
 
   useEffect(() => {
@@ -312,6 +336,36 @@ function AppInner() {
     return () => {
       cancelled = true;
       if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [gate]);
+
+  useEffect(() => {
+    if (gate !== "in") return;
+    let cancelled = false;
+    fetchOperatorSettings()
+      .then((settings) => {
+        if (cancelled) return;
+        setOperatorSettings(settings);
+        if (!priceFilterInitialized.current) {
+          setPriceMinRub(settings.l1_min_price_rub);
+          priceFilterInitialized.current = true;
+        }
+        setOperatorSettingsReady(true);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        if (err instanceof UnauthorizedError) {
+          onUnauthorized();
+          return;
+        }
+        if (!priceFilterInitialized.current) {
+          setPriceMinRub(idleOperatorSettings.l1_min_price_rub);
+          priceFilterInitialized.current = true;
+        }
+        setOperatorSettingsReady(true);
+      });
+    return () => {
+      cancelled = true;
     };
   }, [gate]);
 
@@ -447,13 +501,25 @@ function AppInner() {
   }, [lots, priority]);
 
   const selected = lots.find((l) => l.tender_id === selectedId) ?? null;
+  const visibleLots = lots.filter((lot) => !lot.board_hidden);
+  const hasActiveFilters =
+    Boolean(debouncedSearch) ||
+    deadlinePreset !== "any" ||
+    ingestedPreset !== "any" ||
+    priority.length > 0 ||
+    (priceMinRub != null && priceMinRub > 0) ||
+    platformsSelected.length > 0 ||
+    bitrixFilter !== "any" ||
+    (tab === "manual" && aiReviewedOnly);
   const emptyKind: "error" | "no-unread" | "no-data" | "no-match" =
     lotsState === "error"
       ? "error"
-      : lots.filter((l) => !l.board_hidden).length === 0
-        ? unreadOnly && !debouncedSearch && deadlinePreset === "any" && ingestedPreset === "any"
+      : visibleLots.length === 0
+        ? unreadOnly && !hasActiveFilters
           ? "no-unread"
-          : "no-data"
+          : hasActiveFilters
+            ? "no-match"
+            : "no-data"
         : "no-match";
 
   function replaceLot(next: InboxLot) {
@@ -569,6 +635,15 @@ function AppInner() {
       showAiReviewedFilter={tab === "manual"}
       aiReviewedOnly={aiReviewedOnly}
       onAiReviewedOnly={setAiReviewedOnly}
+      priceMinRub={priceMinRub}
+      onPriceMinRub={setPriceMinRub}
+      settingsMinPrice={operatorSettings.l1_min_price_rub}
+      onOpenSettings={() => setTab("settings")}
+      platforms={platforms}
+      platformsSelected={platformsSelected}
+      onPlatformsSelected={setPlatformsSelected}
+      bitrixFilter={bitrixFilter}
+      onBitrixFilter={setBitrixFilter}
     />
   );
 
@@ -712,12 +787,17 @@ function AppInner() {
           <SettingsPanel
             status={tech}
             schedule={schedule}
+            operatorSettings={operatorSettings}
             groups={groups}
             platforms={platforms}
             locked={settingsLocked}
             groupError={groupError}
             highlightSessions={highlightSessions}
             onScheduleSaved={setSchedule}
+            onOperatorSettingsSaved={(next) => {
+              setOperatorSettings(next);
+              setPriceMinRub(next.l1_min_price_rub);
+            }}
             onToggleQueue={onToggleQueue}
             onTogglePlatform={onTogglePlatform}
             onSaveGroup={onSaveGroup}

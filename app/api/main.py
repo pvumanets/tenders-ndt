@@ -17,6 +17,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api import auth, inbox, platforms as platforms_api, results, runner, search_groups as search_groups_api
 from app.api import schedule as schedule_api
+from app.api import operator_settings as operator_settings_api
 from app.api import searches as searches_api
 from app.api.state import STATE
 from app.db.bootstrap import bootstrap_users
@@ -212,6 +213,28 @@ def api_schedule_put(body: dict | None = None):
         raise
 
 
+@app.get("/api/operator-settings")
+def api_operator_settings_get():
+    try:
+        return operator_settings_api.get_operator_settings()
+    except RuntimeError as exc:
+        if str(exc) == "database_unconfigured":
+            raise HTTPException(status_code=503, detail="db_down") from exc
+        raise
+
+
+@app.put("/api/operator-settings")
+def api_operator_settings_put(body: dict | None = None):
+    try:
+        return operator_settings_api.put_operator_settings(body or {})
+    except operator_settings_api.OperatorSettingsError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        if str(exc) == "database_unconfigured":
+            raise HTTPException(status_code=503, detail="db_down") from exc
+        raise
+
+
 @app.post("/api/run/stop")
 def api_stop():
     runner.request_stop()
@@ -398,6 +421,9 @@ def api_inbox(
     ingested_to: str | None = Query(default=None),
     ai_reviewed: str | None = Query(default=None),
     ai_trigger: str | None = Query(default=None),
+    price_min_rub: str | None = Query(default=None),
+    platform: str | None = Query(default=None),
+    bitrix: str | None = Query(default=None),
 ):
     try:
         return inbox.list_inbox(
@@ -410,6 +436,9 @@ def api_inbox(
             ingested_to=ingested_to,
             ai_reviewed=ai_reviewed,
             ai_trigger=ai_trigger,
+            price_min_rub=price_min_rub,
+            platform=platform,
+            bitrix=bitrix,
         )
     except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
         _inbox_http(exc)
