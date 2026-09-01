@@ -19,12 +19,16 @@ from app.worker.cookies import (
 )
 from app.worker.list_scrape import probe_rostender_cookies
 from app.worker import b2b_center as b2b_center_worker
+from app.worker import oilb2bcs as oilb2bcs_worker
 from app.worker import roseltorg as roseltorg_worker
+from app.worker import rts_rosatom as rts_rosatom_worker
 from app.worker import tender_pro as tender_pro_worker
 from app.worker.platform_ids import (
     PLATFORM_B2B_CENTER,
+    PLATFORM_OILB2BCS,
     PLATFORM_ROSELTORG,
     PLATFORM_ROSTENDER,
+    PLATFORM_RTS_ROSATOM,
     PLATFORM_TENDER_PRO,
 )
 from app.worker.search_seeds import PLATFORM_LABELS, PLATFORM_ORDER
@@ -47,7 +51,14 @@ class PlatformPatch(BaseModel):
 
 
 _COOKIE_PLATFORMS = frozenset(
-    {PLATFORM_ROSTENDER, PLATFORM_TENDER_PRO, PLATFORM_ROSELTORG, PLATFORM_B2B_CENTER}
+    {
+        PLATFORM_ROSTENDER,
+        PLATFORM_TENDER_PRO,
+        PLATFORM_ROSELTORG,
+        PLATFORM_B2B_CENTER,
+        PLATFORM_RTS_ROSATOM,
+        PLATFORM_OILB2BCS,
+    }
 )
 
 
@@ -65,6 +76,8 @@ def _session_for_platform(platform_id: str, sessions: dict[str, Any], rostender:
         return "expired"
     if code in {"missing_cookies", "missing"}:
         return "missing"
+    if code == "blocked":
+        return "blocked"
     return "unknown"
 
 
@@ -73,6 +86,8 @@ def _api_session_from_probe(probe: str) -> str:
         return "ok"
     if probe == "expired":
         return "expired"
+    if probe == "blocked":
+        return "blocked"
     return "missing"
 
 
@@ -82,6 +97,8 @@ def _apply_probe_to_state(platform_id: str, probe: str) -> str:
         STATE.set_session("missing_cookies", platform_id=platform_id)
     elif probe == "expired":
         STATE.set_session("expired", platform_id=platform_id)
+    elif probe == "blocked":
+        STATE.set_session("blocked", platform_id=platform_id)
     else:
         STATE.set_session("ok", platform_id=platform_id)
     return api_session
@@ -101,6 +118,12 @@ def _probe_platform(platform_id: str) -> str:
     if platform_id == PLATFORM_B2B_CENTER:
         base = os.getenv("B2B_CENTER_BASE_URL", b2b_center_worker.DEFAULT_BASE)
         return b2b_center_worker.probe_b2b_center_session(path, base)
+    if platform_id == PLATFORM_RTS_ROSATOM:
+        base = os.getenv("RTS_ROSATOM_BASE_URL", rts_rosatom_worker.DEFAULT_BASE)
+        return rts_rosatom_worker.probe_rts_rosatom_session(path, base)
+    if platform_id == PLATFORM_OILB2BCS:
+        base = os.getenv("OILB2BCS_BASE_URL", oilb2bcs_worker.DEFAULT_BASE)
+        return oilb2bcs_worker.probe_oilb2bcs_session(path, base)
     return "missing"
 
 
@@ -167,7 +190,7 @@ def upload_platform_cookies(platform_id: str, body: Any) -> dict[str, Any]:
 
     probe = _probe_platform(slug)
     api_session = _apply_probe_to_state(slug, probe)
-    if api_session in {"expired", "missing"}:
+    if api_session in {"expired", "missing", "blocked"}:
         notify.notify_ops_session(platform_id=slug, session=api_session)
 
     return {

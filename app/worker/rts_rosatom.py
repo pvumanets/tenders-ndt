@@ -1,23 +1,23 @@
-"""B2B-Center market adapter (thin wrapper over rts_market)."""
+"""RTS Rosatom market adapter (B2B/RTS stack on rosatom.rts-tender.ru)."""
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
 
 from app.worker import rts_market
-from app.worker.platform_ids import PLATFORM_B2B_CENTER, compose_tender_id
+from app.worker.platform_ids import PLATFORM_RTS_ROSATOM, compose_tender_id
 
 SITE = rts_market.RtsMarketSite(
-    platform_id=PLATFORM_B2B_CENTER,
-    default_base="https://www.b2b-center.ru",
-    cookies_env="B2B_CENTER_COOKIES_FILE",
-    default_cookies_file="./cookies.b2b-center.txt",
-    base_url_env="B2B_CENTER_BASE_URL",
-    probe_markers=("b2b-center",),
+    platform_id=PLATFORM_RTS_ROSATOM,
+    default_base="https://www.rosatom.rts-tender.ru",
+    cookies_env="RTS_ROSATOM_COOKIES_FILE",
+    default_cookies_file="./cookies.rts-rosatom.txt",
+    base_url_env="RTS_ROSATOM_BASE_URL",
+    probe_markers=("rts-tender", "b2b-center", "rosatom"),
 )
 
 DEFAULT_BASE = SITE.default_base
-B2BCenterRow = rts_market.RtsMarketRow
+RtsRosatomRow = rts_market.RtsMarketRow
 
 
 def cookies_path() -> Path:
@@ -40,10 +40,6 @@ def list_query_params(keyword: str, *, page: int = 1) -> dict[str, str]:
     return rts_market.list_query_params(keyword, page=page)
 
 
-def _cookie_dict(path: Path | None = None) -> dict[str, str]:
-    return rts_market._cookie_dict(SITE, path)
-
-
 def parse_list_html(html: str, *, base: str | None = None) -> list[rts_market.RtsMarketRow]:
     return rts_market.parse_list_html(html, site=SITE, base=base)
 
@@ -52,7 +48,7 @@ def parse_card_html(html: str, *, title_hint: str = "", base: str | None = None)
     return rts_market.parse_card_html(html, title_hint=title_hint, base=base)
 
 
-def probe_b2b_center_session(
+def probe_rts_rosatom_session(
     path: Path | None = None,
     base_url_arg: str | None = None,
     *,
@@ -129,4 +125,4 @@ def enrich_cards(
 
 
 def prefixed_compose(native_id: str) -> str:
-    return compose_tender_id(PLATFORM_B2B_CENTER, native_id)
+    return compose_tender_id(PLATFORM_RTS_ROSATOM, native_id)

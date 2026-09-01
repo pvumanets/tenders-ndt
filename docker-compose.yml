@@ -31,12 +31,16 @@ services:
       TENDER_PRO_COOKIES_FILE: /app/cookies.tender-pro.txt
       ROSELTORG_COOKIES_FILE: /app/cookies.roseltorg.txt
       B2B_CENTER_COOKIES_FILE: /app/cookies.b2b-center.txt
+      RTS_ROSATOM_COOKIES_FILE: /app/cookies.rts-rosatom.txt
+      OILB2BCS_COOKIES_FILE: /app/cookies.oilb2bcs.txt
     volumes:
       - ./runs:/app/runs
       - ./cookies.rostender.txt:/app/cookies.rostender.txt:rw
       - ./cookies.tender-pro.txt:/app/cookies.tender-pro.txt:rw
       - ./cookies.roseltorg.txt:/app/cookies.roseltorg.txt:rw
       - ./cookies.b2b-center.txt:/app/cookies.b2b-center.txt:rw
+      - ./cookies.rts-rosatom.txt:/app/cookies.rts-rosatom.txt:rw
+      - ./cookies.oilb2bcs.txt:/app/cookies.oilb2bcs.txt:rw
       - docs_data:/data/docs
     depends_on:
       db:

@@ -63,7 +63,9 @@ async def lifespan(_app: FastAPI):
         from app.api.search_groups import ensure_group_seeds
         from app.api.search_queue_sync import (
             sync_b2b_center_queue_from_cookies,
+            sync_oilb2bcs_queue_from_cookies,
             sync_roseltorg_queue_from_credentials,
+            sync_rts_rosatom_queue_from_cookies,
             sync_tender_pro_queue_from_cookies,
         )
 
@@ -71,6 +73,8 @@ async def lifespan(_app: FastAPI):
         sync_tender_pro_queue_from_cookies()
         sync_roseltorg_queue_from_credentials()
         sync_b2b_center_queue_from_cookies()
+        sync_rts_rosatom_queue_from_cookies()
+        sync_oilb2bcs_queue_from_cookies()
     except Exception:  # noqa: BLE001 — startup must not die on optional sync
         pass
     task = asyncio.create_task(_schedule_loop())

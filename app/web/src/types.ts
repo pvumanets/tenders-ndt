@@ -55,6 +55,7 @@ export type PlatformSession =
   | "ok"
   | "missing"
   | "expired"
+  | "blocked"
   | "list_without_login"
   | "unknown";
 

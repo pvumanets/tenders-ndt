@@ -80,10 +80,10 @@ def test_json_locor_rejects_bad() -> None:
 
 @pytest.mark.unit
 def test_upload_cookies_401_and_404() -> None:
-    with _client() as client:
-        anon = client.post("/api/platforms/rostender/cookies", json=_locor_items())
-        assert anon.status_code == 401
-        _assert_no_cookie_values(anon.json())
+    client = TestClient(app)
+    anon = client.post("/api/platforms/rostender/cookies", json=_locor_items())
+    assert anon.status_code == 401
+    _assert_no_cookie_values(anon.json())
 
 
 @pytest.mark.unit
@@ -113,8 +113,20 @@ def test_upload_cookies_writes_and_probes(
     _assert_no_cookie_values(b2b)
     assert b2b_jar.is_file()
 
+    rts_jar = tmp_path / "cookies.rts-rosatom.txt"
+    monkeypatch.setenv("RTS_ROSATOM_COOKIES_FILE", str(rts_jar))
+    rts = platforms_api.upload_platform_cookies("rts-rosatom", _locor_items())
+    assert rts == {"platform_id": "rts-rosatom", "session": "ok", "probed": True}
+    assert rts_jar.is_file()
+
+    oil_jar = tmp_path / "cookies.oilb2bcs.txt"
+    monkeypatch.setenv("OILB2BCS_COOKIES_FILE", str(oil_jar))
+    oil = platforms_api.upload_platform_cookies("oilb2bcs", _locor_items())
+    assert oil == {"platform_id": "oilb2bcs", "session": "ok", "probed": True}
+    assert oil_jar.is_file()
+
     with pytest.raises(platforms_api.PlatformNotFound):
-        platforms_api.upload_platform_cookies("oilb2bcs", _locor_items())
+        platforms_api.upload_platform_cookies("sibur-srm", _locor_items())
     with pytest.raises(platforms_api.CookieUploadError, match="empty_cookies"):
         platforms_api.upload_platform_cookies("rostender", [])
     with pytest.raises(platforms_api.CookieUploadError, match="invalid_cookies_json"):

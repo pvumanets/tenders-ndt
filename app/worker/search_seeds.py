@@ -99,12 +99,21 @@ _PACKAGE_E_QUERIES = [
     "сварных соединений",
 ]
 
-PLATFORM_ORDER = ("rostender", "tender-pro", "roseltorg", "b2b-center")
+PLATFORM_ORDER = (
+    "rostender",
+    "tender-pro",
+    "roseltorg",
+    "b2b-center",
+    "rts-rosatom",
+    "oilb2bcs",
+)
 PLATFORM_LABELS = {
     "rostender": "РосТендер",
     "tender-pro": "Tender.Pro",
     "roseltorg": "Росэлторг",
     "b2b-center": "B2B-Center",
+    "rts-rosatom": "РТС (Росатом)",
+    "oilb2bcs": "OilB2B",
 }
 
 

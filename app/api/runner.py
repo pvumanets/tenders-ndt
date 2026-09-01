@@ -15,7 +15,9 @@ from app.api.notify import notify_ops_session
 from app.api.state import STATE
 from app.scoring.pipeline import rescore_rows, score_rows
 from app.worker import b2b_center as b2b_center_worker
+from app.worker import oilb2bcs as oilb2bcs_worker
 from app.worker import roseltorg as roseltorg_worker
+from app.worker import rts_rosatom as rts_rosatom_worker
 from app.worker import tender_pro as tender_pro_worker
 from app.worker.artifacts import write_artifacts
 from app.worker.card_scrape import enrich_cards
@@ -25,8 +27,10 @@ from app.worker.ingest import ingest_run, redact_db_error, snapshot_expired_tend
 from app.worker.list_scrape import AuthError, probe_rostender_cookies, scrape_queries
 from app.worker.platform_ids import (
     PLATFORM_B2B_CENTER,
+    PLATFORM_OILB2BCS,
     PLATFORM_ROSELTORG,
     PLATFORM_ROSTENDER,
+    PLATFORM_RTS_ROSATOM,
     PLATFORM_TENDER_PRO,
     prefix_rows,
 )
@@ -49,6 +53,10 @@ def _cookies_path(platform_id: str = PLATFORM_ROSTENDER) -> Path:
         raw = os.getenv("ROSELTORG_COOKIES_FILE", "./cookies.roseltorg.txt")
     elif platform_id == PLATFORM_B2B_CENTER:
         raw = os.getenv("B2B_CENTER_COOKIES_FILE", "./cookies.b2b-center.txt")
+    elif platform_id == PLATFORM_RTS_ROSATOM:
+        raw = os.getenv("RTS_ROSATOM_COOKIES_FILE", "./cookies.rts-rosatom.txt")
+    elif platform_id == PLATFORM_OILB2BCS:
+        raw = os.getenv("OILB2BCS_COOKIES_FILE", "./cookies.oilb2bcs.txt")
     else:
         raw = os.getenv("ROSTENDER_COOKIES_FILE", "./cookies.rostender.txt")
     path = Path(raw)
@@ -143,8 +151,36 @@ def refresh_session(*, probe_roseltorg_live: bool = True) -> str:
         STATE.set_session("missing_cookies", platform_id=PLATFORM_B2B_CENTER)
     elif b2b_probe == "expired":
         STATE.set_session("expired", platform_id=PLATFORM_B2B_CENTER)
+    elif b2b_probe == "blocked":
+        STATE.set_session("blocked", platform_id=PLATFORM_B2B_CENTER)
     else:
         STATE.set_session("ok", platform_id=PLATFORM_B2B_CENTER)
+
+    rts_cookies = _cookies_path(PLATFORM_RTS_ROSATOM)
+    rts_base = os.getenv("RTS_ROSATOM_BASE_URL", rts_rosatom_worker.DEFAULT_BASE)
+    rts_probe = rts_rosatom_worker.probe_rts_rosatom_session(
+        rts_cookies, rts_base, on_retry=_http_retry_callback
+    )
+    if rts_probe == "missing":
+        STATE.set_session("missing_cookies", platform_id=PLATFORM_RTS_ROSATOM)
+    elif rts_probe == "expired":
+        STATE.set_session("expired", platform_id=PLATFORM_RTS_ROSATOM)
+    elif rts_probe == "blocked":
+        STATE.set_session("blocked", platform_id=PLATFORM_RTS_ROSATOM)
+    else:
+        STATE.set_session("ok", platform_id=PLATFORM_RTS_ROSATOM)
+
+    oil_cookies = _cookies_path(PLATFORM_OILB2BCS)
+    oil_base = os.getenv("OILB2BCS_BASE_URL", oilb2bcs_worker.DEFAULT_BASE)
+    oil_probe = oilb2bcs_worker.probe_oilb2bcs_session(
+        oil_cookies, oil_base, on_retry=_http_retry_callback
+    )
+    if oil_probe == "missing":
+        STATE.set_session("missing_cookies", platform_id=PLATFORM_OILB2BCS)
+    elif oil_probe == "expired":
+        STATE.set_session("expired", platform_id=PLATFORM_OILB2BCS)
+    else:
+        STATE.set_session("ok", platform_id=PLATFORM_OILB2BCS)
     return STATE.snapshot()["session"]
 
 
@@ -311,6 +347,23 @@ def _download_docs(rows: list[dict], *, platform_id: str) -> None:
                 level="warn",
             )
             return
+    if platform_id == PLATFORM_RTS_ROSATOM:
+        if not cookies.is_file():
+            STATE.log_msg("Docs: РТС Росатом cookies missing — skip files", level="warn")
+            return
+        rts_base = os.getenv("RTS_ROSATOM_BASE_URL", rts_rosatom_worker.DEFAULT_BASE)
+        rts_probe = rts_rosatom_worker.probe_rts_rosatom_session(
+            cookies, rts_base, on_retry=_http_retry_callback
+        )
+        if rts_probe != "ok":
+            STATE.log_msg(
+                f"Docs: РТС Росатом session {rts_probe} — skip files",
+                level="warn",
+            )
+            return
+    if platform_id == PLATFORM_OILB2BCS:
+        STATE.log_msg("Docs: OilB2B — скачивание файлов не поддержано", level="warn")
+        return
     if platform_id == PLATFORM_ROSTENDER and not cookies.is_file():
         STATE.log_msg("Docs: rostender cookies missing — skip files", level="warn")
         return
@@ -389,6 +442,10 @@ def _run_one_search(*, item: dict, run_dir: Path) -> str:
         return _run_roseltorg(item=item, run_dir=run_dir)
     if platform == PLATFORM_B2B_CENTER:
         return _run_b2b_center(item=item, run_dir=run_dir)
+    if platform == PLATFORM_RTS_ROSATOM:
+        return _run_rts_rosatom(item=item, run_dir=run_dir)
+    if platform == PLATFORM_OILB2BCS:
+        return _run_oilb2bcs(item=item, run_dir=run_dir)
     if platform == PLATFORM_ROSTENDER:
         return _run_rostender(item=item, run_dir=run_dir)
     STATE.log_msg(f"No adapter for {platform} — skip", level="warn")
@@ -705,6 +762,9 @@ def _run_b2b_center(*, item: dict, run_dir: Path) -> str:
     elif b2b_probe == "expired":
         STATE.set_session("expired", platform_id=PLATFORM_B2B_CENTER)
         STATE.log_msg("B2B-Center session expired — list without login", level="warn")
+    elif b2b_probe == "blocked":
+        STATE.set_session("blocked", platform_id=PLATFORM_B2B_CENTER)
+        STATE.log_msg("B2B-Center captcha — list without login", level="warn")
     else:
         STATE.set_session("ok", platform_id=PLATFORM_B2B_CENTER)
     queries = [str(q) for q in (item.get("queries") or []) if str(q).strip()]
@@ -828,6 +888,224 @@ def _run_b2b_center(*, item: dict, run_dir: Path) -> str:
         )
         STATE.log_msg(f"{type(e).__name__}: {e}", level="error")
         return "error"
+
+
+def _run_cookie_platform(
+    *,
+    item: dict,
+    run_dir: Path,
+    platform_id: str,
+    probe_session,
+    scrape_queries_fn,
+    enrich_cards_fn,
+    base_env: str,
+    default_base: str,
+    label: str,
+    require_ok_session: bool,
+    p1_log: str,
+    p3_log: str,
+) -> str:
+    base = os.getenv(base_env, default_base)
+    cookies = _cookies_path(platform_id)
+    probe = probe_session(cookies, base, on_retry=_http_retry_callback)
+    if probe == "missing":
+        STATE.set_session("missing_cookies", platform_id=platform_id)
+        STATE.log_msg(f"{label}: нет cookies", level="error" if require_ok_session else "warn")
+        if require_ok_session:
+            notify_ops_session(platform_id=platform_id, session="missing")
+            _ingest_step(
+                item=item,
+                status="error",
+                rows=[],
+                started_at=datetime.now(timezone.utc),
+                error="missing_cookies",
+            )
+            return "error"
+    elif probe == "expired":
+        STATE.set_session("expired", platform_id=platform_id)
+        STATE.log_msg(f"{label}: сессия устарела", level="error" if require_ok_session else "warn")
+        if require_ok_session:
+            notify_ops_session(platform_id=platform_id, session="expired")
+            _ingest_step(
+                item=item,
+                status="error",
+                rows=[],
+                started_at=datetime.now(timezone.utc),
+                error="session_expired",
+            )
+            return "error"
+    elif probe == "blocked":
+        STATE.set_session("blocked", platform_id=platform_id)
+        STATE.log_msg(f"{label}: captcha — прогон невозможен", level="error")
+        notify_ops_session(platform_id=platform_id, session="blocked")
+        _ingest_step(
+            item=item,
+            status="error",
+            rows=[],
+            started_at=datetime.now(timezone.utc),
+            error="captcha_blocked",
+        )
+        return "error"
+    else:
+        STATE.set_session("ok", platform_id=platform_id)
+
+    queries = [str(q) for q in (item.get("queries") or []) if str(q).strip()]
+    exclude = [str(x) for x in (item.get("exclude") or []) if str(x).strip()]
+    limit = int(item.get("limit_n") or 0)
+    started_at = datetime.now(timezone.utc)
+    enriched: list[dict] = []
+    summary: dict = {}
+    cookies_arg = cookies if cookies.is_file() else None
+    try:
+        STATE.set_phase("P1")
+        STATE.log_msg(p1_log)
+        rows = scrape_queries_fn(
+            queries=queries,
+            limit=limit,
+            base=base,
+            cookies_file=cookies_arg,
+            exclude=exclude,
+            should_stop=STATE.should_stop,
+            on_retry=_http_retry_callback,
+            on_progress=lambda n, lim: STATE.set_list_progress(n, lim),
+        )
+        rows = prefix_rows(rows, platform_id)
+        (run_dir / "raw-list.json").write_text(
+            json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        STATE.set_list_progress(len(rows), limit)
+        STATE.log_msg(f"P1 done: {len(rows)} rows")
+        if STATE.should_stop():
+            STATE.log_msg("Stopped after P1", level="warn")
+            _ingest_step(item=item, status="stopped", rows=[], started_at=started_at)
+            return "cancelled"
+
+        STATE.set_phase("P2")
+        STATE.log_msg("P2: scoring…")
+        scored, summary, card_ids = score_rows(rows)
+        STATE.add_counters(summary)
+        (run_dir / "scored-list.json").write_text(
+            json.dumps(scored, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        (run_dir / "tier-summary.json").write_text(
+            json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        (run_dir / "card-ids.json").write_text(
+            json.dumps(card_ids, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        STATE.set_cards_progress(0, len(card_ids))
+        STATE.log_msg(f"P2 done: tiers={summary} cards={len(card_ids)}")
+        if STATE.should_stop():
+            STATE.log_msg("Stopped after P2", level="warn")
+            _ingest_step(
+                item=item,
+                status="stopped",
+                rows=_board_rows(scored),
+                started_at=started_at,
+            )
+            return "cancelled"
+
+        STATE.set_phase("P3")
+        STATE.log_msg(p3_log)
+        enriched, errors = enrich_cards_fn(
+            scored,
+            card_ids,
+            base=base,
+            cookies_file=cookies_arg,
+            delay_s=0.2,
+            should_stop=STATE.should_stop,
+            on_retry=_http_retry_callback,
+            on_progress=lambda d, t: STATE.set_cards_progress(d, t),
+        )
+        old_summary = dict(summary)
+        enriched, summary, card_ids = rescore_rows(enriched)
+        _apply_rescore_counter_delta(old_summary, summary)
+        _write_scored_bundle(run_dir, enriched, summary, card_ids)
+        (run_dir / "cards-errors.json").write_text(
+            json.dumps(errors, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        STATE.log_msg(f"P3 done: errors={len(errors)}; re-score tiers={summary}")
+        if STATE.should_stop():
+            STATE.set_phase("P4")
+            write_artifacts(run_dir, enriched)
+            STATE.log_msg("Stopped during/after P3; partial artifacts written", level="warn")
+            _ingest_step(
+                item=item,
+                status="stopped",
+                rows=_board_rows(enriched),
+                started_at=started_at,
+            )
+            _download_docs(enriched, platform_id=platform_id)
+            return "cancelled"
+
+        STATE.set_phase("P4")
+        STATE.log_msg("P4: artifacts…")
+        return _finish_artifacts(
+            item=item,
+            run_dir=run_dir,
+            enriched=enriched,
+            summary=summary,
+            limit=limit,
+            started_at=started_at,
+            platform_id=platform_id,
+        )
+    except AuthError as e:
+        session = "blocked" if "captcha" in str(e) else "expired"
+        STATE.set_session(session, platform_id=platform_id)
+        notify_ops_session(platform_id=platform_id, session=session)
+        _ingest_step(
+            item=item,
+            status="error",
+            rows=enriched,
+            started_at=started_at,
+            error=f"AuthError: {e}",
+        )
+        STATE.log_msg(f"AuthError: {e}", level="error")
+        return "error"
+    except Exception as e:  # noqa: BLE001
+        _ingest_step(
+            item=item,
+            status="error",
+            rows=enriched,
+            started_at=started_at,
+            error=f"{type(e).__name__}: {e}",
+        )
+        STATE.log_msg(f"{type(e).__name__}: {e}", level="error")
+        return "error"
+
+
+def _run_rts_rosatom(*, item: dict, run_dir: Path) -> str:
+    return _run_cookie_platform(
+        item=item,
+        run_dir=run_dir,
+        platform_id=PLATFORM_RTS_ROSATOM,
+        probe_session=rts_rosatom_worker.probe_rts_rosatom_session,
+        scrape_queries_fn=rts_rosatom_worker.scrape_queries,
+        enrich_cards_fn=rts_rosatom_worker.enrich_cards,
+        base_env="RTS_ROSATOM_BASE_URL",
+        default_base=rts_rosatom_worker.DEFAULT_BASE,
+        label="РТС Росатом",
+        require_ok_session=True,
+        p1_log="P1: РТС Росатом list scrape…",
+        p3_log="P3: РТС Росатом view.html cards…",
+    )
+
+
+def _run_oilb2bcs(*, item: dict, run_dir: Path) -> str:
+    return _run_cookie_platform(
+        item=item,
+        run_dir=run_dir,
+        platform_id=PLATFORM_OILB2BCS,
+        probe_session=oilb2bcs_worker.probe_oilb2bcs_session,
+        scrape_queries_fn=oilb2bcs_worker.scrape_queries,
+        enrich_cards_fn=oilb2bcs_worker.enrich_cards,
+        base_env="OILB2BCS_BASE_URL",
+        default_base=oilb2bcs_worker.DEFAULT_BASE,
+        label="OilB2B",
+        require_ok_session=True,
+        p1_log="P1: OilB2B GetClaims list…",
+        p3_log="P3: OilB2B card markers…",
+    )
 
 
 def _run_roseltorg(*, item: dict, run_dir: Path) -> str:

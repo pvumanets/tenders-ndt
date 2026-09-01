@@ -4,6 +4,7 @@ from __future__ import annotations
 import pytest
 
 from app.worker import b2b_center
+from app.worker import rts_market
 from app.worker.platform_ids import PLATFORM_B2B_CENTER, compose_tender_id, prefix_rows
 
 _LIST_HTML = """
@@ -90,7 +91,16 @@ def test_prefix_rows_b2b() -> None:
 def test_scrape_queries_dedup(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
 
-    def fake_page(*, keyword: str, base=None, page: int = 1, client=None, on_retry=None):
+    def fake_page(
+        site,
+        *,
+        keyword: str,
+        base=None,
+        page: int = 1,
+        client=None,
+        cookies_file=None,
+        on_retry=None,
+    ):
         calls.append(keyword)
         if keyword == "ВИК":
             return (
@@ -119,8 +129,8 @@ def test_scrape_queries_dedup(monkeypatch: pytest.MonkeyPatch) -> None:
             None,
         )
 
-    monkeypatch.setattr(b2b_center, "scrape_list_page", fake_page)
-    monkeypatch.setattr(b2b_center, "_cookie_dict", lambda path=None: {})
+    monkeypatch.setattr(rts_market, "scrape_list_page", fake_page)
+    monkeypatch.setattr(rts_market, "_cookie_dict", lambda site, path=None: {})
     rows = b2b_center.scrape_queries(queries=["ВИК", "УЗК"], delay_s=0)
     assert [r["tender_id"] for r in rows] == ["1", "2"]
     assert calls == ["ВИК", "УЗК"]

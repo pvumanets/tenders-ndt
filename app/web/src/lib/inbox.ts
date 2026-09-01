@@ -299,6 +299,9 @@ export function platformLabel(platformId: string): string {
   if (platformId === "tender-pro") return copy.platform_tender_pro;
   if (platformId === "rostender") return copy.platform_rostender;
   if (platformId === "roseltorg") return copy.platform_roseltorg;
+  if (platformId === "b2b-center") return copy.platform_b2b_center;
+  if (platformId === "rts-rosatom") return copy.platform_rts_rosatom;
+  if (platformId === "oilb2bcs") return copy.platform_oilb2bcs;
   return platformId;
 }
 
@@ -310,6 +313,8 @@ export function sessionStatusLabel(session: PlatformSession | string): string {
       return copy.session_status_missing;
     case "expired":
       return copy.session_status_expired;
+    case "blocked":
+      return copy.session_status_blocked;
     case "list_without_login":
       return copy.session_status_list_without_login;
     default:
@@ -404,6 +409,7 @@ function parsePlatformSession(raw: unknown): PlatformSession {
   if (raw === "ok") return "ok";
   if (raw === "missing") return "missing";
   if (raw === "expired") return "expired";
+  if (raw === "blocked") return "blocked";
   if (raw === "list_without_login") return "list_without_login";
   return "unknown";
 }
