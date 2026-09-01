@@ -15,9 +15,16 @@ function minPriceStep(value: number): number {
 }
 
 function snapMinPrice(value: number): number {
+  if (!Number.isFinite(value)) return 0;
   const clamped = Math.max(0, Math.min(MIN_PRICE_MAX, value));
   const step = minPriceStep(clamped);
   return Math.round(clamped / step) * step;
+}
+
+function normalizeMinPrice(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return 100_000;
+  return snapMinPrice(n);
 }
 
 export default function SettingsMinPrice({
@@ -29,13 +36,13 @@ export default function SettingsMinPrice({
   locked: boolean;
   onSaved: (next: OperatorSettings) => void;
 }) {
-  const [value, setValue] = useState(settings.l1_min_price_rub);
+  const [value, setValue] = useState(() => normalizeMinPrice(settings.l1_min_price_rub));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setValue(settings.l1_min_price_rub);
+    setValue(normalizeMinPrice(settings.l1_min_price_rub));
   }, [settings.l1_min_price_rub]);
 
   async function onSave() {
@@ -72,7 +79,7 @@ export default function SettingsMinPrice({
           value={value}
           min={0}
           max={MIN_PRICE_MAX}
-          step={null}
+          step={1_000}
           disabled={locked || busy}
           onChange={(_, next) => {
             const raw = typeof next === "number" ? next : next[0];

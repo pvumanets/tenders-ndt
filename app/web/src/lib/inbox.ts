@@ -605,9 +605,10 @@ export async function putSchedule(body: {
 }
 
 function parseOperatorSettings(raw: Partial<OperatorSettings>): OperatorSettings {
+  const n = Number(raw.l1_min_price_rub);
+  const rub = Number.isFinite(n) ? n : 100_000;
   return {
-    l1_min_price_rub:
-      typeof raw.l1_min_price_rub === "number" ? raw.l1_min_price_rub : 100_000,
+    l1_min_price_rub: Math.max(0, Math.min(5_000_000, Math.round(rub))),
   };
 }
 

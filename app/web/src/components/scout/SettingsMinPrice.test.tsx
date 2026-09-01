@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import SettingsMinPrice from "./SettingsMinPrice";
@@ -28,5 +28,21 @@ describe("SettingsMinPrice", () => {
       expect(onSaved).toHaveBeenCalledWith({ l1_min_price_rub: 120_000 });
     });
     putSpy.mockRestore();
+  });
+
+  it("updates threshold label when slider moves", () => {
+    render(
+      <ThemeRegistry>
+        <SettingsMinPrice
+          settings={{ l1_min_price_rub: 100_000 }}
+          locked={false}
+          onSaved={vi.fn()}
+        />
+      </ThemeRegistry>,
+    );
+
+    const slider = screen.getAllByRole("slider")[0];
+    fireEvent.change(slider, { target: { value: "250000" } });
+    expect(slider).toHaveAttribute("aria-valuenow", "250000");
   });
 });
