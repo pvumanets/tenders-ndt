@@ -13,6 +13,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.worker.cookies import parse_netscape_cookies
+from app.worker.http_relay import relay_configured, relay_fetch
 from app.worker.http_retry import request_with_retry
 from app.worker.list_scrape import AuthError, UA
 
@@ -105,6 +106,43 @@ def _cookie_dict(site: RtsMarketSite, path: Path | None = None) -> dict[str, str
     except OSError:
         return {}
     return out
+
+
+def _market_request(
+    client: httpx.Client,
+    method: str,
+    url: str,
+    *,
+    cookies: dict[str, str] | None = None,
+    on_retry=None,
+    **kwargs: Any,
+) -> httpx.Response:
+    """Direct httpx or north-hub relay when SCOUT_HTTP_RELAY_* is set."""
+    if relay_configured():
+        headers = dict(client.headers)
+        extra = kwargs.pop("headers", None)
+        if extra:
+            headers.update(extra)
+        jar = cookies if cookies is not None else dict(client.cookies)
+        content = kwargs.get("content")
+        body = content if isinstance(content, bytes) else None
+        response = relay_fetch(
+            method,
+            url,
+            headers=headers,
+            cookies=jar,
+            content=body,
+        )
+        final_url = response.extensions.get("final_url")
+        if final_url:
+            response = httpx.Response(
+                status_code=response.status_code,
+                headers=response.headers,
+                content=response.content,
+                request=httpx.Request(method, str(final_url)),
+            )
+        return response
+    return request_with_retry(client, method, url, on_retry=on_retry, **kwargs)
 
 
 def _is_captcha_response(response: httpx.Response) -> bool:
@@ -263,8 +301,12 @@ def probe_session(
             follow_redirects=True,
             timeout=60.0,
         ) as client:
-            response = request_with_retry(
-                client, "GET", f"{root}{LIST_PATH}", on_retry=on_retry
+            response = _market_request(
+                client,
+                "GET",
+                f"{root}{LIST_PATH}",
+                cookies=cookies,
+                on_retry=on_retry,
             )
             if _is_captcha_response(response):
                 return "blocked"
@@ -321,12 +363,16 @@ def scrape_list_page(
     assert client is not None
     try:
         url = f"{root}{LIST_PATH}?{urlencode(list_query_params(keyword, page=page))}"
-        response = request_with_retry(client, "GET", url, on_retry=on_retry)
+        jar = _cookie_dict(site, cookies_file) if cookies_file else dict(client.cookies)
+        response = _market_request(
+            client, "GET", url, cookies=jar, on_retry=on_retry
+        )
         if _is_captcha_response(response):
             raise AuthError(f"{site.platform_id}_captcha_blocked")
         if response.status_code in {401, 403}:
             raise AuthError(f"{site.platform_id}_session_expired")
-        response.raise_for_status()
+        if not relay_configured():
+            response.raise_for_status()
         rows = parse_list_html(response.text, site=site, base=root)
         soup = BeautifulSoup(response.text, "lxml")
         return [asdict(r) for r in rows], soup
@@ -466,7 +512,10 @@ def enrich_cards(
             url = card_url(site, native, base=root)
             row["url"] = url
             try:
-                response = request_with_retry(client, "GET", url, on_retry=on_retry)
+                jar = _cookie_dict(site, cookies_file) if cookies_file else dict(client.cookies)
+                response = _market_request(
+                    client, "GET", url, cookies=jar, on_retry=on_retry
+                )
                 if _is_captcha_response(response):
                     errors.append({"tender_id": key, "error": "captcha_blocked"})
                     row["card_error"] = "captcha_blocked"
