@@ -67,28 +67,36 @@ export default function SettingsMinPrice({
       <Typography variant="body1" sx={{ fontWeight: 600 }}>
         {copy.min_price_value.replace("{price}", formatPrice(value))}
       </Typography>
-      <Slider
-        value={value}
-        min={0}
-        max={MIN_PRICE_MAX}
-        step={null}
-        disabled={locked || busy}
-        onChange={(_, next) => {
-          const raw = typeof next === "number" ? next : next[0];
-          setValue(snapMinPrice(raw));
-          setSaved(false);
-        }}
-        marks={[
-          { value: 0, label: "0" },
-          { value: 100_000, label: "100 тыс." },
-          { value: 500_000, label: "500 тыс." },
-          { value: MIN_PRICE_MAX, label: "5 млн" },
-        ]}
-        valueLabelDisplay="auto"
-        valueLabelFormat={(v) => formatPrice(v)}
-        sx={{ maxWidth: 520 }}
-      />
-      <Box>
+      <Box sx={{ width: "100%", maxWidth: 520, pt: 0.5, pb: 0.25 }}>
+        <Slider
+          value={value}
+          min={0}
+          max={MIN_PRICE_MAX}
+          step={null}
+          disabled={locked || busy}
+          onChange={(_, next) => {
+            const raw = typeof next === "number" ? next : next[0];
+            setValue(snapMinPrice(raw));
+            setSaved(false);
+          }}
+          valueLabelDisplay="auto"
+          valueLabelFormat={(v) => formatPrice(v)}
+          sx={{
+            mt: 0.5,
+            mb: 0.5,
+            "& .MuiSlider-thumb": { width: 18, height: 18 },
+          }}
+        />
+        <Stack direction="row" justifyContent="space-between" sx={{ px: 0.5 }}>
+          <Typography variant="caption" sx={{ color: stripe.textMuted }}>
+            0 ₽
+          </Typography>
+          <Typography variant="caption" sx={{ color: stripe.textMuted }}>
+            {formatPrice(MIN_PRICE_MAX)}
+          </Typography>
+        </Stack>
+      </Box>
+      <Box sx={{ pt: 0.5 }}>
         <Button variant="contained" size="small" disabled={locked || busy} onClick={() => void onSave()}>
           {copy.min_price_save}
         </Button>
