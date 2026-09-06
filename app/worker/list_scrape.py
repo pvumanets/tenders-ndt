@@ -68,7 +68,9 @@ def _extract_id(url: str) -> str:
     return m.group(1) if m else url.rstrip("/").split("/")[-1]
 
 
-def _assert_authorized(html: str, url: str) -> None:
+def _assert_authorized(html: str, url: str, *, status_code: int | None = None) -> None:
+    if status_code in {401, 403}:
+        raise AuthError(f"HTTP {status_code} at {url}")
     low = html.lower()
     if "403 forbidden" in low and "administrative rules" in low:
         raise AuthError(f"WAF/403 at {url}")
@@ -145,7 +147,7 @@ def is_open_upcoming(art, *, now: datetime | None = None) -> bool:
 def _start_search(client: httpx.Client, query: str, *, on_retry=None) -> str:
     """POST advanced search: open lots only, deadline from today, newest first."""
     r = request_with_retry(client, "GET", "/extsearch/advanced", on_retry=on_retry)
-    _assert_authorized(r.text, str(r.url))
+    _assert_authorized(r.text, str(r.url), status_code=r.status_code)
     soup = BeautifulSoup(r.text, "lxml")
     form = soup.select_one("#tenders-search-form")
     if not form:
@@ -172,7 +174,7 @@ def _start_search(client: httpx.Client, query: str, *, on_retry=None) -> str:
         data=data,
         on_retry=on_retry,
     )
-    _assert_authorized(r2.text, str(r2.url))
+    _assert_authorized(r2.text, str(r2.url), status_code=r2.status_code)
     return str(r2.url)
 
 
@@ -265,7 +267,7 @@ def probe_rostender_cookies(
                 "/extsearch/advanced",
                 on_retry=on_retry,
             )
-            _assert_authorized(r.text, str(r.url))
+            _assert_authorized(r.text, str(r.url), status_code=r.status_code)
         return "ok"
     except AuthError:
         return "expired"
@@ -313,7 +315,7 @@ def scrape_list(
                     f"{base_q}{sep}page={page_num}",
                     on_retry=on_retry,
                 )
-            _assert_authorized(r.text, str(r.url))
+            _assert_authorized(r.text, str(r.url), status_code=r.status_code)
             batch, raw_count = _parse_rows_meta(r.text, base_url)
             if raw_count == 0:
                 break

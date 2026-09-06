@@ -16,7 +16,12 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.db.config import database_url
 from app.db.models import Document, Lot
 from app.db.session import session_factory
-from app.worker.cookies import parse_netscape_cookies
+from app.worker.fetch_guard import (
+    FetchUrlDenied,
+    allow_hosts,
+    cookies_jar_from_netscape,
+    open_allowlisted_stream,
+)
 from app.worker.ingest import INBOX_TIERS
 from app.worker.list_scrape import AuthError, UA
 
@@ -97,10 +102,6 @@ def filename_from_content_disposition(header: str | None, fallback: str) -> str:
     plain = message.get_filename()
     safe = sanitize_filename(plain) if plain else None
     return safe or fallback
-
-
-def _cookie_dict(path: Path) -> dict[str, str]:
-    return {c["name"]: c["value"] for c in parse_netscape_cookies(path)}
 
 
 def _is_html_payload(content_type: str, body_prefix: bytes) -> bool:
@@ -185,14 +186,15 @@ def download_inbox_docs(
     saved = skipped = errors = 0
     auth_fails = 0
     own_client = client is None
+    hosts = allow_hosts()
     if own_client:
-        cookies = _cookie_dict(cookies_path)
-        if not cookies:
+        jar = cookies_jar_from_netscape(cookies_path)
+        if not jar:
             raise AuthError(f"No cookies in {cookies_path}")
         client = httpx.Client(
             headers={"User-Agent": UA, "Accept-Language": "ru-RU,ru;q=0.9"},
-            cookies=cookies,
-            follow_redirects=True,
+            cookies=jar,
+            follow_redirects=False,
             timeout=60.0,
         )
     assert client is not None
@@ -228,55 +230,58 @@ def download_inbox_docs(
                             relpath=volume_relpath(tender_id, dest_name),
                         )
                     continue
+                response: httpx.Response | None = None
                 try:
-                    with client.stream("GET", link["url"]) as response:
-                        if response.status_code == 403:
-                            auth_fails += 1
-                            errors += 1
-                            if auth_fails >= 5:
-                                raise AuthError("Too many 403 on docs — stop")
-                            continue
-                        response.raise_for_status()
-                        dest_name = filename_from_content_disposition(
-                            response.headers.get("content-disposition"),
-                            fallback,
-                        )
-                        if dest_name in used_names:
-                            dest_name = f"{Path(dest_name).stem}-{index}{Path(dest_name).suffix}"
-                        dest = root / folder / dest_name
-                        if dest.is_file():
-                            skipped += 1
-                            used_names.add(dest_name)
-                            if persist_meta:
-                                _persist_document(
-                                    tender_id=tender_id,
-                                    filename=dest_name,
-                                    size_bytes=dest.stat().st_size,
-                                    relpath=volume_relpath(tender_id, dest_name),
-                                )
-                            continue
-                        chunks = response.iter_bytes()
-                        first = next(chunks, b"")
-                        content_type = response.headers.get("content-type") or ""
-                        if _is_html_payload(content_type, first):
-                            errors += 1
-                            continue
-                        dest.parent.mkdir(parents=True, exist_ok=True)
-                        tmp = dest.with_name(dest.name + ".part")
-                        written = len(first)
-                        try:
-                            with tmp.open("wb") as handle:
-                                handle.write(first)
-                                for chunk in chunks:
-                                    written += len(chunk)
-                                    if written > MAX_FILE_BYTES:
-                                        raise ValueError("file_too_large")
-                                    handle.write(chunk)
-                            tmp.replace(dest)
-                        except Exception:
-                            if tmp.exists():
-                                tmp.unlink(missing_ok=True)
-                            raise
+                    response = open_allowlisted_stream(
+                        client, link["url"], allow=hosts
+                    )
+                    if response.status_code == 403:
+                        auth_fails += 1
+                        errors += 1
+                        if auth_fails >= 5:
+                            raise AuthError("Too many 403 on docs — stop")
+                        continue
+                    response.raise_for_status()
+                    dest_name = filename_from_content_disposition(
+                        response.headers.get("content-disposition"),
+                        fallback,
+                    )
+                    if dest_name in used_names:
+                        dest_name = f"{Path(dest_name).stem}-{index}{Path(dest_name).suffix}"
+                    dest = root / folder / dest_name
+                    if dest.is_file():
+                        skipped += 1
+                        used_names.add(dest_name)
+                        if persist_meta:
+                            _persist_document(
+                                tender_id=tender_id,
+                                filename=dest_name,
+                                size_bytes=dest.stat().st_size,
+                                relpath=volume_relpath(tender_id, dest_name),
+                            )
+                        continue
+                    chunks = response.iter_bytes()
+                    first = next(chunks, b"")
+                    content_type = response.headers.get("content-type") or ""
+                    if _is_html_payload(content_type, first):
+                        errors += 1
+                        continue
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    tmp = dest.with_name(dest.name + ".part")
+                    written = len(first)
+                    try:
+                        with tmp.open("wb") as handle:
+                            handle.write(first)
+                            for chunk in chunks:
+                                written += len(chunk)
+                                if written > MAX_FILE_BYTES:
+                                    raise ValueError("file_too_large")
+                                handle.write(chunk)
+                        tmp.replace(dest)
+                    except Exception:
+                        if tmp.exists():
+                            tmp.unlink(missing_ok=True)
+                        raise
                     saved += 1
                     used_names.add(dest_name)
                     if persist_meta:
@@ -288,8 +293,13 @@ def download_inbox_docs(
                         )
                 except AuthError:
                     raise
+                except FetchUrlDenied:
+                    errors += 1
                 except Exception:  # noqa: BLE001
                     errors += 1
+                finally:
+                    if response is not None:
+                        response.close()
                 time.sleep(delay_s)
     finally:
         if own_client:

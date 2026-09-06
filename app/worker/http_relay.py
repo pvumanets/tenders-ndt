@@ -1,6 +1,7 @@
 """HTTP fetch relay for scrape workers when egress IP is captcha-blocked (RTS/B2B).
 
 Uses SCOUT_HTTP_RELAY_URL + SCOUT_HTTP_RELAY_SECRET (north-hub :8798).
+Relay endpoint must be https:// or http://127.0.0.1 (R1 / 079).
 """
 from __future__ import annotations
 
@@ -42,6 +43,18 @@ def _host_allowed(url: str) -> bool:
     return host.endswith(".rts-tender.ru") or host.endswith(".b2b-center.ru")
 
 
+def assert_relay_endpoint_allowed(relay_url: str) -> None:
+    """Reject cleartext relay except loopback (cookies+secret must not cross plain WAN)."""
+    parsed = urlparse((relay_url or "").strip())
+    scheme = (parsed.scheme or "").lower()
+    host = (parsed.hostname or "").lower()
+    if scheme == "https":
+        return
+    if scheme == "http" and host == "127.0.0.1":
+        return
+    raise ValueError("http_relay_endpoint_insecure")
+
+
 def relay_fetch(
     method: str,
     url: str,
@@ -58,6 +71,7 @@ def relay_fetch(
         raise ValueError("http_relay_host_denied")
 
     base = (os.getenv("SCOUT_HTTP_RELAY_URL") or "").strip().rstrip("/")
+    assert_relay_endpoint_allowed(base)
     secret = (os.getenv("SCOUT_HTTP_RELAY_SECRET") or "").strip()
     payload = {
         "url": url,
