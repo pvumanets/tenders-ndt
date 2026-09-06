@@ -9,6 +9,7 @@ Allowlist: b2b-center.ru, *.rts-tender.ru
 from __future__ import annotations
 
 import base64
+import hmac
 import json
 import os
 import sys
@@ -19,7 +20,7 @@ from urllib.parse import urlparse
 import httpx
 
 ENV_PATH = Path("/opt/north-hub/.env")
-LISTEN = ("0.0.0.0", 8798)
+LISTEN = ("127.0.0.1", 8798)
 UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
@@ -52,6 +53,15 @@ SECRET = (
     (ENV.get("HTTP_RELAY_SECRET") or os.environ.get("HTTP_RELAY_SECRET") or "").strip()
     or (ENV.get("MAIL_RELAY_SECRET") or os.environ.get("MAIL_RELAY_SECRET") or "").strip()
 )
+
+
+def bearer_authorized(authorization: str | None, secret: str) -> bool:
+    """Constant-time Bearer check (R1 / 079)."""
+    if not secret:
+        return False
+    auth = authorization or ""
+    expected = f"Bearer {secret}"
+    return hmac.compare_digest(auth, expected)
 
 
 def host_allowed(url: str) -> bool:
@@ -127,8 +137,7 @@ class Handler(BaseHTTPRequestHandler):
         if not SECRET:
             self._json(503, {"ok": False, "error": "relay_unconfigured"})
             return
-        auth = self.headers.get("Authorization") or ""
-        if auth != f"Bearer {SECRET}":
+        if not bearer_authorized(self.headers.get("Authorization"), SECRET):
             self._json(401, {"ok": False, "error": "unauthorized"})
             return
         length = int(self.headers.get("Content-Length") or "0")

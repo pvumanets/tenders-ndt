@@ -57,3 +57,30 @@ def test_request_with_retry_raises_after_max_attempts(monkeypatch: pytest.Monkey
 
     with httpx.Client() as client, pytest.raises(httpx.HTTPStatusError):
         request_with_retry(client, "GET", "https://example.test/x", max_attempts=2)
+
+
+@pytest.mark.unit
+def test_request_with_retry_pass_through_403(monkeypatch: pytest.MonkeyPatch) -> None:
+    def always_403(_self, _method, _url, **kwargs):
+        del kwargs
+        return _FakeResponse(403)
+
+    monkeypatch.setattr(httpx.Client, "request", always_403)
+
+    with httpx.Client() as client:
+        response = request_with_retry(client, "GET", "https://example.test/x")
+    assert response.status_code == 403
+
+
+@pytest.mark.unit
+def test_request_with_retry_pass_through_401(monkeypatch: pytest.MonkeyPatch) -> None:
+    def always_401(_self, _method, _url, **kwargs):
+        del kwargs
+        return _FakeResponse(401)
+
+    monkeypatch.setattr(httpx.Client, "request", always_401)
+
+    with httpx.Client() as client:
+        response = request_with_retry(client, "GET", "https://example.test/x")
+    assert response.status_code == 401
+

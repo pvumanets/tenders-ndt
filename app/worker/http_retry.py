@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 DEFAULT_RETRY_STATUS = frozenset({429, 500, 502, 503, 504})
+DEFAULT_PASS_THROUGH_STATUS = frozenset({401, 403})
 DEFAULT_BACKOFF = (0.5, 1.5, 3.0)
 
 
@@ -19,14 +20,17 @@ def request_with_retry(
     max_attempts: int = 3,
     backoff: tuple[float, ...] = DEFAULT_BACKOFF,
     retry_status: frozenset[int] = DEFAULT_RETRY_STATUS,
+    pass_through_statuses: frozenset[int] = DEFAULT_PASS_THROUGH_STATUS,
     on_retry: Callable[[int, int], None] | None = None,
     **kwargs: Any,
 ) -> httpx.Response:
-    """Retry transient HTTP failures; last attempt raises on error status."""
+    """Retry transient HTTP failures; pass through auth statuses without raising."""
     attempt = 0
     while True:
         attempt += 1
         response = client.request(method, url, **kwargs)
+        if response.status_code in pass_through_statuses:
+            return response
         if response.status_code not in retry_status or attempt >= max_attempts:
             response.raise_for_status()
             return response

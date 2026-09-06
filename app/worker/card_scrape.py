@@ -10,10 +10,14 @@ from urllib.parse import urljoin, urlparse
 import httpx
 from bs4 import BeautifulSoup
 
-from app.worker.cookies import parse_netscape_cookies
 from app.worker.customer_name import clean_customer_name
 from app.worker.docs import sanitize_filename
-from app.worker.http_retry import request_with_retry
+from app.worker.fetch_guard import (
+    FetchUrlDenied,
+    allow_hosts,
+    cookies_jar_from_netscape,
+    request_allowlisted,
+)
 from app.worker.list_scrape import AuthError, UA
 
 _FILE_EXT = re.compile(
@@ -32,10 +36,6 @@ METHOD_PATTERNS = [
     ("ПВК", re.compile(r"\bпвк\b|капиллярн|цветн\w*\s+дефектоскоп|проникающ", re.I)),
     ("НК", re.compile(r"неразрушающ|\bнк\b", re.I)),
 ]
-
-
-def _cookie_dict(path: Path) -> dict[str, str]:
-    return {c["name"]: c["value"] for c in parse_netscape_cookies(path)}
 
 
 def _lines(html: str) -> list[str]:
@@ -227,14 +227,15 @@ def enrich_cards(
     errors: list[dict] = []
     auth_fails = 0
 
-    cookies = _cookie_dict(cookies_path)
-    if not cookies:
+    jar = cookies_jar_from_netscape(cookies_path)
+    if not jar:
         raise AuthError(f"No cookies in {cookies_path}")
+    hosts = allow_hosts()
 
     with httpx.Client(
         headers={"User-Agent": UA, "Accept-Language": "ru-RU,ru;q=0.9"},
-        cookies=cookies,
-        follow_redirects=True,
+        cookies=jar,
+        follow_redirects=False,
         timeout=60.0,
     ) as client:
         for i, tid in enumerate(card_ids, start=1):
@@ -250,7 +251,9 @@ def enrich_cards(
                 errors.append({"tender_id": tid, "error": "no_url"})
                 continue
             try:
-                r = request_with_retry(client, "GET", url, on_retry=on_retry)
+                r = request_allowlisted(
+                    client, "GET", url, allow=hosts, on_retry=on_retry
+                )
                 if r.status_code == 403 or (
                     "403 Forbidden" in r.text and "administrative rules" in r.text
                 ):
@@ -270,6 +273,9 @@ def enrich_cards(
                     row["card_fetched"] = True
             except AuthError:
                 raise
+            except FetchUrlDenied as e:
+                row["card_error"] = f"FetchUrlDenied: {e}"
+                errors.append({"tender_id": tid, "error": row["card_error"]})
             except Exception as e:  # noqa: BLE001
                 row["card_error"] = f"{type(e).__name__}: {e}"
                 errors.append({"tender_id": tid, "error": row["card_error"]})

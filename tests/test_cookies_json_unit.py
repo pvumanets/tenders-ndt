@@ -126,7 +126,7 @@ def test_upload_cookies_writes_and_probes(
     assert oil_jar.is_file()
 
     with pytest.raises(platforms_api.PlatformNotFound):
-        platforms_api.upload_platform_cookies("sibur-srm", _locor_items())
+        platforms_api.upload_platform_cookies("no-such-platform", _locor_items())
     with pytest.raises(platforms_api.CookieUploadError, match="empty_cookies"):
         platforms_api.upload_platform_cookies("rostender", [])
     with pytest.raises(platforms_api.CookieUploadError, match="invalid_cookies_json"):
