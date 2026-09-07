@@ -1,6 +1,7 @@
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import type { ReactNode } from "react";
 import { createAppTheme } from "../theme/theme";
+import "./fonts.css";
 
 const theme = createAppTheme('"Inter", "Roboto", "Helvetica", "Arial", sans-serif');
 

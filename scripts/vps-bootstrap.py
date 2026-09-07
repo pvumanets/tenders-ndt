@@ -156,7 +156,11 @@ def _ssh(host: str, user: str, *, password: str | None = None, key: Path | None 
     import paramiko
 
     client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.load_system_host_keys()
+    known = Path.home() / ".ssh" / "known_hosts"
+    if known.is_file():
+        client.load_host_keys(str(known))
+    client.set_missing_host_key_policy(paramiko.RejectPolicy())
     kwargs: dict = {"hostname": host, "username": user, "timeout": 45, "allow_agent": False, "look_for_keys": False}
     if key is not None:
         kwargs["pkey"] = paramiko.Ed25519Key.from_private_key_file(str(key))
