@@ -32,21 +32,44 @@ def _runs_root() -> Path:
     return _repo_root() / "runs"
 
 
+def _has_scored(path: Path) -> bool:
+    if (path / "scored-list.json").is_file():
+        return True
+    if not path.is_dir():
+        return False
+    return any(child.is_dir() and (child / "scored-list.json").is_file() for child in path.iterdir())
+
+
+def list_step_dirs(base: Path) -> list[Path]:
+    """Legacy day dir with scored-list.json, or per-step children (085)."""
+    if (base / "scored-list.json").is_file():
+        return [base]
+    if not base.is_dir():
+        return []
+    return sorted(
+        (child for child in base.iterdir() if child.is_dir() and (child / "scored-list.json").is_file()),
+        key=lambda d: d.name,
+    )
+
+
 def resolve_run_dir(run_dir: str | None = None) -> Path | None:
     if run_dir:
         p = Path(run_dir)
-        if (p / "scored-list.json").is_file():
+        if _has_scored(p):
             return p
     snap = STATE.snapshot()
     if snap.get("run_dir"):
         p = Path(snap["run_dir"])
-        if (p / "scored-list.json").is_file():
+        if _has_scored(p):
             return p
+        parent = p.parent
+        if _has_scored(parent):
+            return parent
     root = _runs_root()
     if not root.is_dir():
         return None
     candidates = sorted(
-        (d for d in root.iterdir() if d.is_dir() and (d / "scored-list.json").is_file()),
+        (d for d in root.iterdir() if d.is_dir() and _has_scored(d)),
         key=lambda d: d.name,
         reverse=True,
     )
@@ -57,11 +80,15 @@ def load_scored(run_dir: Path | None = None) -> tuple[Path | None, list[dict[str
     rd = resolve_run_dir(str(run_dir) if run_dir else None)
     if rd is None:
         return None, []
-    path = rd / "scored-list.json"
+    steps = list_step_dirs(rd)
+    if not steps:
+        return rd, []
+    chosen = Path(run_dir) if run_dir and (Path(run_dir) / "scored-list.json").is_file() else steps[-1]
+    path = chosen / "scored-list.json"
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
-        return rd, []
-    return rd, data
+        return chosen, []
+    return chosen, data
 
 
 def _matches_q(row: dict[str, Any], q: str) -> bool:
@@ -83,6 +110,25 @@ def _slim(row: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def collect_steps(rd: Path) -> list[Path]:
+    if rd.is_dir() and not (rd / "scored-list.json").is_file():
+        children = list_step_dirs(rd)
+        if children:
+            return children
+    parent = rd.parent
+    if (
+        (rd / "scored-list.json").is_file()
+        and parent.is_dir()
+        and not (parent / "scored-list.json").is_file()
+    ):
+        siblings = list_step_dirs(parent)
+        if siblings:
+            return siblings
+    if (rd / "scored-list.json").is_file():
+        return [rd]
+    return []
+
+
 def list_results(
     *,
     tier: str = "fit",
@@ -91,7 +137,7 @@ def list_results(
 ) -> dict[str, Any]:
     rd, rows = load_scored(Path(run_dir) if run_dir else None)
     if rd is None:
-        return {"run_dir": None, "total": 0, "tier": tier, "q": q, "items": []}
+        return {"run_dir": None, "total": 0, "tier": tier, "q": q, "items": [], "steps": []}
 
     tier_norm = (tier or "fit").strip()
     if tier_norm == "fit":
@@ -108,12 +154,17 @@ def list_results(
 
     # keep score/rank order as in file (already sorted); stable secondary by tender_id
     items = [_slim(r) for r in filtered]
+    steps = [
+        {"step_id": path.name, "run_dir": str(path)}
+        for path in collect_steps(rd)
+    ]
     return {
         "run_dir": str(rd),
         "total": len(items),
         "tier": tier_norm,
         "q": q,
         "items": items,
+        "steps": steps,
     }
 
 

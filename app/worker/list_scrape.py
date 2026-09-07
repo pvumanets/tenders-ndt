@@ -21,6 +21,7 @@ from bs4 import BeautifulSoup
 from app.worker.cookies import parse_netscape_cookies
 from app.worker.customer_name import clean_customer_name
 from app.worker.http_retry import request_with_retry
+from app.worker.scrape_log import log_fetch
 
 DEFAULT_BASE = "https://rostender.info"
 SEARCH_QUERY = "неразрушающий"
@@ -39,6 +40,16 @@ UA = (
 
 class AuthError(RuntimeError):
     """Session missing / login page."""
+
+
+def page_list_url(results_url: str, page_num: int) -> str:
+    """Join page= onto a list URL without turning `?page=1` into `&page=2`."""
+    if page_num <= 1:
+        return results_url
+    base_q = re.sub(r"([&?])page=\d+", r"\1", results_url)
+    base_q = base_q.rstrip("&?")
+    sep = "&" if "?" in base_q else "?"
+    return f"{base_q}{sep}page={page_num}"
 
 
 @dataclass
@@ -307,16 +318,20 @@ def scrape_list(
             if page_num == 1:
                 r = request_with_retry(client, "GET", results_url, on_retry=on_retry)
             else:
-                sep = "&" if "?" in results_url else "?"
-                base_q = re.sub(r"([&?])page=\d+", r"\1", results_url).rstrip("&?")
                 r = request_with_retry(
                     client,
                     "GET",
-                    f"{base_q}{sep}page={page_num}",
+                    page_list_url(results_url, page_num),
                     on_retry=on_retry,
                 )
             _assert_authorized(r.text, str(r.url), status_code=r.status_code)
             batch, raw_count = _parse_rows_meta(r.text, base_url)
+            log_fetch(
+                platform="rostender",
+                url=str(r.url),
+                status=r.status_code,
+                parsed_n=raw_count,
+            )
             if raw_count == 0:
                 break
             if not batch:

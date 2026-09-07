@@ -20,4 +20,13 @@ describe("AiReviewCommandBar", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: copy.action_ai_review })).toBeDisabled();
   });
+
+  it("shows cap hint when idle", () => {
+    render(
+      <ThemeRegistry>
+        <AiReviewCommandBar onAiReview={vi.fn()} />
+      </ThemeRegistry>,
+    );
+    expect(screen.getByText(copy.ai_review_cap_hint)).toBeInTheDocument();
+  });
 });

@@ -50,3 +50,33 @@ def test_seed_package_d_plus_minus() -> None:
             continue
         for phrase in _SUPPLY_EXCLUDE:
             assert phrase in row["exclude"], row["name"]
+
+
+_E1 = "Закупка услуг по проведению неразрушающего контроля сварных соединений трубопроводов на НПЗ"
+_E2 = "Поставка услуг по ультразвуковому контролю сварных соединений"
+_E3 = "Оказание услуг по проведению неразрушающего контроля сварных соединений"
+_E4 = "Закупка ультразвукового дефектоскопа"
+_E5 = "Поставка приборов для визуального и измерительного контроля"
+_E6 = "Закупку услуг по проведению неразрушающего контроля сварных соединений трубопроводов на НПЗ"
+_E7 = "На поставку услуг по УЗК сварных соединений"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("title", [_E1, _E2, _E3, _E6, _E7])
+def test_supply_exclude_keeps_ndt_service_titles(title: str) -> None:
+    assert title_hits_exclude(title, _SUPPLY_EXCLUDE) is False
+    kept = filter_rows_by_exclude([{"tender_id": "1", "title": title}], _SUPPLY_EXCLUDE)
+    assert kept == [{"tender_id": "1", "title": title}]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("title", [_E4, _E5])
+def test_supply_exclude_still_drops_devices(title: str) -> None:
+    assert title_hits_exclude(title, _SUPPLY_EXCLUDE) is True
+
+
+@pytest.mark.unit
+def test_ndt_service_still_hits_non_supply_minus() -> None:
+    title = "Закупка услуг по проведению неразрушающего контроля кровли ЗАГС"
+    assert title_hits_exclude(title, _SUPPLY_EXCLUDE) is False
+    assert title_hits_exclude(title, ["кровля", "ЗАГС", *_SUPPLY_EXCLUDE]) is True

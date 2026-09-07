@@ -167,6 +167,10 @@ class RunState:
         with self._lock:
             return self.pipeline
 
+    def set_run_dir(self, run_dir: str) -> None:
+        with self._lock:
+            self.run_dir = run_dir
+
     def set_queue_index(self, index: int) -> None:
         with self._lock:
             self.queue_index = index

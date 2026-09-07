@@ -51,7 +51,7 @@ async def _schedule_loop() -> None:
     while True:
         await asyncio.sleep(30)
         try:
-            schedule_api.tick_once()
+            await asyncio.to_thread(schedule_api.tick_once)
         except Exception:  # noqa: BLE001 — ticker must not kill the api
             pass
 
@@ -59,6 +59,9 @@ async def _schedule_loop() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     runner.refresh_session()
+    from app.api.session_probe import note_fresh
+
+    note_fresh()
     bootstrap_users()
     try:
         from app.api.search_groups import ensure_group_seeds
@@ -156,8 +159,10 @@ def api_health():
 
 
 @app.get("/api/status")
-def api_status():
-    runner.refresh_session(probe_roseltorg_live=False)
+def api_status(refresh: bool = Query(default=False)):
+    from app.api.session_probe import refresh_session_cached
+
+    refresh_session_cached(force=refresh, probe_roseltorg_live=False)
     return STATE.snapshot()
 
 
@@ -358,9 +363,9 @@ def api_search_groups_delete(group_id: UUID) -> None:
 
 
 @app.get("/api/platforms")
-def api_platforms_list():
+def api_platforms_list(refresh: bool = Query(default=False)):
     try:
-        return platforms_api.list_platforms()
+        return platforms_api.list_platforms(refresh=refresh)
     except RuntimeError as exc:
         if str(exc) == "database_unconfigured":
             raise HTTPException(status_code=503, detail="db_down") from exc

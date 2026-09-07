@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -72,6 +73,29 @@ def _cookies_path(platform_id: str = PLATFORM_ROSTENDER) -> Path:
 def _http_retry_callback(attempt: int, status_code: int) -> None:
     STATE.add_http_retry()
     STATE.log_msg(f"HTTP retry #{attempt} (status {status_code})", level="warn")
+
+
+def _artifact_step_slug(item: dict, index: int) -> str:
+    group = str(item.get("group_name") or item.get("name") or "group")
+    platform = str(item.get("platform_id") or "platform")
+    raw = f"{index:02d}_{group}_{platform}"
+    slug = re.sub(r"[^\w.-]+", "_", raw, flags=re.UNICODE).strip("._")
+    return (slug or f"{index:02d}_step")[:80]
+
+
+def _artifact_step_dir(day_dir: Path, item: dict, index: int) -> Path:
+    """Unique runs/{date}/{step_id}/ — same-day rerun does not overwrite."""
+    slug = _artifact_step_slug(item, index)
+    path = day_dir / slug
+    if path.exists():
+        stamp = datetime.now().strftime("%H%M%S")
+        path = day_dir / f"{slug}_{stamp}"
+        extra = 2
+        while path.exists():
+            path = day_dir / f"{slug}_{stamp}_{extra}"
+            extra += 1
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def _board_rows(scored: list[dict]) -> list[dict]:
@@ -231,6 +255,9 @@ def start_run(*, pipeline: str = "manual", from_ticker: bool = False) -> bool:
                 return False
             raise RuntimeError("empty_queue")
         refresh_session()
+        from app.api.session_probe import note_fresh
+
+        note_fresh()
         run_dir = _repo_root() / "runs" / date.today().isoformat()
         run_dir.mkdir(parents=True, exist_ok=True)
         try:
@@ -422,7 +449,9 @@ def _run_queue(*, items: list[dict], run_dir: Path, pipeline: str = "manual") ->
             STATE.set_queue_index(index)
             STATE.set_queue_status(index, "running")
             STATE.log_msg(f"Search {index + 1}/{len(items)}: {item['name']}")
-            step_status = _run_one_search(item=item, run_dir=run_dir)
+            step_dir = _artifact_step_dir(run_dir, item, index)
+            STATE.set_run_dir(str(step_dir))
+            step_status = _run_one_search(item=item, run_dir=step_dir)
             STATE.set_queue_status(index, step_status)
             if STATE.should_stop():
                 STATE.cancel_remaining(index + 1)

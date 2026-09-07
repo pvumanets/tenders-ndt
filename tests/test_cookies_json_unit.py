@@ -125,6 +125,12 @@ def test_upload_cookies_writes_and_probes(
     assert oil == {"platform_id": "oilb2bcs", "session": "ok", "probed": True}
     assert oil_jar.is_file()
 
+    sib_jar = tmp_path / "cookies.sibur.txt"
+    monkeypatch.setenv("SIBUR_COOKIES_FILE", str(sib_jar))
+    sib = platforms_api.upload_platform_cookies("sibur-srm", _locor_items())
+    assert sib == {"platform_id": "sibur-srm", "session": "ok", "probed": True}
+    assert sib_jar.is_file()
+
     with pytest.raises(platforms_api.PlatformNotFound):
         platforms_api.upload_platform_cookies("no-such-platform", _locor_items())
     with pytest.raises(platforms_api.CookieUploadError, match="empty_cookies"):

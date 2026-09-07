@@ -56,7 +56,11 @@ def test_cookies_upload_smoke(
     suffix = uuid4().hex[:12]
     username = f"{SMOKE_PREFIX}cookies_{suffix}"
     jar = tmp_path / "cookies.rostender.txt"
+    oil_jar = tmp_path / "cookies.oilb2bcs.txt"
+    sib_jar = tmp_path / "cookies.sibur.txt"
     monkeypatch.setenv("ROSTENDER_COOKIES_FILE", str(jar))
+    monkeypatch.setenv("OILB2BCS_COOKIES_FILE", str(oil_jar))
+    monkeypatch.setenv("SIBUR_COOKIES_FILE", str(sib_jar))
     monkeypatch.setattr(platforms_api, "_probe_platform", lambda platform_id: "ok")
     monkeypatch.setattr(
         platforms_api.notify, "notify_ops_session", lambda **_kw: "smtp_unconfigured"
@@ -98,7 +102,7 @@ def test_cookies_upload_smoke(
             assert bad.json()["detail"] in {"empty_cookies", "invalid_cookies_json"}
             _assert_no_secret(bad.json())
 
-            unknown = client.post("/api/platforms/oilb2bcs/cookies", json=payload)
+            unknown = client.post("/api/platforms/no-such-platform/cookies", json=payload)
             assert unknown.status_code == 404
             assert unknown.json() == {"detail": "not_found"}
             _assert_no_secret(unknown.json())
@@ -110,6 +114,18 @@ def test_cookies_upload_smoke(
             assert body["session"] == "ok"
             assert body["probed"] is True
             _assert_no_secret(body)
+
+            oil = client.post("/api/platforms/oilb2bcs/cookies", json=payload)
+            assert oil.status_code == 200
+            assert oil.json()["platform_id"] == "oilb2bcs"
+            _assert_no_secret(oil.json())
+            assert oil_jar.is_file()
+
+            sib = client.post("/api/platforms/sibur-srm/cookies", json=payload)
+            assert sib.status_code == 200
+            assert sib.json()["platform_id"] == "sibur-srm"
+            _assert_no_secret(sib.json())
+            assert sib_jar.is_file()
 
             assert jar.is_file()
             parsed = parse_netscape_cookies(jar)

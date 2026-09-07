@@ -16,6 +16,7 @@ import httpx
 from app.worker.cookies import parse_netscape_cookies
 from app.worker.http_retry import request_with_retry
 from app.worker.list_scrape import AuthError, UA
+from app.worker.scrape_log import log_fetch
 from app.worker.platform_ids import PLATFORM_OILB2BCS, compose_tender_id
 
 DEFAULT_BASE = "https://oilb2bcs.ru"
@@ -115,6 +116,39 @@ def _strip_broken_properties(body: str) -> str:
     return "".join(out)
 
 
+def _quote_extnet_keys(body: str) -> str:
+    """Quote unquoted Ext.NET keys; ignore `word:` inside string values."""
+    out: list[str] = []
+    i = 0
+    in_str = False
+    escape = False
+    while i < len(body):
+        ch = body[i]
+        if in_str:
+            out.append(ch)
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+            i += 1
+            continue
+        if ch == '"':
+            in_str = True
+            out.append(ch)
+            i += 1
+            continue
+        m = _EXTNET_KEY.match(body, i)
+        if m:
+            out.append(f'{m.group(1)}{m.group(2)}"{m.group(3)}"{m.group(4)}')
+            i = m.end()
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def _parse_extnet_payload(text: str) -> Any:
     body = text.strip()
     if body.startswith("status="):
@@ -125,7 +159,7 @@ def _parse_extnet_payload(text: str) -> Any:
             raise ValueError("oilb2b_invalid_response")
         body = body[start:]
     body = _strip_broken_properties(body)
-    fixed = _EXTNET_KEY.sub(r'\1\2"\3"\4', body)
+    fixed = _quote_extnet_keys(body)
     try:
         payload = json.loads(fixed)
     except json.JSONDecodeError:
@@ -253,10 +287,17 @@ def _fetch_claims_page(
         raise AuthError("oilb2bcs_session_expired")
     result = _parse_extnet_payload(response.text)
     if not isinstance(result, list) or len(result) < 2:
+        log_fetch(platform=PLATFORM_OILB2BCS, url=url, status=response.status_code, parsed_n=0)
         return 0, [], []
     total = int(result[0] or 0)
     claims = result[1] if isinstance(result[1], list) else []
     items = result[2] if len(result) > 2 and isinstance(result[2], list) else []
+    log_fetch(
+        platform=PLATFORM_OILB2BCS,
+        url=url,
+        status=response.status_code,
+        parsed_n=len(claims),
+    )
     return total, claims, items
 
 

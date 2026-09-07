@@ -41,6 +41,7 @@ RE_VERIFY = re.compile(r"(поверк\w*|калибровк\w*|ремонт\w*\
 RE_CONSUMABLE = re.compile(r"(плёнк|пленк|химия\s+пвк|реактив|расходн)", re.I)
 RE_TRAINING = re.compile(r"(обучен\w*|аттестац\w*\s+персонал|повышен\w*\s+квалификац)", re.I)
 RE_SUPPLY_GENERIC = re.compile(r"(поставк|закупк|\bприбор)", re.I)
+RE_SERVICE_WORD = re.compile(r"(услуг\w*|оказан\w*|проведен\w*)", re.I)
 
 
 def score_title(title: str) -> tuple[int, list[str], bool]:
@@ -98,9 +99,24 @@ def score_title(title: str) -> tuple[int, list[str], bool]:
     return score, reasons, uzk_service
 
 
+def is_ndt_control_service(title: str) -> bool:
+    """Услуга / проведение НК, не закупка железа (В1 / 080)."""
+    t = title or ""
+    if not t or RE_BUY_DEVICE.search(t):
+        return False
+    has_ndt = bool(
+        RE_SERVICE_NDT.search(t) or RE_UZK.search(t) or RE_RK.search(t) or RE_VIK_PVK.search(t)
+    )
+    if not has_ndt:
+        return False
+    return bool(RE_SERVICE_WORD.search(t))
+
+
 def is_supply_watch(title: str) -> bool:
     """Поставка / приборы / калибровка / расходники → L3 Смотреть (на доске)."""
     t = title or ""
+    if is_ndt_control_service(t):
+        return False
     if RE_SUPPLY_GENERIC.search(t):
         return True
     if RE_BUY_DEVICE.search(t):
