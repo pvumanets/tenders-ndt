@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Button,
@@ -48,14 +48,6 @@ export default function TenderDrawer({
   const [menuEl, setMenuEl] = useState<null | HTMLElement>(null);
   const tier = drawerMode === "ai" ? aiBoardTier(lot) : rulesBoardTier(lot);
   const rulesTier = lot.rules_tier ?? lot.tier;
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const contactBits = [lot.contact_name, lot.contact_phone, lot.contact_email]
     .filter(Boolean)

@@ -8,6 +8,8 @@ import pytest
 
 from app.mail import smtp as smtp_mod
 
+pytestmark = pytest.mark.unit
+
 _FAKE_PASS = "smtp-secret-password-qa060"
 
 
@@ -53,6 +55,8 @@ def test_send_mail_port_465_uses_smtp_ssl(monkeypatch: pytest.MonkeyPatch) -> No
     assert len(calls) == 1
     assert calls[0][0] == "SSL"
     assert calls[0][1][:2] == ("smtp.example.test", 465)
+    assert "context" in calls[0][2]
+    assert calls[0][2]["context"] is not None
     client.login.assert_called_once_with("sender@example.test", _FAKE_PASS)
     client.send_message.assert_called_once()
     client.starttls.assert_not_called()
@@ -81,6 +85,7 @@ def test_send_mail_port_587_uses_starttls(monkeypatch: pytest.MonkeyPatch) -> No
     assert calls[0][0] == "SMTP"
     assert calls[0][1][:2] == ("smtp.example.test", 587)
     client.starttls.assert_called_once()
+    assert client.starttls.call_args.kwargs.get("context") is not None
     client.login.assert_called_once_with("sender@example.test", _FAKE_PASS)
     client.send_message.assert_called_once()
 

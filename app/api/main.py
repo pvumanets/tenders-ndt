@@ -118,14 +118,19 @@ app.add_middleware(ScoutSessionMiddleware)
 
 
 @app.post("/api/auth/login")
-def api_login(body: LoginBody, response: Response):
+def api_login(body: LoginBody, request: Request, response: Response):
+    ip = auth.client_ip(request)
+    if not auth.login_allowed(ip):
+        raise HTTPException(status_code=429, detail="too_many_attempts")
     try:
         user = auth.authenticate(body.username.strip(), body.password)
     except RuntimeError:
         raise HTTPException(status_code=401, detail="invalid_credentials") from None
     if user is None:
+        auth.note_login_failure(ip)
         auth.login_failed_log()
         raise HTTPException(status_code=401, detail="invalid_credentials")
+    auth.clear_login_failures(ip)
     token = auth.create_session(user.id)
     auth.set_session_cookie(response, token)
     auth.login_ok_log()

@@ -49,7 +49,11 @@ export default function SettingsSchedule({
       onSaved(next);
       setSaved(true);
     } catch (err: unknown) {
-      setError(err instanceof Error && err.message === "invalid_time_msk" ? copy.schedule_invalid_time : copy.schedule_invalid_time);
+      setError(
+        err instanceof Error && err.message === "invalid_time_msk"
+          ? copy.schedule_invalid_time
+          : copy.schedule_save_failed,
+      );
     } finally {
       setBusy(false);
     }

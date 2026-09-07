@@ -5,6 +5,8 @@ import hashlib
 import logging
 import os
 import secrets
+import threading
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
@@ -21,6 +23,11 @@ log = logging.getLogger("uvicorn.error")
 COOKIE_NAME = "scout_session"
 SESSION_TTL = timedelta(days=7)
 _DUMMY_HASH = bcrypt.hashpw(b"invalid-placeholder", bcrypt.gensalt()).decode("utf-8")
+
+LOGIN_FAIL_MAX = 5
+LOGIN_FAIL_WINDOW_S = 60.0
+_login_lock = threading.Lock()
+_login_fails: dict[str, list[float]] = {}
 
 PUBLIC_API = frozenset(
     {
@@ -152,3 +159,41 @@ def login_ok_log() -> None:
 
 def login_failed_log() -> None:
     log.info("login_failed")
+
+
+def reset_login_rate_for_tests() -> None:
+    with _login_lock:
+        _login_fails.clear()
+
+
+def client_ip(request: Request) -> str:
+    """Last X-Forwarded-For hop behind Caddy, else direct client host."""
+    xff = (request.headers.get("x-forwarded-for") or "").strip()
+    if xff:
+        parts = [p.strip() for p in xff.split(",") if p.strip()]
+        if parts:
+            return parts[-1]
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def login_allowed(ip: str) -> bool:
+    now = time.monotonic()
+    with _login_lock:
+        stamps = [t for t in _login_fails.get(ip, []) if now - t < LOGIN_FAIL_WINDOW_S]
+        _login_fails[ip] = stamps
+        return len(stamps) < LOGIN_FAIL_MAX
+
+
+def note_login_failure(ip: str) -> None:
+    now = time.monotonic()
+    with _login_lock:
+        stamps = [t for t in _login_fails.get(ip, []) if now - t < LOGIN_FAIL_WINDOW_S]
+        stamps.append(now)
+        _login_fails[ip] = stamps
+
+
+def clear_login_failures(ip: str) -> None:
+    with _login_lock:
+        _login_fails.pop(ip, None)

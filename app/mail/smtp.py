@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import smtplib
+import ssl
 import urllib.error
 import urllib.request
 from email.message import EmailMessage
@@ -124,15 +125,16 @@ def send_mail(
         recipients.append(cc_addr)
 
     try:
+        ctx = ssl.create_default_context()
         if port == 465:
-            with smtplib.SMTP_SSL(host, port, timeout=30) as smtp:
+            with smtplib.SMTP_SSL(host, port, timeout=30, context=ctx) as smtp:
                 if user:
                     smtp.login(user, password)
                 smtp.send_message(msg, to_addrs=recipients)
         else:
             with smtplib.SMTP(host, port, timeout=30) as smtp:
                 if use_tls:
-                    smtp.starttls()
+                    smtp.starttls(context=ctx)
                 if user:
                     smtp.login(user, password)
                 smtp.send_message(msg, to_addrs=recipients)

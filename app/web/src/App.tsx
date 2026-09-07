@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppBar,
   Box,
@@ -57,17 +57,18 @@ import {
 import { stripe } from "./theme/palette";
 import ThemeRegistry from "./theme/ThemeRegistry";
 import InboxCommandBar from "./components/scout/InboxCommandBar";
-import AiReviewCommandBar from "./components/scout/AiReviewCommandBar";
 import AutoSlotStatus from "./components/scout/AutoSlotStatus";
 import LotBoard from "./components/scout/LotBoard";
 import LotTable from "./components/scout/LotTable";
-import ManualRunControls from "./components/scout/ManualRunControls";
 import SessionExpiryBanner from "./components/scout/SessionExpiryBanner";
-import SettingsPanel from "./components/scout/SettingsPanel";
 import TenderDrawer from "./components/scout/TenderDrawer";
 import LoginScreen from "./components/scout/LoginScreen";
 import CardTextButton from "./vendor/personal/dispatch/CardTextButton";
 import { fetchMe, logout } from "./lib/auth";
+
+const ManualRunControls = lazy(() => import("./components/scout/ManualRunControls"));
+const AiReviewCommandBar = lazy(() => import("./components/scout/AiReviewCommandBar"));
+const SettingsPanel = lazy(() => import("./components/scout/SettingsPanel"));
 
 const SEARCH_DEBOUNCE_MS = 300;
 const STATUS_POLL_MS = 2000;
@@ -788,7 +789,7 @@ function AppInner() {
             ) : null}
           </>
         ) : tab === "manual" ? (
-          <>
+          <Suspense fallback={<Box sx={{ flex: 1, bgcolor: stripe.surfaceSubtle }} />}>
             <ManualRunControls
               status={tech}
               queuedGroups={queuedGroups}
@@ -822,28 +823,30 @@ function AppInner() {
                 onAiWrong={(id) => void onAiWrong(id)}
               />
             ) : null}
-          </>
+          </Suspense>
         ) : (
-          <SettingsPanel
-            status={tech}
-            schedule={schedule}
-            operatorSettings={operatorSettings}
-            groups={groups}
-            platforms={platforms}
-            locked={settingsLocked}
-            groupError={groupError}
-            highlightSessions={highlightSessions}
-            onScheduleSaved={setSchedule}
-            onOperatorSettingsSaved={(next) => {
-              setOperatorSettings(next);
-              setPriceMinRub(next.l1_min_price_rub);
-            }}
-            onToggleQueue={onToggleQueue}
-            onTogglePlatform={onTogglePlatform}
-            onSaveGroup={onSaveGroup}
-            onDeleteGroup={onDeleteGroup}
-            onCookieSession={onCookieSession}
-          />
+          <Suspense fallback={<Box sx={{ flex: 1, bgcolor: stripe.surfaceSubtle }} />}>
+            <SettingsPanel
+              status={tech}
+              schedule={schedule}
+              operatorSettings={operatorSettings}
+              groups={groups}
+              platforms={platforms}
+              locked={settingsLocked}
+              groupError={groupError}
+              highlightSessions={highlightSessions}
+              onScheduleSaved={setSchedule}
+              onOperatorSettingsSaved={(next) => {
+                setOperatorSettings(next);
+                setPriceMinRub(next.l1_min_price_rub);
+              }}
+              onToggleQueue={onToggleQueue}
+              onTogglePlatform={onTogglePlatform}
+              onSaveGroup={onSaveGroup}
+              onDeleteGroup={onDeleteGroup}
+              onCookieSession={onCookieSession}
+            />
+          </Suspense>
         )}
       </Box>
 
