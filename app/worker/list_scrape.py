@@ -61,8 +61,11 @@ class TenderRow:
     location: str | None
     customer_name: str | None
     deadline_msk: str | None = None
+    published_msk: str | None = None
     status: str | None = None
 
+
+_PUBLISHED_OT = re.compile(r"(?:№\s*\d+\s*)?от\s+(\d{2}\.\d{2}\.\d{2,4})\b", re.I)
 
 def _cookie_dict(path: Path) -> dict[str, str]:
     out: dict[str, str] = {}
@@ -128,6 +131,26 @@ def parse_list_deadline(art) -> datetime | None:
         except ValueError:
             continue
     return None
+
+
+def parse_list_published(art) -> str | None:
+    """Best-effort ETP publish date from list row (.dtstart or «от DD.MM»)."""
+    el = art.select_one(".dtstart")
+    if el is not None:
+        raw = (el.get_text(" ", strip=True) or "").strip()
+        if raw:
+            m = re.search(r"(\d{2}\.\d{2}\.\d{2,4})", raw)
+            if m:
+                return m.group(1)
+            for fmt, n in (("%Y-%m-%d %H:%M:%S", 19), ("%Y-%m-%d", 10)):
+                try:
+                    dt = datetime.strptime(raw[:n], fmt)
+                    return dt.strftime("%d.%m.%Y")
+                except ValueError:
+                    continue
+    blob = art.get_text(" ", strip=True)
+    m = _PUBLISHED_OT.search(blob)
+    return m.group(1) if m else None
 
 
 def deadline_display(art, parsed: datetime | None) -> str | None:
@@ -248,6 +271,7 @@ def _parse_rows_meta(
                 location=location,
                 customer_name=customer,
                 deadline_msk=deadline_display(art, parsed_deadline),
+                published_msk=parse_list_published(art),
                 status=status,
             )
         )

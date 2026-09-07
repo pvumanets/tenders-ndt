@@ -308,6 +308,7 @@ const sampleLot = {
   board_hidden: false,
   deadline_expired: false,
   deadline_msk: "01.01.2027",
+  published_msk: "",
   ingested_at: "2026-09-07",
   price_rub: 1_000_000,
   location: "Челябинск",

@@ -131,6 +131,7 @@ export function normalizeLot(raw: ApiLot): InboxLot {
     board_hidden: Boolean(raw.board_hidden),
     deadline_expired: Boolean(raw.deadline_expired),
     deadline_msk: text(raw.deadline_msk),
+    published_msk: text(raw.published_msk),
     ingested_at: text(raw.ingested_at),
     price_rub: typeof raw.price_rub === "number" ? raw.price_rub : null,
     location: text(raw.location),

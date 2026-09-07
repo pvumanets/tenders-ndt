@@ -88,6 +88,7 @@ export default function LotTable({
             <TableCell aria-sort={sort === "deadline" ? "ascending" : undefined}>
               <SortHeader label={copy.col_deadline} mode="deadline" active={sort} onSort={onSort} />
             </TableCell>
+            <TableCell>{copy.col_published}</TableCell>
             <TableCell aria-sort={sort === "appeared" ? "descending" : undefined}>
               <SortHeader
                 label={copy.col_ingested}
@@ -153,6 +154,7 @@ export default function LotTable({
                 <TableCell>{lot.customer_name || copy.field_empty}</TableCell>
                 <TableCell>{lot.location || copy.field_empty}</TableCell>
                 <TableCell>{formatDate(lot.deadline_msk)}</TableCell>
+                <TableCell>{formatDate(lot.published_msk) || copy.field_empty}</TableCell>
                 <TableCell>{formatDate(lot.ingested_at)}</TableCell>
                 <TableCell>{formatPrice(lot.price_rub)}</TableCell>
               </TableRow>

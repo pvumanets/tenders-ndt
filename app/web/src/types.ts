@@ -23,6 +23,7 @@ export type InboxLot = {
   board_hidden: boolean;
   deadline_expired: boolean;
   deadline_msk: string;
+  published_msk: string;
   ingested_at: string;
   price_rub: number | null;
   location: string;

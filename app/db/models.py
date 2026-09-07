@@ -159,6 +159,7 @@ class Lot(Base):
     customer_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     customer_inn: Mapped[str | None] = mapped_column(String(32), nullable=True)
     deadline_msk: Mapped[str | None] = mapped_column(Text, nullable=True)
+    published_msk: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str | None] = mapped_column(Text, nullable=True)
     price_rub: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     fit_reason: Mapped[str | None] = mapped_column(Text, nullable=True)

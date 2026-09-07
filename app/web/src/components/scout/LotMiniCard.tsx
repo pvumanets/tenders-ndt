@@ -183,6 +183,16 @@ export default function LotMiniCard({
               color="text.secondary"
               sx={{ display: "block", mt: 0.75 }}
             >
+              {copy.col_published}
+            </Typography>
+            <Typography sx={{ fontSize: `${theme.density.font.sm}px`, color: stripe.text }}>
+              {formatDate(lot.published_msk) || copy.field_empty}
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mt: 0.75 }}
+            >
               {copy.col_ingested}
             </Typography>
             <Typography sx={{ fontSize: `${theme.density.font.sm}px`, color: stripe.text }}>

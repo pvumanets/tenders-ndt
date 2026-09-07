@@ -253,9 +253,10 @@ def test_serialize_lot_deadline_expired_and_board_hidden() -> None:
 def test_serialize_lot_iso_dates_and_effective_tier() -> None:
     from datetime import date
 
-    lot = _lot()
+    lot = _lot(published_msk="02.09.26")
     item = serialize_lot(lot, None, today=date(2026, 8, 1))
     assert item["deadline_msk"] == "2026-08-20"
+    assert item["published_msk"] == "2026-09-02"
     assert item["ingested_at"] == "2026-08-12"
     assert item["viewed"] is False
     assert item["manual_tier"] is None

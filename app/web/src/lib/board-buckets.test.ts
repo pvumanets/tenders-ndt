@@ -40,6 +40,7 @@ function lot(partial: Partial<InboxLot> & Pick<InboxLot, "tender_id" | "tier">):
     deadline_expired: false,
     deadline_msk: "2026-08-28",
     ingested_at: "2026-08-01",
+    published_msk: "",
     price_rub: null,
     location: "",
     status: "",
@@ -96,6 +97,7 @@ describe("boardBuckets P8", () => {
           deadline_expired: true,
           deadline_msk: "2026-08-20",
           ingested_at: "2026-08-01",
+          published_msk: "",
         }),
         lot({
           tender_id: "fresh",
@@ -103,6 +105,7 @@ describe("boardBuckets P8", () => {
           deadline_expired: true,
           deadline_msk: "2026-08-26",
           ingested_at: "2026-08-10",
+          published_msk: "",
         }),
       ],
       rulesBoardTier,

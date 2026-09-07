@@ -38,6 +38,7 @@ _RAW_KEYS = (
     "customer_inn",
     "customer_kpp",
     "deadline_msk",
+    "published_msk",
     "status",
     "price_rub",
     "source_etp",
@@ -192,6 +193,7 @@ def lot_values(
         "customer_name": clean_customer_name(row.get("customer_name")),
         "customer_inn": _optional_text(row.get("customer_inn")),
         "deadline_msk": _optional_text(row.get("deadline_msk")),
+        "published_msk": _optional_text(row.get("published_msk")),
         "status": _optional_text(row.get("status")),
         "price_rub": parse_price_rub(row.get("price_rub")),
         "fit_reason": _optional_text(row.get("fit_reason")),
@@ -307,6 +309,12 @@ def ingest_run(
                     # first-seen: never bump ingested_at on update-on-diff
                     if key in {"tender_id", "ingested_at"}:
                         continue
+                    # ETP publish date: fill once, do not refresh to a newer stamp
+                    if key == "published_msk":
+                        if lot.published_msk:
+                            continue
+                        if not value:
+                            continue
                     setattr(lot, key, value)
 
         if source_platform_id == PLATFORM_ROSELTORG and candidates:
