@@ -125,6 +125,9 @@ def api_login(body: LoginBody, request: Request, response: Response):
     try:
         user = auth.authenticate(body.username.strip(), body.password)
     except RuntimeError:
+        # Count toward rate-limit even when DB is down (same client-visible 401).
+        auth.note_login_failure(ip)
+        auth.login_failed_log()
         raise HTTPException(status_code=401, detail="invalid_credentials") from None
     if user is None:
         auth.note_login_failure(ip)

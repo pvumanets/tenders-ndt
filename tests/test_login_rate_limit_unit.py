@@ -23,7 +23,9 @@ def _reset_rate() -> None:
 
 
 @pytest.mark.unit
-def test_login_rate_limit_returns_429_after_burst() -> None:
+def test_login_rate_limit_returns_429_after_burst(monkeypatch: pytest.MonkeyPatch) -> None:
+    # No Postgres in CI: force auth failure without hitting the DB.
+    monkeypatch.setattr(auth, "authenticate", lambda *_a, **_k: None)
     with _client() as client:
         for _ in range(auth.LOGIN_FAIL_MAX):
             response = client.post(
@@ -32,6 +34,26 @@ def test_login_rate_limit_returns_429_after_burst() -> None:
             )
             assert response.status_code == 401
             assert response.json() == {"detail": "invalid_credentials"}
+        blocked = client.post(
+            "/api/auth/login",
+            json={"username": "qa_unit_missing", "password": "nope"},
+        )
+    assert blocked.status_code == 429
+    assert blocked.json() == {"detail": "too_many_attempts"}
+
+
+@pytest.mark.unit
+def test_login_rate_limit_counts_database_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    def boom(*_a: object, **_k: object) -> None:
+        raise RuntimeError("database_unconfigured")
+
+    monkeypatch.setattr(auth, "authenticate", boom)
+    with _client() as client:
+        for _ in range(auth.LOGIN_FAIL_MAX):
+            assert client.post(
+                "/api/auth/login",
+                json={"username": "qa_unit_missing", "password": "nope"},
+            ).status_code == 401
         blocked = client.post(
             "/api/auth/login",
             json={"username": "qa_unit_missing", "password": "nope"},
