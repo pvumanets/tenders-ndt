@@ -33,6 +33,7 @@ def test_host_allowed() -> None:
 def test_assert_relay_endpoint_allowed() -> None:
     http_relay.assert_relay_endpoint_allowed("https://north-hub.example:8798")
     http_relay.assert_relay_endpoint_allowed("http://127.0.0.1:8798")
+    http_relay.assert_relay_endpoint_allowed("http://host.docker.internal:8798")
     with pytest.raises(ValueError, match="http_relay_endpoint_insecure"):
         http_relay.assert_relay_endpoint_allowed("http://evil.example:8798")
     with pytest.raises(ValueError, match="http_relay_endpoint_insecure"):

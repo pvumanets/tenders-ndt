@@ -44,13 +44,14 @@ def _host_allowed(url: str) -> bool:
 
 
 def assert_relay_endpoint_allowed(relay_url: str) -> None:
-    """Reject cleartext relay except loopback (cookies+secret must not cross plain WAN)."""
+    """Reject cleartext relay except loopback / Docker host gateway (no plain WAN)."""
     parsed = urlparse((relay_url or "").strip())
     scheme = (parsed.scheme or "").lower()
     host = (parsed.hostname or "").lower()
     if scheme == "https":
         return
-    if scheme == "http" and host == "127.0.0.1":
+    # 127.0.0.1 = host/process; host.docker.internal = compose api → host tunnel
+    if scheme == "http" and host in {"127.0.0.1", "host.docker.internal"}:
         return
     raise ValueError("http_relay_endpoint_insecure")
 
