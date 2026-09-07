@@ -306,6 +306,7 @@ def serialize_lot(
         "board_hidden": bool(state.board_hidden) if state is not None else False,
         "deadline_expired": expired,
         "deadline_msk": deadline_iso(lot.deadline_msk),
+        "published_msk": deadline_iso(lot.published_msk),
         "ingested_at": ingested_iso(lot.ingested_at),
         "price_rub": _price_json(lot.price_rub),
         "fit_reason": lot.fit_reason,

@@ -21,6 +21,7 @@ function baseLot(partial: Partial<InboxLot> = {}): InboxLot {
     board_hidden: false,
     deadline_expired: true,
     deadline_msk: "2026-08-01",
+    published_msk: "",
     ingested_at: "2026-09-01",
     price_rub: 1000,
     location: "Казань",

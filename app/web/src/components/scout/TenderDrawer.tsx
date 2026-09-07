@@ -114,6 +114,12 @@ export default function TenderDrawer({
             {lot.deadline_expired ? ` · ${copy.badge_deadline_expired}` : ""}
           </Typography>
         </FieldRow>
+        <FieldRow label={copy.field_published}>
+          <Typography>{formatDate(lot.published_msk) || copy.field_empty}</Typography>
+        </FieldRow>
+        <FieldRow label={copy.field_ingested}>
+          <Typography>{formatDate(lot.ingested_at) || copy.field_empty}</Typography>
+        </FieldRow>
         <FieldRow label={copy.field_region}>
           <Typography>{lot.location || copy.field_empty}</Typography>
         </FieldRow>

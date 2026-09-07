@@ -27,6 +27,11 @@ _FILE_EXT = re.compile(
 _HREF_DOWNLOAD = re.compile(r"download|getfile|get-file|/file/|/files/|/docs?/", re.I)
 _ARCHIVE_TEXT = re.compile(r"скачать одним архивом", re.I)
 _SKIP_HREF = re.compile(r"^(javascript:|mailto:|#)", re.I)
+# Rostender card header: «№94734024 от 02.09.26» or «от 02.09.2026»
+_PUBLISHED_OT = re.compile(
+    r"(?:№\s*\d+\s*)?от\s+(\d{2}\.\d{2}\.\d{2,4})\b",
+    re.I,
+)
 
 METHOD_PATTERNS = [
     ("УЗК", re.compile(r"ультразвуков|\bузк\b|узт", re.I)),
@@ -60,6 +65,27 @@ def _detect_methods(text: str) -> str:
     return ", ".join(found) if found else ""
 
 
+def parse_published_msk(html: str, lines: list[str] | None = None) -> str | None:
+    """Extract Rostender publication date «от DD.MM.YY(YY)» from card header text."""
+    soup = BeautifulSoup(html, "lxml")
+    candidates: list[str] = []
+    for sel in ("h1", ".tender-header", ".tender__header", ".page-header", "title"):
+        for el in soup.select(sel):
+            text = el.get_text(" ", strip=True)
+            if text:
+                candidates.append(text)
+    if lines is None:
+        lines = _lines(html)
+    candidates.extend(lines[:40])
+    for text in candidates:
+        m = _PUBLISHED_OT.search(text)
+        if m:
+            return m.group(1)
+    # whole-page fallback (first match near tender number)
+    m = _PUBLISHED_OT.search(soup.get_text(" ", strip=True)[:2000])
+    return m.group(1) if m else None
+
+
 def parse_card_html(html: str, title_hint: str = "") -> dict[str, Any]:
     if "403 Forbidden" in html and "administrative rules" in html:
         raise AuthError("WAF/403 on card page")
@@ -78,6 +104,7 @@ def parse_card_html(html: str, title_hint: str = "") -> dict[str, Any]:
         # look for time on same/nearby
         pass
 
+    published_msk = parse_published_msk(html, lines)
     inn = _after(lines, "ИНН")
     if inn and not re.fullmatch(r"\d{10,12}", inn):
         m = re.search(r"\b(\d{10,12})\b", inn)
@@ -141,6 +168,7 @@ def parse_card_html(html: str, title_hint: str = "") -> dict[str, Any]:
     return {
         "status": status,
         "deadline_msk": deadline,
+        "published_msk": published_msk,
         "customer_inn": inn,
         "customer_kpp": kpp,
         "contact_name": contact_name,
@@ -200,6 +228,12 @@ def apply_card_fields(row: dict[str, Any], fields: dict[str, Any]) -> None:
             cleaned = clean_customer_name(value)
             if cleaned:
                 row[key] = cleaned
+            continue
+        if key == "published_msk":
+            # keep first known ETP publish date
+            if row.get("published_msk"):
+                continue
+            row[key] = value
             continue
         existing = row.get(key)
         if key in ("location", "price_rub") and existing and existing not in (None, "—", ""):
