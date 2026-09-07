@@ -1,6 +1,11 @@
 """Minus-phrase filter for named-search list scrape (search-system-v2)."""
 from __future__ import annotations
 
+from app.scoring.rules import is_ndt_control_service
+from app.worker.search_seeds import _SUPPLY_EXCLUDE
+
+_SUPPLY_EXCLUDE_FOLDED = frozenset(p.casefold() for p in _SUPPLY_EXCLUDE)
+
 
 def title_hits_exclude(title: str, exclude: list[str] | None) -> bool:
     """True if title contains any exclude phrase (case-insensitive substring)."""
@@ -9,9 +14,13 @@ def title_hits_exclude(title: str, exclude: list[str] | None) -> bool:
     hay = (title or "").casefold()
     if not hay:
         return False
+    skip_supply = is_ndt_control_service(title)
     for raw in exclude:
         phrase = str(raw or "").strip()
-        if phrase and phrase.casefold() in hay:
+        folded = phrase.casefold()
+        if skip_supply and folded in _SUPPLY_EXCLUDE_FOLDED:
+            continue
+        if phrase and folded in hay:
             return True
     return False
 
