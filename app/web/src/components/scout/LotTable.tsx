@@ -136,7 +136,12 @@ export default function LotTable({
                   <PlatformIcon platformId={lot.source_platform_id} size={18} />
                 </TableCell>
                 <TableCell>
-                  <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    useFlexGap
+                    sx={{ alignItems: "center", flexWrap: "wrap" }}
+                  >
                     <Chip size="small" label={tierLabel(tier)} variant="outlined" />
                     {moved ? <Chip size="small" label={moved} variant="outlined" color="primary" /> : null}
                     {lot.deadline_expired ? (
