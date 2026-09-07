@@ -83,6 +83,21 @@ def test_ingest_upserts_score_ge_4_and_preserves_lot_state(
         assert same.already_count == 1
         assert same.updated_count == 0
 
+        backfill = ingest_run(
+            query=query,
+            limit_n=10,
+            status="done",
+            rows=[_row(tender_id, published_msk="02.09.26")],
+        )
+        assert backfill is not None
+        assert backfill.already_count == 1
+        assert backfill.updated_count == 0
+        with smoke_db() as session:
+            lot = session.get(Lot, tender_id)
+            assert lot is not None
+            assert lot.published_msk == "02.09.26"
+            assert lot.ingested_at == first_seen
+
         second = ingest_run(
             query=query,
             limit_n=10,
@@ -99,6 +114,7 @@ def test_ingest_upserts_score_ge_4_and_preserves_lot_state(
             assert lot.title == "УЗК обновлён"
             assert lot.score == 8
             assert lot.deadline_msk == "2030-02-01"
+            assert lot.published_msk == "02.09.26"
             assert lot.run_id == second.run_id
             assert lot.ingested_at == first_seen
             n_lots = session.scalar(
@@ -112,7 +128,7 @@ def test_ingest_upserts_score_ge_4_and_preserves_lot_state(
             n_runs = session.scalar(
                 select(func.count()).select_from(Run).where(Run.query == query)
             )
-            assert n_runs == 3
+            assert n_runs == 4
     finally:
         with smoke_db() as session:
             session.execute(delete(LotState).where(LotState.tender_id == tender_id))

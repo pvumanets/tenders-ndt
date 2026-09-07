@@ -300,6 +300,10 @@ def ingest_run(
                     updated_ids.append(vals["tender_id"])
                 else:
                     already_count += 1
+                    # Backfill ETP publish when scrape learned it without other diffs
+                    pub = vals.get("published_msk")
+                    if pub and not (old.published_msk or "").strip():
+                        old.published_msk = pub
 
             if to_insert:
                 session.execute(pg_insert(Lot).values(to_insert))
