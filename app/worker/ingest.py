@@ -304,7 +304,8 @@ def ingest_run(
             for vals, _row in to_update:
                 lot = existing[vals["tender_id"]]
                 for key, value in vals.items():
-                    if key == "tender_id":
+                    # first-seen: never bump ingested_at on update-on-diff
+                    if key in {"tender_id", "ingested_at"}:
                         continue
                     setattr(lot, key, value)
 

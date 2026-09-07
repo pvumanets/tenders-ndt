@@ -3,13 +3,23 @@ import type { InboxLot } from "../types";
 import { aiBoardTier, rulesBoardTier, tierMoved } from "./format";
 
 /** Mirrors LotBoard bucketing without mounting MUI. */
-function boardBuckets(lots: InboxLot[], boardTier: (lot: InboxLot) => string) {
+function boardBuckets(
+  lots: InboxLot[],
+  boardTier: (lot: InboxLot) => string,
+  sort: "relevance" | "appeared" | "deadline" = "relevance",
+) {
   const visible = lots.filter((l) => !l.board_hidden);
   const live = visible.filter((l) => !l.deadline_expired);
-  const expired = visible
-    .filter((l) => l.deadline_expired)
-    .slice()
-    .sort((a, b) => b.deadline_msk.localeCompare(a.deadline_msk) || a.tender_id.localeCompare(b.tender_id));
+  const expiredRaw = visible.filter((l) => l.deadline_expired);
+  const expired =
+    sort === "appeared"
+      ? expiredRaw
+      : expiredRaw
+          .slice()
+          .sort(
+            (a, b) =>
+              b.deadline_msk.localeCompare(a.deadline_msk) || a.tender_id.localeCompare(b.tender_id),
+          );
   const byTier = (tier: string) => live.filter((l) => boardTier(l) === tier);
   return {
     L1: byTier("L1").map((l) => l.tender_id),
@@ -75,6 +85,30 @@ describe("boardBuckets P8", () => {
     expect(buckets.L1).toEqual(["live"]);
     expect(buckets.L2).toEqual([]);
     expect(buckets.expired).toEqual(["fresh", "old"]);
+  });
+
+  it("preserves API order for expired when sort=appeared", () => {
+    const buckets = boardBuckets(
+      [
+        lot({
+          tender_id: "old",
+          tier: "L1",
+          deadline_expired: true,
+          deadline_msk: "2026-08-20",
+          ingested_at: "2026-08-01",
+        }),
+        lot({
+          tender_id: "fresh",
+          tier: "L2",
+          deadline_expired: true,
+          deadline_msk: "2026-08-26",
+          ingested_at: "2026-08-10",
+        }),
+      ],
+      rulesBoardTier,
+      "appeared",
+    );
+    expect(buckets.expired).toEqual(["old", "fresh"]);
   });
 });
 

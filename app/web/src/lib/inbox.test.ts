@@ -54,6 +54,13 @@ describe("buildInboxSearchParams", () => {
     expect(params.get("ai_reviewed")).toBe("1");
     expect(params.get("ai_trigger")).toBe("auto");
   });
+
+  it("omits default relevance sort and sets appeared", () => {
+    expect(buildInboxSearchParams({ tier: "fit" }).get("sort")).toBeNull();
+    expect(buildInboxSearchParams({ tier: "fit", sort: "relevance" }).get("sort")).toBeNull();
+    expect(buildInboxSearchParams({ tier: "fit", sort: "appeared" }).get("sort")).toBe("appeared");
+    expect(buildInboxSearchParams({ tier: "fit", sort: "deadline" }).get("sort")).toBe("deadline");
+  });
 });
 
 describe("mapRunStatus", () => {

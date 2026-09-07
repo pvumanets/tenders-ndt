@@ -56,4 +56,27 @@ describe("LotTable keyboard", () => {
     expect(onOpen).toHaveBeenCalledWith(lot.tender_id);
     expect(onOpen).toHaveBeenCalledTimes(2);
   });
+
+  it("sortable headers call onSort for three modes only", async () => {
+    const onSort = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ThemeRegistry>
+        <LotTable
+          lots={[lot]}
+          selectedId={null}
+          onOpen={() => {}}
+          boardTier={(row) => row.tier}
+          sort="relevance"
+          onSort={onSort}
+        />
+      </ThemeRegistry>,
+    );
+    await user.click(screen.getByRole("button", { name: /Попало к нам/i }));
+    expect(onSort).toHaveBeenCalledWith("appeared");
+    await user.click(screen.getByRole("button", { name: /^Срок$/i }));
+    expect(onSort).toHaveBeenCalledWith("deadline");
+    await user.click(screen.getByRole("button", { name: /Приоритет/i }));
+    expect(onSort).toHaveBeenCalledWith("relevance");
+  });
 });

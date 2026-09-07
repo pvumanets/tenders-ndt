@@ -18,7 +18,7 @@ import {
 import { useTheme } from "@mui/material/styles";
 import ViewWeekOutlinedIcon from "@mui/icons-material/ViewWeekOutlined";
 import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
-import type { DeadlinePreset, IngestedPreset, PriorityFilter, SalesTier, ViewMode, PlatformRow, BitrixFilter } from "../../types";
+import type { DeadlinePreset, IngestedPreset, InboxSort, PriorityFilter, SalesTier, ViewMode, PlatformRow, BitrixFilter } from "../../types";
 import { copy } from "../../copy";
 import { formatPrice } from "../../lib/format";
 import { stripe } from "../../theme/palette";
@@ -208,6 +208,8 @@ export default function InboxCommandBar({
   onIngestedTo,
   view,
   onView,
+  sort = "relevance",
+  onSort,
   showAiReviewedFilter = false,
   aiReviewedOnly = false,
   onAiReviewedOnly,
@@ -241,6 +243,8 @@ export default function InboxCommandBar({
   onIngestedTo: (v: string) => void;
   view: ViewMode;
   onView: (v: ViewMode) => void;
+  sort?: InboxSort;
+  onSort?: (v: InboxSort) => void;
   showAiReviewedFilter?: boolean;
   aiReviewedOnly?: boolean;
   onAiReviewedOnly?: (v: boolean) => void;
@@ -393,7 +397,22 @@ export default function InboxCommandBar({
           ) : null}
         </ViewCommandBar.Start>
 
-        <ViewCommandBar.End sx={{ width: { xs: "100%", md: "auto" }, justifyContent: "flex-end" }}>
+        <ViewCommandBar.End sx={{ width: { xs: "100%", md: "auto" }, justifyContent: "flex-end", gap: 1, flexWrap: "wrap" }}>
+          {onSort ? (
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={sort}
+              aria-label={copy.sort_group_aria}
+              onChange={(_, v: InboxSort | null) => {
+                if (v) onSort(v);
+              }}
+            >
+              <ToggleButton value="relevance">{copy.sort_relevance}</ToggleButton>
+              <ToggleButton value="appeared">{copy.sort_appeared}</ToggleButton>
+              <ToggleButton value="deadline">{copy.sort_deadline}</ToggleButton>
+            </ToggleButtonGroup>
+          ) : null}
           <ToggleButtonGroup
             exclusive
             size="small"

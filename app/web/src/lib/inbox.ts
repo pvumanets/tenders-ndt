@@ -12,6 +12,7 @@ import type {
   SearchGroup,
   TechStatus,
   OperatorSettings,
+  InboxSort,
 } from "../types";
 import { copy } from "../copy";
 
@@ -54,6 +55,7 @@ export type InboxListQuery = {
   price_min_rub?: number;
   platform?: string;
   bitrix?: Exclude<BitrixFilter, "any">;
+  sort?: InboxSort;
 };
 
 type ApiLot = Partial<InboxLot> & {
@@ -167,6 +169,9 @@ export function buildInboxSearchParams(query: InboxListQuery): URLSearchParams {
   if (query.ai_trigger) params.set("ai_trigger", query.ai_trigger);
   if (query.price_min_rub != null && query.price_min_rub > 0) {
     params.set("price_min_rub", String(query.price_min_rub));
+  }
+  if (query.sort && query.sort !== "relevance") {
+    params.set("sort", query.sort);
   }
   if (query.platform) params.set("platform", query.platform);
   if (query.bitrix) params.set("bitrix", query.bitrix);

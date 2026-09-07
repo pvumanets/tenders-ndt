@@ -62,6 +62,7 @@ def test_ingest_upserts_score_ge_4_and_preserves_lot_state(
             assert lot.location == "Казань"
             assert lot.url.endswith(tender_id)
             assert lot.ingested_at is not None
+            first_seen = lot.ingested_at
             l3 = session.get(Lot, l3_id)
             assert l3 is not None
             assert l3.tier == "L3"
@@ -99,6 +100,7 @@ def test_ingest_upserts_score_ge_4_and_preserves_lot_state(
             assert lot.score == 8
             assert lot.deadline_msk == "2030-02-01"
             assert lot.run_id == second.run_id
+            assert lot.ingested_at == first_seen
             n_lots = session.scalar(
                 select(func.count()).select_from(Lot).where(Lot.tender_id == tender_id)
             )

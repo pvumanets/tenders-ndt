@@ -20,6 +20,8 @@ from app.worker.docs import resolve_volume_file, sanitize_filename
 
 TIER_FILTERS = frozenset({"fit", "L1", "L2", "L3"})
 PRIORITY_TIERS = frozenset({"L1", "L2", "L3"})
+INBOX_SORTS = frozenset({"relevance", "appeared", "deadline"})
+DEFAULT_INBOX_SORT = "relevance"
 AI_REVIEW_CAP = 100
 
 
@@ -60,6 +62,14 @@ def parse_tier_filter(value: str | None) -> str:
     if tier not in TIER_FILTERS:
         raise InboxQueryError("invalid_tier")
     return tier
+
+
+def parse_inbox_sort(value: str | None) -> str:
+    """Unknown/empty → relevance (no 400)."""
+    key = (value or "").strip().lower()
+    if key in INBOX_SORTS:
+        return key
+    return DEFAULT_INBOX_SORT
 
 
 def ingested_iso(value: datetime | None) -> str | None:
@@ -321,14 +331,30 @@ def serialize_lot(
     return payload
 
 
-def _sort_key_live(lot: Lot) -> tuple[int, date, str]:
+def _ingested_stamp(lot: Lot) -> datetime:
+    stamp = lot.ingested_at
+    if stamp is None:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if stamp.tzinfo is None:
+        return stamp.replace(tzinfo=timezone.utc)
+    return stamp
+
+
+def _sort_key_live(lot: Lot, *, sort: str) -> tuple:
     due = deadline_date(lot.deadline_msk) or date.max
+    if sort == "appeared":
+        return (-_ingested_stamp(lot).timestamp(), lot.tender_id)
+    if sort == "deadline":
+        return (due, -lot.score, lot.tender_id)
+    # relevance (default)
     return (-lot.score, due, lot.tender_id)
 
 
-def _sort_key_expired(lot: Lot) -> tuple[date, str]:
-    """Freshest expired first (deadline DESC)."""
+def _sort_key_expired(lot: Lot, *, sort: str) -> tuple:
+    """Freshest expired first by default; appeared uses first-seen DESC."""
     due = deadline_date(lot.deadline_msk) or date.min
+    if sort == "appeared":
+        return (_ingested_stamp(lot), lot.tender_id)
     return (due, lot.tender_id)
 
 
@@ -346,10 +372,12 @@ def list_inbox(
     price_min_rub: str | None = None,
     platform: str | None = None,
     bitrix: str | None = None,
+    sort: str | None = None,
     today: date | None = None,
 ) -> dict[str, Any]:
     unread_flag = parse_unread(unread)
     tier_filter = parse_tier_filter(tier)
+    sort_mode = parse_inbox_sort(sort)
     ai_flag = parse_ai_reviewed(ai_reviewed)
     trigger = parse_ai_trigger(ai_trigger)
     price_min = parse_price_min_rub(price_min_rub)
@@ -423,8 +451,11 @@ def list_inbox(
                 expired.append((lot, state))
             else:
                 live.append((lot, state))
-        live.sort(key=lambda pair: _sort_key_live(pair[0]))
-        expired.sort(key=lambda pair: _sort_key_expired(pair[0]), reverse=True)
+        live.sort(key=lambda pair: _sort_key_live(pair[0], sort=sort_mode))
+        expired.sort(
+            key=lambda pair: _sort_key_expired(pair[0], sort=sort_mode),
+            reverse=True,
+        )
         filtered = live + expired
         items = [
             serialize_lot(lot, state, today=today_d, min_price=l1_min_price)
