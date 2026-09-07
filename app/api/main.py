@@ -437,6 +437,7 @@ def api_inbox(
     price_min_rub: str | None = Query(default=None),
     platform: str | None = Query(default=None),
     bitrix: str | None = Query(default=None),
+    sort: str | None = Query(default=None),
 ):
     try:
         return inbox.list_inbox(
@@ -452,6 +453,7 @@ def api_inbox(
             price_min_rub=price_min_rub,
             platform=platform,
             bitrix=bitrix,
+            sort=sort,
         )
     except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
         _inbox_http(exc)

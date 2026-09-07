@@ -106,4 +106,18 @@ describe("InboxCommandBar", () => {
     const root = container.firstElementChild as HTMLElement;
     expect(getComputedStyle(root).position).toBe("sticky");
   });
+
+  it("calls onSort when sort mode toggled", async () => {
+    const user = userEvent.setup();
+    const onSort = vi.fn();
+    render(
+      <ThemeRegistry>
+        <InboxCommandBar {...baseProps} priority={[]} sort="relevance" onSort={onSort} />
+      </ThemeRegistry>,
+    );
+    await user.click(screen.getByRole("button", { name: copy.sort_appeared }));
+    expect(onSort).toHaveBeenCalledWith("appeared");
+    await user.click(screen.getByRole("button", { name: copy.sort_deadline }));
+    expect(onSort).toHaveBeenCalledWith("deadline");
+  });
 });

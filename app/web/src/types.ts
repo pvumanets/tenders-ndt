@@ -1,5 +1,7 @@
 export type SalesTier = "L1" | "L2" | "L3";
 export type ViewMode = "cards" | "table";
+/** Inbox list order: relevance (default) | first-seen | nearest deadline */
+export type InboxSort = "relevance" | "appeared" | "deadline";
 export type AppTab = "auto" | "manual" | "settings";
 export type AiTrigger = "auto" | "manual";
 export type RunPipeline = "manual" | "auto";

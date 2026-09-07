@@ -7,13 +7,45 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  TableSortLabel,
   Typography,
 } from "@mui/material";
-import type { InboxLot, SalesTier } from "../../types";
+import type { InboxLot, InboxSort, SalesTier } from "../../types";
 import { copy } from "../../copy";
 import { formatDate, formatPrice, formatTierMove, rulesBoardTier, tierLabel, tierMoved } from "../../lib/format";
 import { stripe } from "../../theme/palette";
 import PlatformIcon from "./PlatformIcon";
+
+function SortHeader({
+  label,
+  mode,
+  active,
+  onSort,
+}: {
+  label: string;
+  mode: InboxSort;
+  active: InboxSort;
+  onSort?: (v: InboxSort) => void;
+}) {
+  if (!onSort) {
+    return <>{label}</>;
+  }
+  const selected = active === mode;
+  const direction = mode === "deadline" ? "asc" : "desc";
+  return (
+    <TableSortLabel
+      active={selected}
+      direction={direction}
+      hideSortIcon={!selected}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSort(mode);
+      }}
+    >
+      {label}
+    </TableSortLabel>
+  );
+}
 
 export default function LotTable({
   lots,
@@ -21,28 +53,49 @@ export default function LotTable({
   onOpen,
   boardTier,
   showTierMove = false,
+  sort = "relevance",
+  onSort,
 }: {
   lots: InboxLot[];
   selectedId: string | null;
   onOpen: (id: string) => void;
   boardTier: (lot: InboxLot) => SalesTier;
   showTierMove?: boolean;
+  sort?: InboxSort;
+  onSort?: (v: InboxSort) => void;
 }) {
   return (
     <Paper
       elevation={0}
       sx={{ border: `1px solid ${stripe.border}`, borderRadius: 1, overflow: "auto" }}
     >
-      <Table size="small" sx={{ minWidth: 720 }}>
+      <Table size="small" sx={{ minWidth: 820 }}>
         <TableHead>
           <TableRow>
             <TableCell />
             <TableCell>{copy.col_platform}</TableCell>
-            <TableCell>{copy.col_priority}</TableCell>
+            <TableCell aria-sort={sort === "relevance" ? "descending" : undefined}>
+              <SortHeader
+                label={copy.col_priority}
+                mode="relevance"
+                active={sort}
+                onSort={onSort}
+              />
+            </TableCell>
             <TableCell>{copy.col_title}</TableCell>
             <TableCell>{copy.col_customer}</TableCell>
             <TableCell>{copy.col_location}</TableCell>
-            <TableCell>{copy.col_deadline}</TableCell>
+            <TableCell aria-sort={sort === "deadline" ? "ascending" : undefined}>
+              <SortHeader label={copy.col_deadline} mode="deadline" active={sort} onSort={onSort} />
+            </TableCell>
+            <TableCell aria-sort={sort === "appeared" ? "descending" : undefined}>
+              <SortHeader
+                label={copy.col_ingested}
+                mode="appeared"
+                active={sort}
+                onSort={onSort}
+              />
+            </TableCell>
             <TableCell>{copy.col_price}</TableCell>
           </TableRow>
         </TableHead>
@@ -80,42 +133,22 @@ export default function LotTable({
                   ) : null}
                 </TableCell>
                 <TableCell sx={{ width: 40 }}>
-                  <PlatformIcon platformId={lot.source_platform_id} size={16} />
+                  <PlatformIcon platformId={lot.source_platform_id} size={18} />
                 </TableCell>
                 <TableCell>
-                  <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-                    <Chip size="small" label={tierLabel(tier)} />
-                    {moved ? <Chip size="small" variant="outlined" label={moved} /> : null}
-                    {lot.manual_tier != null ? (
-                      <Typography variant="caption" color="text.secondary">
-                        {copy.chip_overridden_suffix}
-                      </Typography>
+                  <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <Chip size="small" label={tierLabel(tier)} variant="outlined" />
+                    {moved ? <Chip size="small" label={moved} variant="outlined" color="primary" /> : null}
+                    {lot.deadline_expired ? (
+                      <Chip size="small" label={copy.badge_deadline_expired} variant="outlined" />
                     ) : null}
                   </Stack>
                 </TableCell>
-                <TableCell>
-                  <Typography
-                    noWrap
-                    sx={{ maxWidth: 320, fontWeight: 500, color: stripe.navy }}
-                    title={lot.title}
-                  >
-                    {lot.title}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography
-                    noWrap
-                    sx={{
-                      maxWidth: 240,
-                      color: lot.customer_name ? stripe.navy : stripe.textMuted,
-                    }}
-                    title={lot.customer_name || undefined}
-                  >
-                    {lot.customer_name || copy.field_empty}
-                  </Typography>
-                </TableCell>
+                <TableCell>{lot.title}</TableCell>
+                <TableCell>{lot.customer_name || copy.field_empty}</TableCell>
                 <TableCell>{lot.location || copy.field_empty}</TableCell>
                 <TableCell>{formatDate(lot.deadline_msk)}</TableCell>
+                <TableCell>{formatDate(lot.ingested_at)}</TableCell>
                 <TableCell>{formatPrice(lot.price_rub)}</TableCell>
               </TableRow>
             );
@@ -125,4 +158,3 @@ export default function LotTable({
     </Paper>
   );
 }
-

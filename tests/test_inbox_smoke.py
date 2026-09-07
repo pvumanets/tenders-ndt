@@ -188,5 +188,81 @@ def test_inbox_pool_viewed_priority_persist(smoke_db: sessionmaker[Session]) -> 
                 params={"deadline_from": "2026-08-19", "deadline_to": "2026-08-21"},
             )
             assert hot_id in [row["tender_id"] for row in ranged.json()["items"]]
+            junk_sort = client.get("/api/inbox", params={"sort": "nope"})
+            assert junk_sort.status_code == 200
+    finally:
+        _cleanup(smoke_db, username=username, lot_ids=lot_ids, query=query)
+
+
+@pytest.mark.smoke
+def test_inbox_sort_relevance_appeared_deadline(smoke_db: sessionmaker[Session]) -> None:
+    suffix = uuid4().hex[:12]
+    username = f"{SMOKE_PREFIX}sort_{suffix}"
+    a_id = f"{SMOKE_PREFIX}sort_a_{suffix}"
+    b_id = f"{SMOKE_PREFIX}sort_b_{suffix}"
+    query = f"{SMOKE_PREFIX}sort_run_{suffix}"
+    lot_ids = [a_id, b_id]
+    try:
+        with smoke_db() as session:
+            session.add(
+                User(
+                    username=username,
+                    password_hash=_hash(_PASS),
+                    display_name="qa_smoke_sort",
+                )
+            )
+            session.add(Run(query=query, status="done", limit_n=10))
+            session.flush()
+            run = session.scalar(select(Run).where(Run.query == query))
+            assert run is not None
+            session.add(
+                Lot(
+                    tender_id=a_id,
+                    run_id=run.id,
+                    title="sort-a low score early deadline",
+                    url=f"https://rostender.info/tender/{a_id}",
+                    score=5,
+                    tier="L2",
+                    deadline_msk="01.09.2030",
+                    source_platform_id="rostender",
+                    ingested_at=datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc),
+                )
+            )
+            session.add(
+                Lot(
+                    tender_id=b_id,
+                    run_id=run.id,
+                    title="sort-b high score late deadline",
+                    url=f"https://rostender.info/tender/{b_id}",
+                    score=9,
+                    tier="L1",
+                    deadline_msk="15.09.2030",
+                    source_platform_id="rostender",
+                    ingested_at=datetime(2026, 8, 12, 12, 0, tzinfo=timezone.utc),
+                )
+            )
+            session.commit()
+
+        with _client() as client:
+            assert (
+                client.post(
+                    "/api/auth/login",
+                    json={"username": username, "password": _PASS},
+                ).status_code
+                == 200
+            )
+
+            def _ids(sort: str | None = None) -> list[str]:
+                params: dict[str, str] = {}
+                if sort is not None:
+                    params["sort"] = sort
+                rows = client.get("/api/inbox", params=params).json()["items"]
+                return [row["tender_id"] for row in rows if row["tender_id"] in lot_ids]
+
+            assert _ids() == [b_id, a_id]
+            assert _ids("relevance") == [b_id, a_id]
+            assert _ids("appeared") == [b_id, a_id]
+            assert _ids("deadline") == [a_id, b_id]
+            assert _ids("garbage") == [b_id, a_id]
     finally:
         _cleanup(smoke_db, username=username, lot_ids=lot_ids, query=query)

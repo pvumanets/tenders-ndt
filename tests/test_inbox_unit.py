@@ -10,12 +10,15 @@ from fastapi.testclient import TestClient
 
 from app.api.inbox import (
     InboxQueryError,
+    _sort_key_expired,
+    _sort_key_live,
     deadline_iso,
     is_deadline_expired,
     list_inbox,
     parse_ai_trigger,
     parse_bitrix_filter,
     parse_board_hidden_body,
+    parse_inbox_sort,
     parse_platform_filter,
     parse_price_min_rub,
     parse_priority_body,
@@ -123,6 +126,57 @@ def test_list_inbox_rejects_bad_query_before_db() -> None:
         list_inbox(ai_trigger="both")
     assert parse_ai_trigger("auto") == "auto"
     assert parse_ai_trigger("manual") == "manual"
+
+
+@pytest.mark.unit
+def test_parse_inbox_sort_defaults_unknown() -> None:
+    assert parse_inbox_sort(None) == "relevance"
+    assert parse_inbox_sort("") == "relevance"
+    assert parse_inbox_sort("relevance") == "relevance"
+    assert parse_inbox_sort("appeared") == "appeared"
+    assert parse_inbox_sort("deadline") == "deadline"
+    assert parse_inbox_sort("APPEARED") == "appeared"
+    assert parse_inbox_sort("nope") == "relevance"
+    assert parse_inbox_sort("score") == "relevance"
+
+
+@pytest.mark.unit
+def test_sort_keys_relevance_appeared_deadline() -> None:
+    early = _lot(
+        tender_id="a",
+        score=5,
+        deadline_msk="01.09.2026",
+        ingested_at=datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc),
+    )
+    late = _lot(
+        tender_id="b",
+        score=9,
+        deadline_msk="15.09.2026",
+        ingested_at=datetime(2026, 8, 12, 12, 0, tzinfo=timezone.utc),
+    )
+    live = [early, late]
+    live.sort(key=lambda lot: _sort_key_live(lot, sort="relevance"))
+    assert [lot.tender_id for lot in live] == ["b", "a"]
+    live.sort(key=lambda lot: _sort_key_live(lot, sort="appeared"))
+    assert [lot.tender_id for lot in live] == ["b", "a"]
+    live.sort(key=lambda lot: _sort_key_live(lot, sort="deadline"))
+    assert [lot.tender_id for lot in live] == ["a", "b"]
+
+    old_exp = _lot(
+        tender_id="old",
+        deadline_msk="01.08.2026",
+        ingested_at=datetime(2026, 7, 1, tzinfo=timezone.utc),
+    )
+    new_exp = _lot(
+        tender_id="new",
+        deadline_msk="10.08.2026",
+        ingested_at=datetime(2026, 8, 1, tzinfo=timezone.utc),
+    )
+    expired = [old_exp, new_exp]
+    expired.sort(key=lambda lot: _sort_key_expired(lot, sort="relevance"), reverse=True)
+    assert [lot.tender_id for lot in expired] == ["new", "old"]
+    expired.sort(key=lambda lot: _sort_key_expired(lot, sort="appeared"), reverse=True)
+    assert [lot.tender_id for lot in expired] == ["new", "old"]
 
 
 @pytest.mark.unit

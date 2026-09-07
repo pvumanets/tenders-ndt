@@ -36,6 +36,14 @@ export default function LotMiniCard({
     showAiHint && tierMoved(lot) && lot.ai_tier
       ? copy.chip_ai_tier_hint.replace("{tier}", lot.ai_tier)
       : null;
+  const hasBadges =
+    hasManual || Boolean(showAiHint && lot.ai_reviewed) || Boolean(moveLabel) || Boolean(aiHint) || lot.deadline_expired;
+
+  const chipSx = {
+    alignSelf: "flex-start" as const,
+    height: theme.density.chip.height,
+    fontSize: `${theme.density.chip.fontSize}px`,
+  };
 
   return (
     <Paper
@@ -68,82 +76,52 @@ export default function LotMiniCard({
         }}
       >
         <Stack spacing={0} sx={{ flex: 1, minWidth: 0 }}>
-          {hasManual ? (
-            <Chip
-              size="small"
-              label={copy.chip_overridden_suffix}
-              variant="outlined"
-              sx={{
-                alignSelf: "flex-start",
-                height: theme.density.chip.height,
-                fontSize: `${theme.density.chip.fontSize}px`,
-                borderColor: stripe.border,
-                color: stripe.textMuted,
-              }}
-            />
-          ) : null}
-          {showAiHint && lot.ai_reviewed ? (
-            <Chip
-              size="small"
-              label={copy.chip_ai_reviewed}
-              variant="outlined"
-              sx={{
-                alignSelf: "flex-start",
-                mt: hasManual ? 0.5 : 0,
-                height: theme.density.chip.height,
-                fontSize: `${theme.density.chip.fontSize}px`,
-                borderColor: stripe.border,
-                color: stripe.textMuted,
-              }}
-            />
-          ) : null}
-          {moveLabel ? (
-            <Chip
-              size="small"
-              label={moveLabel}
-              variant="outlined"
-              sx={{
-                alignSelf: "flex-start",
-                mt: hasManual ? 0.5 : 0,
-                height: theme.density.chip.height,
-                fontSize: `${theme.density.chip.fontSize}px`,
-                borderColor: stripe.blurple,
-                color: stripe.blurple,
-              }}
-            />
-          ) : null}
-          {aiHint ? (
-            <Chip
-              size="small"
-              label={aiHint}
-              variant="outlined"
-              sx={{
-                alignSelf: "flex-start",
-                mt: hasManual || moveLabel ? 0.5 : 0,
-                height: theme.density.chip.height,
-                fontSize: `${theme.density.chip.fontSize}px`,
-                borderColor: stripe.border,
-                color: stripe.textMuted,
-              }}
-            />
-          ) : null}
-          {lot.deadline_expired ? (
-            <Chip
-              size="small"
-              label={copy.badge_deadline_expired}
-              variant="outlined"
-              sx={{
-                alignSelf: "flex-start",
-                mt: hasManual ? 0.5 : 0,
-                height: theme.density.chip.height,
-                fontSize: `${theme.density.chip.fontSize}px`,
-                borderColor: stripe.border,
-                color: stripe.textMuted,
-              }}
-            />
+          {hasBadges ? (
+            <Stack spacing={0.5} sx={{ mb: `${pmc.headerToBody}px` }}>
+              {hasManual ? (
+                <Chip
+                  size="small"
+                  label={copy.chip_overridden_suffix}
+                  variant="outlined"
+                  sx={{ ...chipSx, borderColor: stripe.border, color: stripe.textMuted }}
+                />
+              ) : null}
+              {showAiHint && lot.ai_reviewed ? (
+                <Chip
+                  size="small"
+                  label={copy.chip_ai_reviewed}
+                  variant="outlined"
+                  sx={{ ...chipSx, borderColor: stripe.border, color: stripe.textMuted }}
+                />
+              ) : null}
+              {moveLabel ? (
+                <Chip
+                  size="small"
+                  label={moveLabel}
+                  variant="outlined"
+                  sx={{ ...chipSx, borderColor: stripe.blurple, color: stripe.blurple }}
+                />
+              ) : null}
+              {aiHint ? (
+                <Chip
+                  size="small"
+                  label={aiHint}
+                  variant="outlined"
+                  sx={{ ...chipSx, borderColor: stripe.border, color: stripe.textMuted }}
+                />
+              ) : null}
+              {lot.deadline_expired ? (
+                <Chip
+                  size="small"
+                  label={copy.badge_deadline_expired}
+                  variant="outlined"
+                  sx={{ ...chipSx, borderColor: stripe.border, color: stripe.textMuted }}
+                />
+              ) : null}
+            </Stack>
           ) : null}
 
-          <Box sx={{ mt: hasManual || moveLabel || aiHint || lot.deadline_expired ? `${pmc.headerToBody}px` : 0 }}>
+          <Box>
             <Typography
               sx={{
                 fontSize: `${theme.density.font.md}px`,
@@ -199,6 +177,16 @@ export default function LotMiniCard({
             </Typography>
             <Typography sx={{ fontSize: `${theme.density.font.sm}px`, color: stripe.text }}>
               {formatDate(lot.deadline_msk)}
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mt: 0.75 }}
+            >
+              {copy.col_ingested}
+            </Typography>
+            <Typography sx={{ fontSize: `${theme.density.font.sm}px`, color: stripe.text }}>
+              {formatDate(lot.ingested_at)}
             </Typography>
             <Typography
               variant="caption"

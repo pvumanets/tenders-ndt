@@ -13,6 +13,7 @@ import type {
   BitrixFilter,
   DeadlinePreset,
   InboxLot,
+  InboxSort,
   IngestedPreset,
   OperatorSettings,
   PlatformRow,
@@ -165,6 +166,7 @@ function AppInner() {
   const [lots, setLots] = useState<InboxLot[]>([]);
   const [lotsState, setLotsState] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [view, setView] = useState<ViewMode>("cards");
+  const [sort, setSort] = useState<InboxSort>("relevance");
   const [unreadOnly, setUnreadOnly] = useState(true);
   const [aiReviewedOnly, setAiReviewedOnly] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
@@ -235,6 +237,7 @@ function AppInner() {
       price_min_rub: priceMinRub ?? undefined,
       platform: platformsSelected.length > 0 ? platformsSelected.join(",") : undefined,
       bitrix: bitrixFilter === "any" ? undefined : bitrixFilter,
+      sort,
       ...dates,
     };
   }
@@ -278,6 +281,7 @@ function AppInner() {
     priceMinRub,
     platformsSelected,
     bitrixFilter,
+    sort,
     operatorSettingsReady,
   ]);
 
@@ -673,6 +677,8 @@ function AppInner() {
       onIngestedTo={setIngestedTo}
       view={view}
       onView={setView}
+      sort={sort}
+      onSort={setSort}
       showAiReviewedFilter={tab === "manual"}
       aiReviewedOnly={aiReviewedOnly}
       onAiReviewedOnly={setAiReviewedOnly}
@@ -700,6 +706,7 @@ function AppInner() {
           onOpen={setSelectedId}
           boardTier={aiBoardTier}
           showTierMove
+          sort={sort}
         />
       );
     }
@@ -710,6 +717,8 @@ function AppInner() {
         onOpen={setSelectedId}
         boardTier={aiBoardTier}
         showTierMove
+        sort={sort}
+        onSort={setSort}
       />
     );
   }
