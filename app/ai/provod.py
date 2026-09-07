@@ -95,7 +95,10 @@ def _parse_json_content(text: str) -> dict[str, Any]:
         match = re.search(r"\{.*\}", raw, re.S)
         if not match:
             raise AiTierError("invalid_json") from None
-        data = json.loads(match.group(0))
+        try:
+            data = json.loads(match.group(0))
+        except json.JSONDecodeError as exc:
+            raise AiTierError("invalid_json") from exc
     if not isinstance(data, dict):
         raise AiTierError("invalid_json")
     tier = str(data.get("tier") or "").strip()
@@ -132,7 +135,10 @@ def _chat_once(
         raise AiTierError("transport") from exc
     if resp.status_code >= 400:
         raise AiTierError(f"http_{resp.status_code}")
-    body = resp.json()
+    try:
+        body = resp.json()
+    except json.JSONDecodeError as exc:
+        raise AiTierError("invalid_json") from exc
     try:
         content = body["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as exc:

@@ -133,8 +133,10 @@ def _probe_platform(platform_id: str) -> str:
     return "missing"
 
 
-def list_platforms() -> dict[str, Any]:
-    runner.refresh_session(probe_roseltorg_live=False)
+def list_platforms(*, refresh: bool = False) -> dict[str, Any]:
+    from app.api.session_probe import refresh_session_cached
+
+    refresh_session_cached(force=refresh, probe_roseltorg_live=False)
     snap = STATE.snapshot()
     sessions = dict(snap.get("sessions") or {})
     rostender = str(snap.get("session") or "unknown")
@@ -196,6 +198,9 @@ def upload_platform_cookies(platform_id: str, body: Any) -> dict[str, Any]:
 
     probe = _probe_platform(slug)
     api_session = _apply_probe_to_state(slug, probe)
+    from app.api.session_probe import note_fresh
+
+    note_fresh()
     if api_session in {"expired", "missing", "blocked"}:
         notify.notify_ops_session(platform_id=slug, session=api_session)
 

@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 
 from app.worker.http_retry import request_with_retry
 from app.worker.list_scrape import AuthError, UA
+from app.worker.scrape_log import log_fetch
 from app.worker.platform_ids import PLATFORM_TENDER_PRO, compose_tender_id
 
 DEFAULT_BASE = "https://www2.tender.pro"
@@ -225,6 +226,12 @@ def scrape_list_page(
             on_retry=on_retry,
         )
         rows, total = parse_list_html(response.text, base_url=base_url)
+        log_fetch(
+            platform=PLATFORM_TENDER_PRO,
+            url=str(response.url),
+            status=response.status_code,
+            parsed_n=len(rows),
+        )
         return [asdict(r) for r in rows], total
     finally:
         if own:
@@ -276,6 +283,11 @@ def scrape_queries(
                     on_retry=on_retry,
                 )
                 if not batch:
+                    if total is not None and page * 25 < total:
+                        page += 1
+                        if delay_s > 0:
+                            time.sleep(delay_s)
+                        continue
                     break
                 new = 0
                 for row in batch:
@@ -292,8 +304,6 @@ def scrape_queries(
                 if new == 0:
                     break
                 if total is not None and page * 25 >= total:
-                    break
-                if len(batch) < 25:
                     break
                 page += 1
                 if delay_s > 0:

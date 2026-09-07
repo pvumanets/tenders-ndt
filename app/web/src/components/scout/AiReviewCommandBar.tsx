@@ -42,7 +42,11 @@ export default function AiReviewCommandBar({
         <Typography variant="body2" sx={{ color: stripe.textMuted }}>
           {copy.ai_eta_done}
         </Typography>
-      ) : null}
+      ) : (
+        <Typography variant="body2" sx={{ color: stripe.textMuted }}>
+          {copy.ai_review_cap_hint}
+        </Typography>
+      )}
     </Box>
   );
 }

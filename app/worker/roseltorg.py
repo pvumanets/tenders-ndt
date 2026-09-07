@@ -17,6 +17,7 @@ from app.worker.cookies import parse_netscape_cookies
 from app.worker.customer_name import clean_customer_name
 from app.worker.http_retry import request_with_retry
 from app.worker.list_scrape import AuthError, UA
+from app.worker.scrape_log import log_fetch
 from app.worker.platform_ids import PLATFORM_ROSELTORG, compose_tender_id
 
 DEFAULT_BASE = "https://www.roseltorg.ru"
@@ -36,7 +37,7 @@ _DEADLINE_ROW_RE = re.compile(
 _SHORT_YEAR_RE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{2})\b")
 _ACCEPTANCE_RE = re.compile(r"Прием заявок|Приём заявок", re.I)
 _CLOSED_RE = re.compile(
-    r"Заверш|Отмен|Архив|Не состоял|Работа комиссии",
+    r"Заверш|Оконч|Отмен|Архив|Не состоял|Работа комиссии",
     re.I,
 )
 
@@ -184,7 +185,7 @@ def is_open_acceptance(
     if due is not None:
         return due >= today_msk_date(today)
     status = str(item_or_row.get("status") or "")
-    if _CLOSED_RE.search(status) and not _ACCEPTANCE_RE.search(status):
+    if _CLOSED_RE.search(status):
         return False
     if _ACCEPTANCE_RE.search(status):
         return True
@@ -273,6 +274,12 @@ def fetch_search_page(
             mapped = map_search_card(node, base=root)
             if mapped:
                 rows.append(mapped)
+        log_fetch(
+            platform=PLATFORM_ROSELTORG,
+            url=str(response.url),
+            status=response.status_code,
+            parsed_n=len(rows),
+        )
         return rows
     finally:
         if own:

@@ -16,6 +16,7 @@ from app.worker.cookies import parse_netscape_cookies
 from app.worker.http_relay import relay_configured, relay_fetch
 from app.worker.http_retry import request_with_retry
 from app.worker.list_scrape import AuthError, UA
+from app.worker.scrape_log import log_fetch
 
 LIST_PATH = "/market/"
 VIEW_PATH = "/market/view.html"
@@ -374,6 +375,12 @@ def scrape_list_page(
         if not relay_configured():
             response.raise_for_status()
         rows = parse_list_html(response.text, site=site, base=root)
+        log_fetch(
+            platform=site.platform_id,
+            url=str(response.url),
+            status=response.status_code,
+            parsed_n=len(rows),
+        )
         soup = BeautifulSoup(response.text, "lxml")
         return [asdict(r) for r in rows], soup
     finally:
@@ -421,6 +428,7 @@ def scrape_queries(
             q = str(query).strip()
             if not q:
                 continue
+            query_seen: set[str] = set()
             page = 1
             while page <= MAX_PAGES and (cap is None or len(combined) < cap):
                 if should_stop and should_stop():
@@ -436,20 +444,24 @@ def scrape_queries(
                 )
                 if not batch:
                     break
-                new = 0
+                page_unique = 0
                 for row in batch:
                     tid = str(row.get("tender_id") or "")
-                    if not tid or tid in seen:
+                    if not tid:
+                        continue
+                    if tid not in query_seen:
+                        query_seen.add(tid)
+                        page_unique += 1
+                    if tid in seen:
                         continue
                     seen.add(tid)
                     row["url"] = card_url(site, tid, base=root)
                     combined.append(row)
-                    new += 1
                     if cap is not None and len(combined) >= cap:
                         break
                 if on_progress:
                     on_progress(len(combined), progress_total)
-                if new == 0:
+                if page_unique == 0:
                     break
                 nxt = _next_page(soup, page) if soup is not None else None
                 if nxt is None:

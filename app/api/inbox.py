@@ -20,6 +20,7 @@ from app.worker.docs import resolve_volume_file, sanitize_filename
 
 TIER_FILTERS = frozenset({"fit", "L1", "L2", "L3"})
 PRIORITY_TIERS = frozenset({"L1", "L2", "L3"})
+AI_REVIEW_CAP = 100
 
 
 class InboxQueryError(ValueError):
@@ -653,6 +654,9 @@ def _apply_ai_review(
             except AiTierError as exc:
                 state.ai_error = str(exc.message)
                 failed += 1
+            except Exception as exc:
+                state.ai_error = str(exc)[:240]
+                failed += 1
             session.flush()
             session.commit()
             docs = list(
@@ -711,6 +715,7 @@ def run_ai_review(body: Any) -> dict[str, Any]:
                     continue
                 pairs.append((lot, session.get(LotState, tid)))
 
+    pairs = pairs[:AI_REVIEW_CAP]
     result = _apply_ai_review(pairs, trigger="manual")
     result["failed"] = int(result.get("failed") or 0) + failed_missing
     return result
@@ -744,6 +749,7 @@ def run_auto_ai_review(prefer_ids: set[str]) -> dict[str, Any]:
     if not pairs:
         STATE.log_msg("Auto AI: no-op (no eligible lots)")
         return {"processed": 0, "failed": 0, "items": []}
+    pairs = pairs[:AI_REVIEW_CAP]
     return _apply_ai_review(pairs, trigger="auto", skip_hidden_expired=False)
 
 

@@ -192,6 +192,7 @@ function AppInner() {
   const [bitrixFilter, setBitrixFilter] = useState<BitrixFilter>("any");
   const [groupError, setGroupError] = useState<string | null>(null);
   const [highlightSessions, setHighlightSessions] = useState(false);
+  const prevRunningRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -532,7 +533,11 @@ function AppInner() {
     try {
       replaceLot(await putViewed(id, !current.viewed));
     } catch (err: unknown) {
-      if (err instanceof UnauthorizedError) onUnauthorized();
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
+      setToast(copy.error_viewed_save);
     }
   }
 
@@ -541,7 +546,11 @@ function AppInner() {
       replaceLot(await putPriority(id, tier));
       setToast(copy.override_done);
     } catch (err: unknown) {
-      if (err instanceof UnauthorizedError) onUnauthorized();
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
+      setToast(copy.error_priority_save);
     }
   }
 
@@ -549,7 +558,11 @@ function AppInner() {
     try {
       replaceLot(await putBoardHidden(id, hidden));
     } catch (err: unknown) {
-      if (err instanceof UnauthorizedError) onUnauthorized();
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
+      setToast(copy.error_archive_save);
     }
   }
 
@@ -559,6 +572,25 @@ function AppInner() {
     setLotsState("ok");
     return items;
   }
+
+  useEffect(() => {
+    if (gate !== "in") return;
+    if (tab !== "auto" && tab !== "manual") return;
+    const wasRunning = prevRunningRef.current;
+    prevRunningRef.current = tech.running;
+    if (!wasRunning || tech.running) return;
+    if (tech.phase !== "done" && tech.phase !== "partial") return;
+    let cancelled = false;
+    reloadInbox()
+      .then(() => undefined)
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        if (err instanceof UnauthorizedError) onUnauthorized();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [gate, tab, tech.running, tech.phase]);
 
   async function onAiReview() {
     setAiBusy(true);
@@ -577,7 +609,11 @@ function AppInner() {
       const status = await fetchStatus();
       setTech(status);
     } catch (err: unknown) {
-      if (err instanceof UnauthorizedError) onUnauthorized();
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
+      setToast(copy.error_ai_action);
     } finally {
       setAiBusy(false);
     }
@@ -588,7 +624,11 @@ function AppInner() {
       replaceLot(await postAiWrong(id));
       setToast(copy.action_ai_wrong);
     } catch (err: unknown) {
-      if (err instanceof UnauthorizedError) onUnauthorized();
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
+      setToast(copy.error_ai_action);
     }
   }
 
