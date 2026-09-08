@@ -24,6 +24,8 @@ export default function DroppableColumn({
         outlineOffset: 2,
         borderRadius: 1,
         height: { xs: "auto", md: "100%" },
+        minHeight: { xs: 200, md: 0 },
+        "& > *": { flex: 1, minHeight: 0, width: "100%" },
       }}
     >
       {children}
