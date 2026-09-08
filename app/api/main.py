@@ -467,6 +467,14 @@ def api_inbox_ai_review(body: dict | None = None):
         _inbox_http(exc)
 
 
+@app.post("/api/inbox/mark-all-viewed")
+def api_inbox_mark_all_viewed(body: dict | None = None):
+    try:
+        return inbox.mark_all_viewed(body or {})
+    except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
+        _inbox_http(exc)
+
+
 @app.get("/api/inbox/{tender_id}")
 def api_inbox_one(tender_id: str):
     try:

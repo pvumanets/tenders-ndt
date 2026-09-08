@@ -218,4 +218,26 @@ describe("InboxCommandBar", () => {
     await user.click(within(container).getByRole("button", { name: copy.sort_deadline }));
     expect(onSort).toHaveBeenCalledWith("deadline");
   });
+
+  it("shows mark-all-viewed action when handlers provided", async () => {
+    const user = userEvent.setup();
+    const onCountUnreadInTab = vi.fn().mockResolvedValue(3);
+    const onMarkAllUnreadInTab = vi.fn().mockResolvedValue(3);
+    const { container } = renderBar(
+      <InboxCommandBar
+        {...baseProps}
+        priority={[]}
+        onCountUnreadInTab={onCountUnreadInTab}
+        onMarkAllUnreadInTab={onMarkAllUnreadInTab}
+      />,
+    );
+    await user.click(within(container).getByRole("button", { name: copy.action_mark_all_viewed }));
+    expect(onCountUnreadInTab).toHaveBeenCalled();
+    expect(await screen.findByText(copy.mark_all_viewed_confirm_title)).toBeInTheDocument();
+    expect(
+      screen.getByText(copy.mark_all_viewed_confirm_body.replace("{n}", "3")),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: copy.mark_all_viewed_confirm }));
+    expect(onMarkAllUnreadInTab).toHaveBeenCalled();
+  });
 });

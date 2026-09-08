@@ -518,6 +518,91 @@ def set_viewed(tender_id: str, body: Any) -> dict[str, Any]:
         )
 
 
+def parse_mark_all_viewed_body(body: Any) -> tuple[bool | None, str | None, bool]:
+    """Return (ai_reviewed_flag, ai_trigger, dry_run). Tab scope only."""
+    if body is None:
+        body = {}
+    if not isinstance(body, dict):
+        raise InboxQueryError("invalid_body")
+    dry_run = bool(body.get("dry_run"))
+    ai_raw = body.get("ai_reviewed")
+    ai_flag: bool | None
+    if ai_raw is None:
+        ai_flag = None
+    elif isinstance(ai_raw, bool):
+        ai_flag = ai_raw
+    elif ai_raw in (1, "1", "true", "True"):
+        ai_flag = True
+    elif ai_raw in (0, "0", "false", "False"):
+        ai_flag = False
+    else:
+        raise InboxQueryError("invalid_ai_reviewed")
+    trigger_raw = body.get("ai_trigger")
+    trigger: str | None
+    if trigger_raw is None or trigger_raw == "":
+        trigger = None
+    else:
+        trigger = parse_ai_trigger(str(trigger_raw))
+    return ai_flag, trigger, dry_run
+
+
+def _unread_tab_tender_ids(
+    session,
+    *,
+    ai_flag: bool | None,
+    trigger: str | None,
+) -> list[str]:
+    """Unread lots on a tab (ignore UI filters). Matches list_inbox unread + AI scope + not hidden."""
+    stmt = (
+        select(Lot, LotState)
+        .outerjoin(LotState, LotState.tender_id == Lot.tender_id)
+        .where(Lot.tier.in_(tuple(INBOX_TIERS)))
+        .where(or_(LotState.viewed.is_(None), LotState.viewed.is_(False)))
+    )
+    if ai_flag is True:
+        stmt = stmt.where(LotState.ai_reviewed_at.is_not(None))
+    elif ai_flag is False:
+        stmt = stmt.where(
+            or_(LotState.ai_reviewed_at.is_(None), LotState.tender_id.is_(None))
+        )
+    if trigger is not None:
+        stmt = stmt.where(LotState.ai_trigger == trigger)
+    ids: list[str] = []
+    for lot, state in session.execute(stmt).all():
+        if state is not None and state.board_hidden:
+            continue
+        if deadline_date(lot.deadline_msk) is None:
+            continue
+        ids.append(lot.tender_id)
+    return ids
+
+
+def mark_all_viewed(body: Any = None) -> dict[str, Any]:
+    """Mark all unread lots in the current tab scope as viewed. Optional dry_run → count only."""
+    ai_flag, trigger, dry_run = parse_mark_all_viewed_body(body)
+    now = datetime.now(timezone.utc)
+    factory = session_factory()
+    with factory() as session:
+        ids = _unread_tab_tender_ids(session, ai_flag=ai_flag, trigger=trigger)
+        if dry_run:
+            return {"count": len(ids), "updated": 0}
+        for tender_id in ids:
+            values: dict[str, Any] = {
+                "tender_id": tender_id,
+                "viewed": True,
+                "viewed_at": now,
+            }
+            stmt = pg_insert(LotState).values(values)
+            session.execute(
+                stmt.on_conflict_do_update(
+                    index_elements=["tender_id"],
+                    set_={"viewed": True, "viewed_at": now},
+                )
+            )
+        session.commit()
+        return {"count": len(ids), "updated": len(ids)}
+
+
 def set_priority(tender_id: str, body: Any) -> dict[str, Any]:
     tier = parse_priority_body(body)
     now = datetime.now(timezone.utc)

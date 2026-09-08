@@ -208,6 +208,28 @@ export async function putViewed(tenderId: string, viewed: boolean): Promise<Inbo
   return normalizeLot((await res.json()) as ApiLot);
 }
 
+export type MarkAllViewedScope = {
+  dry_run?: boolean;
+  ai_reviewed?: boolean;
+  ai_trigger?: "auto" | "manual";
+};
+
+export async function postMarkAllViewed(
+  body: MarkAllViewedScope = {},
+): Promise<{ count: number; updated: number }> {
+  const res = await apiFetch("/api/inbox/mark-all-viewed", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("inbox_write_failed");
+  const raw = (await res.json()) as { count?: unknown; updated?: unknown };
+  return {
+    count: typeof raw.count === "number" ? raw.count : 0,
+    updated: typeof raw.updated === "number" ? raw.updated : 0,
+  };
+}
+
 export async function putPriority(tenderId: string, tier: SalesTier | null): Promise<InboxLot> {
   const res = await apiFetch(`/api/inbox/${encodeURIComponent(tenderId)}/priority`, {
     method: "PUT",
