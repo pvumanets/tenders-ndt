@@ -622,10 +622,23 @@ export async function stopRun(): Promise<void> {
   throwRunControl(await readDetail(res));
 }
 
-function parseSchedule(raw: Partial<ScheduleSettings>): ScheduleSettings {
+function parseWeekdays(raw: unknown): number[] {
+  const fallback = [0, 1, 2, 3, 4, 5, 6];
+  if (!Array.isArray(raw)) return fallback;
+  const out: number[] = [];
+  for (const item of raw) {
+    const n = Number(item);
+    if (!Number.isInteger(n) || n < 0 || n > 6) continue;
+    if (!out.includes(n)) out.push(n);
+  }
+  return out.length > 0 ? out.sort((a, b) => a - b) : fallback;
+}
+
+function parseSchedule(raw: Partial<ScheduleSettings> & { weekdays?: unknown }): ScheduleSettings {
   return {
     enabled: Boolean(raw.enabled),
     time_msk: text(raw.time_msk) || "07:00",
+    weekdays: parseWeekdays(raw.weekdays),
     last_fired_at: raw.last_fired_at ? text(raw.last_fired_at) : null,
     last_skip_reason: raw.last_skip_reason ? text(raw.last_skip_reason) : null,
     last_attempt_at: raw.last_attempt_at ? text(raw.last_attempt_at) : null,
@@ -642,13 +655,18 @@ export async function fetchSchedule(): Promise<ScheduleSettings> {
 export async function putSchedule(body: {
   enabled?: boolean;
   time_msk?: string;
+  weekdays?: number[];
 }): Promise<ScheduleSettings> {
   const res = await apiFetch("/api/schedule", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (res.status === 400) throw new Error("invalid_time_msk");
+  if (res.status === 400) {
+    const detail = await readDetail(res);
+    if (detail === "invalid_weekdays") throw new Error("invalid_weekdays");
+    throw new Error("invalid_time_msk");
+  }
   if (!res.ok) throw new Error("schedule_save_failed");
   return parseSchedule((await res.json()) as Partial<ScheduleSettings>);
 }

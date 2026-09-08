@@ -104,6 +104,7 @@ const idleTech: TechStatus = {
 const idleSchedule: ScheduleSettings = {
   enabled: true,
   time_msk: "07:00",
+  weekdays: [0, 1, 2, 3, 4, 5, 6],
   last_fired_at: null,
   last_skip_reason: null,
   last_attempt_at: null,

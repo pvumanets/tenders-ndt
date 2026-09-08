@@ -85,6 +85,8 @@ export type QueueStep = {
 export type ScheduleSettings = {
   enabled: boolean;
   time_msk: string;
+  /** Mon=0 … Sun=6 (MSK / datetime.weekday). */
+  weekdays: number[];
   last_fired_at: string | null;
   last_skip_reason: string | null;
   last_attempt_at: string | null;

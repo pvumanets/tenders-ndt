@@ -9,9 +9,11 @@ from app.api.schedule import (
     SKIP_ALREADY_RUNNING,
     already_attempted_today,
     is_slot_due,
+    is_weekday_allowed,
     next_fire_at,
     now_msk,
     parse_time_msk,
+    parse_weekdays,
     ScheduleError,
     tick_once,
 )
@@ -31,6 +33,39 @@ def test_parse_time_msk() -> None:
         parse_time_msk("ab:cd")
     with pytest.raises(ScheduleError, match="invalid_time_msk"):
         parse_time_msk("")
+
+
+@pytest.mark.unit
+def test_parse_weekdays() -> None:
+    assert parse_weekdays([0, 2, 4]) == [0, 2, 4]
+    assert parse_weekdays("0,1,2") == [0, 1, 2]
+    assert parse_weekdays([6, 0, 6]) == [0, 6]
+    with pytest.raises(ScheduleError, match="invalid_weekdays"):
+        parse_weekdays([])
+    with pytest.raises(ScheduleError, match="invalid_weekdays"):
+        parse_weekdays([7])
+    with pytest.raises(ScheduleError, match="invalid_weekdays"):
+        parse_weekdays("nope")
+
+
+@pytest.mark.unit
+def test_weekday_gate_and_next_fire_skips_off_days() -> None:
+    # 2026-09-08 is Tuesday (weekday=1)
+    tue = datetime(2026, 9, 8, 8, 0, tzinfo=now_msk().tzinfo)
+    assert is_weekday_allowed([1, 2, 3], now=tue) is True
+    assert is_weekday_allowed([0, 2], now=tue) is False
+    # Only Wed+Thu — next from Tuesday morning before slot → Wednesday
+    before = datetime(2026, 9, 8, 6, 0, tzinfo=now_msk().tzinfo)
+    nxt = next_fire_at(
+        enabled=True,
+        time_msk="07:00",
+        weekdays=[2, 3],
+        last_attempt_at=None,
+        now=before,
+    )
+    assert nxt is not None
+    assert nxt.weekday() == 2
+    assert nxt.date().isoformat() == "2026-09-09"
 
 
 @pytest.mark.unit
