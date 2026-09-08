@@ -32,7 +32,7 @@ def test_put_operator_settings_requires_field(monkeypatch: pytest.MonkeyPatch) -
         "app.api.operator_settings.session_factory",
         lambda: (_ for _ in ()).throw(RuntimeError("database_unconfigured")),
     )
-    with pytest.raises(OperatorSettingsError, match="invalid_l1_min_price_rub"):
+    with pytest.raises(OperatorSettingsError, match="invalid_body"):
         put_operator_settings({})
     with pytest.raises(OperatorSettingsError, match="invalid_l1_min_price_rub"):
         put_operator_settings({"l1_min_price_rub": 50_000.5})

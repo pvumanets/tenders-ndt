@@ -13,6 +13,7 @@ import type {
   TechStatus,
   OperatorSettings,
   InboxSort,
+  TeachBucket,
 } from "../types";
 import { copy } from "../copy";
 
@@ -215,6 +216,26 @@ export async function putPriority(tenderId: string, tier: SalesTier | null): Pro
   });
   if (!res.ok) throw new Error("inbox_write_failed");
   return normalizeLot((await res.json()) as ApiLot);
+}
+
+export async function postTierTeach(
+  tenderId: string,
+  body: {
+    from_bucket: TeachBucket;
+    to_bucket: TeachBucket;
+    drop_tier_correct: boolean;
+    reason_ru: string;
+  },
+): Promise<{ event_id: string; lot: InboxLot }> {
+  const res = await apiFetch(`/api/inbox/${encodeURIComponent(tenderId)}/tier-teach`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("tier_teach_failed");
+  const raw = (await res.json()) as { event_id?: string; lot?: ApiLot };
+  if (!raw.lot || !raw.event_id) throw new Error("tier_teach_failed");
+  return { event_id: raw.event_id, lot: normalizeLot(raw.lot) };
 }
 
 export async function putBoardHidden(tenderId: string, hidden: boolean): Promise<InboxLot> {
@@ -610,11 +631,14 @@ export async function putSchedule(body: {
   return parseSchedule((await res.json()) as Partial<ScheduleSettings>);
 }
 
-function parseOperatorSettings(raw: Partial<OperatorSettings>): OperatorSettings {
+function parseOperatorSettings(raw: Partial<OperatorSettings> & Record<string, unknown>): OperatorSettings {
   const n = Number(raw.l1_min_price_rub);
   const rub = Number.isFinite(n) ? n : 100_000;
+  const prompt = typeof raw.ai_system_prompt === "string" ? raw.ai_system_prompt : "";
   return {
     l1_min_price_rub: Math.max(0, Math.min(5_000_000, Math.round(rub))),
+    ai_system_prompt: prompt,
+    ai_system_prompt_is_default: Boolean(raw.ai_system_prompt_is_default ?? true),
   };
 }
 
@@ -625,14 +649,19 @@ export async function fetchOperatorSettings(): Promise<OperatorSettings> {
 }
 
 export async function putOperatorSettings(body: {
-  l1_min_price_rub: number;
+  l1_min_price_rub?: number;
+  ai_system_prompt?: string | null;
 }): Promise<OperatorSettings> {
   const res = await apiFetch("/api/operator-settings", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (res.status === 400) throw new Error("invalid_l1_min_price_rub");
+  if (res.status === 400) {
+    const detail = await res.json().catch(() => ({}));
+    const code = typeof detail?.detail === "string" ? detail.detail : "invalid_body";
+    throw new Error(code);
+  }
   if (!res.ok) throw new Error("operator_settings_save_failed");
   return parseOperatorSettings((await res.json()) as Partial<OperatorSettings>);
 }

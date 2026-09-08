@@ -1,7 +1,8 @@
 import type { MouseEvent } from "react";
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import type { InboxLot } from "../../types";
+import { useDraggable } from "@dnd-kit/core";
+import type { InboxLot, TeachBucket } from "../../types";
 import { copy } from "../../copy";
 import { formatDate, formatPrice, formatTierMove, rulesBoardTier, tierMoved } from "../../lib/format";
 import { stripe } from "../../theme/palette";
@@ -12,19 +13,59 @@ import PlatformIcon from "./PlatformIcon";
 /** Reserved right column so PlatformIcon stays put across cards. */
 const PLATFORM_RAIL_PX = 24;
 
-/** Lot card — visual structure from personal PersonMiniCard, tender fields. */
-export default function LotMiniCard({
-  lot,
-  selected,
-  onOpen,
-  showTierMove = false,
-  showAiHint = false,
-}: {
+type LotMiniCardProps = {
   lot: InboxLot;
   selected?: boolean;
   onOpen: (id: string) => void;
   showTierMove?: boolean;
   showAiHint?: boolean;
+  draggable?: boolean;
+  dragBucket?: TeachBucket;
+};
+
+function DraggableLotMiniCard(props: LotMiniCardProps) {
+  const { lot, dragBucket } = props;
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: lot.tender_id,
+    data: { bucket: dragBucket },
+  });
+  const dragStyle = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
+  return (
+    <LotMiniCardView
+      {...props}
+      paperRef={setNodeRef}
+      paperProps={{ ...listeners, ...attributes }}
+      dragging={isDragging}
+      dragStyle={dragStyle}
+    />
+  );
+}
+
+/** Lot card — visual structure from personal PersonMiniCard, tender fields. */
+export default function LotMiniCard(props: LotMiniCardProps) {
+  if (props.draggable) {
+    return <DraggableLotMiniCard {...props} />;
+  }
+  return <LotMiniCardView {...props} />;
+}
+
+function LotMiniCardView({
+  lot,
+  selected,
+  onOpen,
+  showTierMove = false,
+  showAiHint = false,
+  paperRef,
+  paperProps,
+  dragging = false,
+  dragStyle,
+}: LotMiniCardProps & {
+  paperRef?: (node: HTMLElement | null) => void;
+  paperProps?: Record<string, unknown>;
+  dragging?: boolean;
+  dragStyle?: { transform: string };
 }) {
   const theme = useTheme();
   const pmc = theme.density.personMiniCard;
@@ -47,8 +88,10 @@ export default function LotMiniCard({
 
   return (
     <Paper
+      ref={paperRef}
       elevation={0}
       onClick={() => onOpen(lot.tender_id)}
+      {...(paperProps ?? {})}
       sx={{
         p: 1.25,
         width: "100%",
@@ -56,10 +99,12 @@ export default function LotMiniCard({
         border: `1px solid ${selected ? stripe.blurple : stripe.border}`,
         borderRadius: `${theme.density.radius.sm}px`,
         bgcolor: stripe.surface,
-        cursor: "pointer",
+        cursor: paperRef ? (dragging ? "grabbing" : "grab") : "pointer",
         boxShadow: "none",
         boxSizing: "border-box",
         borderLeft: lot.viewed ? undefined : `3px solid ${stripe.blurple}`,
+        opacity: dragging ? 0.4 : 1,
+        ...dragStyle,
         "&:hover": {
           borderColor: selected ? stripe.blurple : stripe.borderHover,
           boxShadow: stripeShadows.sm,

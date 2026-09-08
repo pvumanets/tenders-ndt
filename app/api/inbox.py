@@ -6,13 +6,14 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
+from uuid import UUID, uuid4
 
 from sqlalchemy import or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from app.api.operator_settings import read_l1_min_price_rub
+from app.api.operator_settings import read_ai_system_prompt, read_l1_min_price_rub
 from app.deadline import deadline_date, deadline_iso, is_deadline_expired, today_msk_date
-from app.db.models import Document, Lot, LotState
+from app.db.models import Document, Lot, LotState, TierTeachEvent
 from app.db.session import session_factory
 from app.worker.ingest import INBOX_TIERS
 from app.worker.customer_name import clean_customer_name
@@ -20,9 +21,13 @@ from app.worker.docs import resolve_volume_file, sanitize_filename
 
 TIER_FILTERS = frozenset({"fit", "L1", "L2", "L3"})
 PRIORITY_TIERS = frozenset({"L1", "L2", "L3"})
+TEACH_BUCKETS = frozenset({"L1", "L2", "L3", "expired"})
 INBOX_SORTS = frozenset({"relevance", "appeared", "deadline"})
 DEFAULT_INBOX_SORT = "relevance"
 AI_REVIEW_CAP = 100
+TEACH_REASON_MAX = 2000
+TEACH_LIST_DEFAULT = 100
+TEACH_LIST_MAX = 500
 
 
 class InboxQueryError(ValueError):
@@ -653,6 +658,7 @@ def _apply_ai_review(
     STATE.set_ai_progress(0, len(work))
     with factory() as session:
         min_price = read_l1_min_price_rub(session)
+        system_prompt = read_ai_system_prompt(session)
         for index, (lot, state) in enumerate(work):
             if skip_hidden_expired:
                 if state is not None and state.board_hidden:
@@ -674,6 +680,7 @@ def _apply_ai_review(
                     title=lot.title,
                     customer_name=clean_customer_name(lot.customer_name),
                     description=_lot_description(lot),
+                    system_prompt=system_prompt,
                 )
                 state.ai_tier = result.tier
                 state.ai_reason_ru = result.reason_ru
@@ -815,3 +822,123 @@ def mark_ai_wrong(tender_id: str, body: Any) -> dict[str, Any]:
         return serialize_lot(
             lot, state, documents=docs, include_documents=True, min_price=min_price
         )
+
+
+def parse_teach_body(body: Any) -> dict[str, Any]:
+    if not isinstance(body, dict):
+        raise InboxQueryError("invalid_body")
+    from_bucket = body.get("from_bucket")
+    to_bucket = body.get("to_bucket")
+    if from_bucket not in TEACH_BUCKETS or to_bucket not in TEACH_BUCKETS:
+        raise InboxQueryError("invalid_bucket")
+    if from_bucket == to_bucket:
+        raise InboxQueryError("same_bucket")
+    correct = body.get("drop_tier_correct")
+    if not isinstance(correct, bool):
+        raise InboxQueryError("invalid_drop_tier_correct")
+    reason_raw = body.get("reason_ru")
+    if not isinstance(reason_raw, str):
+        raise InboxQueryError("invalid_reason")
+    reason = reason_raw.strip()
+    if not reason or len(reason) > TEACH_REASON_MAX:
+        raise InboxQueryError("invalid_reason")
+    return {
+        "from_bucket": from_bucket,
+        "to_bucket": to_bucket,
+        "drop_tier_correct": correct,
+        "reason_ru": reason,
+    }
+
+
+def record_tier_teach(
+    tender_id: str,
+    body: Any,
+    *,
+    user_id: UUID | None = None,
+) -> dict[str, Any]:
+    parsed = parse_teach_body(body)
+    now = datetime.now(timezone.utc)
+    factory = session_factory()
+    with factory() as session:
+        lot = _require_pool_lot(session, tender_id)
+        state = session.get(LotState, tender_id)
+        min_price = read_l1_min_price_rub(session)
+        effective_before = _effective_tier(lot, state, min_price=min_price)
+        expired_before = is_deadline_expired(lot.deadline_msk)
+        event = TierTeachEvent(
+            id=uuid4(),
+            tender_id=tender_id,
+            created_at=now,
+            user_id=user_id,
+            from_bucket=parsed["from_bucket"],
+            to_bucket=parsed["to_bucket"],
+            drop_tier_correct=parsed["drop_tier_correct"],
+            reason_ru=parsed["reason_ru"],
+            rules_tier=state.rules_tier if state is not None else lot.tier,
+            ai_tier=state.ai_tier if state is not None else None,
+            manual_tier_before=state.manual_tier if state is not None else None,
+            effective_tier_before=effective_before,
+            deadline_expired_before=expired_before,
+            ai_reviewed=bool(state is not None and state.ai_reviewed_at is not None),
+        )
+        session.add(event)
+
+        to_bucket = parsed["to_bucket"]
+        if to_bucket in PRIORITY_TIERS:
+            state = _ensure_lot_state(session, tender_id)
+            state.manual_tier = to_bucket
+            state.manual_tier_at = now
+
+        session.commit()
+        session.refresh(event)
+        lot = session.get(Lot, tender_id)
+        state = session.get(LotState, tender_id)
+        docs = list(
+            session.scalars(select(Document).where(Document.tender_id == tender_id)).all()
+        )
+        assert lot is not None
+        return {
+            "event_id": str(event.id),
+            "lot": serialize_lot(
+                lot, state, documents=docs, include_documents=True, min_price=min_price
+            ),
+        }
+
+
+def list_tier_teach(*, limit: int | None = None) -> dict[str, Any]:
+    from sqlalchemy import func as sa_func
+
+    lim = TEACH_LIST_DEFAULT if limit is None else limit
+    if not isinstance(lim, int) or isinstance(lim, bool) or lim < 1:
+        raise InboxQueryError("invalid_limit")
+    lim = min(lim, TEACH_LIST_MAX)
+    factory = session_factory()
+    with factory() as session:
+        total = int(session.scalar(select(sa_func.count()).select_from(TierTeachEvent)) or 0)
+        rows = list(
+            session.scalars(
+                select(TierTeachEvent)
+                .order_by(TierTeachEvent.created_at.desc())
+                .limit(lim)
+            ).all()
+        )
+        items = [
+            {
+                "id": str(row.id),
+                "tender_id": row.tender_id,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "user_id": str(row.user_id) if row.user_id else None,
+                "from_bucket": row.from_bucket,
+                "to_bucket": row.to_bucket,
+                "drop_tier_correct": bool(row.drop_tier_correct),
+                "reason_ru": row.reason_ru,
+                "rules_tier": row.rules_tier,
+                "ai_tier": row.ai_tier,
+                "manual_tier_before": row.manual_tier_before,
+                "effective_tier_before": row.effective_tier_before,
+                "deadline_expired_before": bool(row.deadline_expired_before),
+                "ai_reviewed": bool(row.ai_reviewed),
+            }
+            for row in rows
+        ]
+        return {"items": items, "total": total}

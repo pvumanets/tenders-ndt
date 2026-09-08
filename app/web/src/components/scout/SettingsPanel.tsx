@@ -15,6 +15,7 @@ import SearchGroupDrawer, {
 import SearchGroupList from "./SearchGroupList";
 import SettingsSchedule from "./SettingsSchedule";
 import SettingsMinPrice from "./SettingsMinPrice";
+import SettingsAiPrompt from "./SettingsAiPrompt";
 import TechDiagnostics from "./TechDiagnostics";
 import { formatPlatformSessionLine } from "../../lib/inbox";
 
@@ -128,6 +129,13 @@ export default function SettingsPanel({
 
         <Section title={copy.settings_section_min_price}>
           <SettingsMinPrice
+            settings={operatorSettings}
+            locked={configLocked}
+            onSaved={onOperatorSettingsSaved}
+          />
+        </Section>
+        <Section title={copy.settings_section_ai_prompt}>
+          <SettingsAiPrompt
             settings={operatorSettings}
             locked={configLocked}
             onSaved={onOperatorSettingsSaved}
