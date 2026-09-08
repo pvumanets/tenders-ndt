@@ -31,11 +31,11 @@ export const copy = {
   error_archive_save: "Не удалось скрыть карточку. Попробуйте ещё раз.",
   error_ai_action: "Не удалось выполнить действие с ИИ. Попробуйте ещё раз.",
   teach_dialog_title: "Оценка переноса",
-  teach_drop_correct: "Правильный тир уже выбран дропом?",
+  teach_drop_correct: "Лот уже в нужной колонке?",
   teach_yes: "Да",
   teach_no: "Нет",
   teach_reason_label: "Почему вы перенесли этот лот?",
-  teach_reason_placeholder: "Кратко: что не так с тиром или почему колонка другая",
+  teach_reason_placeholder: "Кратко: почему эта колонка",
   teach_submit: "Сохранить",
   teach_cancel: "Отмена",
   teach_expired_hint:

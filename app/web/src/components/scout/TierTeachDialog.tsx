@@ -85,7 +85,17 @@ export default function TierTeachDialog({
             minRows={3}
             fullWidth
             required
-            slotProps={{ htmlInput: { maxLength: 2000 } }}
+            slotProps={{
+              htmlInput: { maxLength: 2000 },
+              inputLabel: { shrink: true },
+            }}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderWidth: 1,
+                },
+              },
+            }}
           />
         </Stack>
       </DialogContent>
