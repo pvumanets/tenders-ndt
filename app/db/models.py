@@ -110,6 +110,12 @@ class ScheduleSettings(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     time_msk: Mapped[str] = mapped_column(String(5), nullable=False, default="07:00", server_default="07:00")
+    weekdays: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="0,1,2,3,4,5,6",
+        server_default="0,1,2,3,4,5,6",
+    )
     last_fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_skip_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

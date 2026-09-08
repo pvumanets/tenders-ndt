@@ -38,6 +38,7 @@ const idle: TechStatus = {
 const schedule: ScheduleSettings = {
   enabled: true,
   time_msk: "07:00",
+  weekdays: [0, 1, 2, 3, 4, 5, 6],
   last_fired_at: null,
   last_skip_reason: null,
   last_attempt_at: null,
@@ -87,6 +88,8 @@ describe("SettingsPanel", () => {
     expect(screen.getByText(copy.settings_section_groups)).toBeInTheDocument();
     expect(screen.getByText(copy.settings_section_diagnostics)).toBeInTheDocument();
     expect(screen.getByLabelText(copy.schedule_time)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: copy.schedule_day_mon })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: copy.schedule_day_sun })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: copy.cookies_submit })).not.toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: copy.cookies_upload }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: copy.cookies_paste }).length).toBeGreaterThan(0);
