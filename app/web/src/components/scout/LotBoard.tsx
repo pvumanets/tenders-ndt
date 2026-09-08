@@ -4,10 +4,16 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  TouchSensor,
+  closestCorners,
+  pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
+  type Over,
 } from "@dnd-kit/core";
 import type { InboxLot, InboxSort, SalesTier, TeachBucket } from "../../types";
 import { copy } from "../../copy";
@@ -22,6 +28,30 @@ const LIVE_COLUMNS: { tier: SalesTier; title: string }[] = [
   { tier: "L2", title: copy.chip_strong },
   { tier: "L3", title: copy.chip_watch },
 ];
+
+const COLUMN_IDS = new Set<string>(["L1", "L2", "L3", "expired"]);
+
+/** Prefer column droppables; card hits still resolve via data.bucket in onDragEnd. */
+const columnFirstCollision: CollisionDetection = (args) => {
+  const pointerHits = pointerWithin(args);
+  const pointerCols = pointerHits.filter((c) => COLUMN_IDS.has(String(c.id)));
+  if (pointerCols.length > 0) return pointerCols;
+  const rectHits = rectIntersection(args);
+  const rectCols = rectHits.filter((c) => COLUMN_IDS.has(String(c.id)));
+  if (rectCols.length > 0) return rectCols;
+  return closestCorners(args);
+};
+
+export function resolveTeachBucket(over: Over | null | undefined): TeachBucket | null {
+  if (!over) return null;
+  const id = String(over.id);
+  if (COLUMN_IDS.has(id)) return id as TeachBucket;
+  const bucket = over.data?.current?.bucket;
+  if (typeof bucket === "string" && COLUMN_IDS.has(bucket)) {
+    return bucket as TeachBucket;
+  }
+  return null;
+}
 
 export function boardBucket(lot: InboxLot, boardTier: (lot: InboxLot) => SalesTier): TeachBucket {
   if (lot.deadline_expired) return "expired";
@@ -95,6 +125,9 @@ export default function LotBoard({
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
     }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 8 },
+    }),
   );
 
   const activeLot = activeId ? displayLots.find((l) => l.tender_id === activeId) : null;
@@ -106,10 +139,8 @@ export default function LotBoard({
   function onDragEnd(event: DragEndEvent) {
     setActiveId(null);
     if (pending || !onTeachSubmit) return;
-    const overId = event.over?.id;
-    if (overId == null) return;
-    const to = String(overId) as TeachBucket;
-    if (to !== "L1" && to !== "L2" && to !== "L3" && to !== "expired") return;
+    const to = resolveTeachBucket(event.over);
+    if (!to) return;
     const tenderId = String(event.active.id);
     const lot = lots.find((l) => l.tender_id === tenderId);
     if (!lot) return;
@@ -215,7 +246,12 @@ export default function LotBoard({
 
   return (
     <>
-      <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={columnFirstCollision}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+      >
         {board}
         <DragOverlay dropAnimation={null}>
           {activeLot ? (
