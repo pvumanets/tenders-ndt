@@ -1,4 +1,5 @@
 export type SalesTier = "L1" | "L2" | "L3";
+export type TeachBucket = SalesTier | "expired";
 export type ViewMode = "cards" | "table";
 /** Inbox list order: relevance (default) | first-seen | nearest deadline */
 export type InboxSort = "relevance" | "appeared" | "deadline";
@@ -92,6 +93,8 @@ export type ScheduleSettings = {
 
 export type OperatorSettings = {
   l1_min_price_rub: number;
+  ai_system_prompt: string;
+  ai_system_prompt_is_default: boolean;
 };
 
 export type BitrixFilter = "any" | "in" | "out";

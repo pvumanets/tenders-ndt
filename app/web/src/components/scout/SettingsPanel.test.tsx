@@ -44,7 +44,11 @@ const schedule: ScheduleSettings = {
   next_fire_at: null,
 };
 
-const operatorSettings = { l1_min_price_rub: 100_000 };
+const operatorSettings = {
+  l1_min_price_rub: 100_000,
+  ai_system_prompt: "default prompt",
+  ai_system_prompt_is_default: true,
+};
 
 function renderSettings(extra?: Partial<Parameters<typeof SettingsPanel>[0]>) {
   const onToggleQueue = extra?.onToggleQueue ?? vi.fn();

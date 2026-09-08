@@ -365,7 +365,11 @@ describe("App R3 mutations and refetch", () => {
           });
         }
         if (url.includes("/api/operator-settings")) {
-          return jsonResponse(200, { l1_min_price_rub: 0 });
+          return jsonResponse(200, {
+            l1_min_price_rub: 0,
+            ai_system_prompt: "p",
+            ai_system_prompt_is_default: true,
+          });
         }
         return jsonResponse(200, {});
       }),

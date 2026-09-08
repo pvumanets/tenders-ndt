@@ -23,8 +23,9 @@ _CHAT_TIMEOUT = 120.0
 _TIERS = frozenset({"L1", "L2", "L3"})
 _DESC_MAX = 800
 
-# SoT: docs/delivery/ai-master-prompt.md (accepted session 1)
-_SYSTEM = """Ты — опытный директор лаборатории неразрушающего контроля, которая оказывает услуги на промышленных объектах (нефтегаз, атомная и химическая промышленность, крупные стройки и реконструкции).
+# SoT seed: docs/delivery/ai-master-prompt.md (accepted session 1).
+# Live override: operator_settings.ai_system_prompt (092).
+DEFAULT_SYSTEM_PROMPT = """Ты — опытный директор лаборатории неразрушающего контроля, которая оказывает услуги на промышленных объектах (нефтегаз, атомная и химическая промышленность, крупные стройки и реконструкции).
 
 Сильные стороны лаборатории: визуальный и измерительный контроль (ВИК), капиллярный / цветная дефектоскопия (ПВК), ультразвуковой контроль (УЗК), акустические методы, металлография (услуги по составу и структуре металла), радиографический контроль (рентген, гамма, цифровая радиография), в том числе оценка толщины с помощью цифровой радиографии.
 
@@ -54,6 +55,13 @@ reason_ru: одно-два коротких предложения по-русс
 6) Услуги поверки и калибровки средств измерений → L3.
 7) Контроль толщины стенок трубопроводов методом НК как услуга → L1 или L2.
 8) Закупка с «неразрушающий» в названии, но предмет — медоборудование или расходники клиники → L3."""
+
+# Back-compat alias for tests / imports
+_SYSTEM = DEFAULT_SYSTEM_PROMPT
+
+
+def get_default_system_prompt() -> str:
+    return DEFAULT_SYSTEM_PROMPT
 
 
 @dataclass(frozen=True)
@@ -114,7 +122,9 @@ def _chat_once(
     key: str,
     model: str,
     user_content: str,
+    system_prompt: str | None = None,
 ) -> AiTierResult:
+    system = system_prompt if system_prompt is not None else DEFAULT_SYSTEM_PROMPT
     try:
         resp = client.post(
             f"{PROVOD_BASE_URL}/v1/chat/completions",
@@ -123,7 +133,7 @@ def _chat_once(
                 "model": model,
                 "temperature": 0,
                 "messages": [
-                    {"role": "system", "content": _SYSTEM},
+                    {"role": "system", "content": system},
                     {"role": "user", "content": user_content},
                 ],
             },
@@ -169,6 +179,7 @@ def review_tier(
     title: str,
     customer_name: str | None = None,
     description: str | None = None,
+    system_prompt: str | None = None,
     http_client: httpx.Client | None = None,
     post_chat: Callable[..., AiTierResult] | None = None,
 ) -> AiTierResult:
@@ -180,13 +191,20 @@ def review_tier(
         customer_name=customer_name,
         description=description,
     )
+    system = system_prompt if system_prompt is not None else DEFAULT_SYSTEM_PROMPT
     chain = model_chain()
     last_error: AiTierError | None = None
 
     if post_chat is not None:
         for model in chain:
             try:
-                return post_chat(model=model, user_content=prompt)
+                return post_chat(model=model, user_content=prompt, system_prompt=system)
+            except TypeError:
+                try:
+                    return post_chat(model=model, user_content=prompt)
+                except AiTierError as exc:
+                    last_error = exc
+                    continue
             except AiTierError as exc:
                 last_error = exc
         assert last_error is not None
@@ -197,7 +215,13 @@ def review_tier(
     try:
         for model in chain:
             try:
-                return _chat_once(client=client, key=key, model=model, user_content=prompt)
+                return _chat_once(
+                    client=client,
+                    key=key,
+                    model=model,
+                    user_content=prompt,
+                    system_prompt=system,
+                )
             except AiTierError as exc:
                 last_error = exc
         assert last_error is not None

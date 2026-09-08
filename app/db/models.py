@@ -88,7 +88,7 @@ class PlatformSetting(Base):
 
 
 class OperatorSettings(Base):
-    """Singleton id=1 — operator inbox policy (071)."""
+    """Singleton id=1 — operator inbox policy (071) + AI prompt (092)."""
 
     __tablename__ = "operator_settings"
 
@@ -96,6 +96,7 @@ class OperatorSettings(Base):
     l1_min_price_rub: Mapped[int] = mapped_column(
         Integer, nullable=False, default=100_000, server_default="100000"
     )
+    ai_system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -230,3 +231,34 @@ class Document(Base):
     )
 
     lot: Mapped[Lot] = relationship(back_populates="documents")
+
+
+class TierTeachEvent(Base):
+    """Append-only operator DnD teach feedback (092)."""
+
+    __tablename__ = "tier_teach_events"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    tender_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("lots.tender_id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    user_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    from_bucket: Mapped[str] = mapped_column(String(16), nullable=False)
+    to_bucket: Mapped[str] = mapped_column(String(16), nullable=False)
+    drop_tier_correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    reason_ru: Mapped[str] = mapped_column(Text, nullable=False)
+    rules_tier: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    ai_tier: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    manual_tier_before: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    effective_tier_before: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    deadline_expired_before: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    ai_reviewed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )

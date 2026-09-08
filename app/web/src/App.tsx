@@ -22,6 +22,7 @@ import type {
   SalesTier,
   ScheduleSettings,
   SearchGroup,
+  TeachBucket,
   TechStatus,
   ViewMode,
 } from "./types";
@@ -43,6 +44,7 @@ import {
   fetchSearchGroups,
   fetchStatus,
   putPriority,
+  postTierTeach,
   putViewed,
   putBoardHidden,
   postAiReview,
@@ -109,6 +111,8 @@ const idleSchedule: ScheduleSettings = {
 
 const idleOperatorSettings: OperatorSettings = {
   l1_min_price_rub: 100_000,
+  ai_system_prompt: "",
+  ai_system_prompt_is_default: true,
 };
 
 function InboxEmpty({
@@ -559,6 +563,32 @@ function AppInner() {
     }
   }
 
+  async function onTierTeach(args: {
+    tender_id: string;
+    from_bucket: TeachBucket;
+    to_bucket: TeachBucket;
+    drop_tier_correct: boolean;
+    reason_ru: string;
+  }) {
+    try {
+      const { lot } = await postTierTeach(args.tender_id, {
+        from_bucket: args.from_bucket,
+        to_bucket: args.to_bucket,
+        drop_tier_correct: args.drop_tier_correct,
+        reason_ru: args.reason_ru,
+      });
+      replaceLot(lot);
+      setToast(copy.teach_saved);
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        throw err;
+      }
+      setToast(copy.teach_save_failed);
+      throw err;
+    }
+  }
+
   async function onSetBoardHidden(id: string, hidden: boolean) {
     try {
       replaceLot(await putBoardHidden(id, hidden));
@@ -707,6 +737,7 @@ function AppInner() {
           boardTier={aiBoardTier}
           showTierMove
           sort={sort}
+          onTeachSubmit={onTierTeach}
         />
       );
     }

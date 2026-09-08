@@ -507,6 +507,24 @@ def api_inbox_ai_wrong(tender_id: str, body: dict | None = None):
         _inbox_http(exc)
 
 
+@app.post("/api/inbox/{tender_id}/tier-teach")
+def api_inbox_tier_teach(request: Request, tender_id: str, body: dict | None = None):
+    principal = getattr(request.state, "scout_user", None)
+    user_id = getattr(principal, "id", None) if principal is not None else None
+    try:
+        return inbox.record_tier_teach(tender_id, body or {}, user_id=user_id)
+    except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
+        _inbox_http(exc)
+
+
+@app.get("/api/tech/tier-teach")
+def api_tech_tier_teach(limit: int | None = None):
+    try:
+        return inbox.list_tier_teach(limit=limit)
+    except (inbox.InboxQueryError, RuntimeError) as exc:
+        _inbox_http(exc)
+
+
 @app.get("/api/inbox/{tender_id}/documents")
 def api_inbox_documents(tender_id: str):
     try:

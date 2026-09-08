@@ -77,6 +77,9 @@ def test_inbox_routes_include_documents() -> None:
     assert "/api/inbox/{tender_id}/board-hidden" in paths
     assert "/api/inbox/{tender_id}/documents" in paths
     assert "/api/inbox/{tender_id}/documents/{filename}" in paths
+    assert "/api/inbox/{tender_id}/ai-wrong" in paths
+    assert "/api/inbox/{tender_id}/tier-teach" in paths
+    assert "/api/tech/tier-teach" in paths
     assert "/api/schedule" in paths
     assert "/api/operator-settings" in paths
 
