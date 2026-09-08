@@ -4,6 +4,10 @@ import {
   Button,
   Checkbox,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   FormControlLabel,
   Link,
@@ -289,6 +293,8 @@ function DateRangeFields({
 export default function InboxCommandBar({
   unreadOnly,
   onUnreadOnly,
+  onCountUnreadInTab,
+  onMarkAllUnreadInTab,
   priority,
   onPriority,
   search,
@@ -324,6 +330,10 @@ export default function InboxCommandBar({
 }: {
   unreadOnly: boolean;
   onUnreadOnly: (v: boolean) => void;
+  /** dry_run count of unread on current tab. */
+  onCountUnreadInTab?: () => Promise<number>;
+  /** Mark all unread on current tab; returns updated count. */
+  onMarkAllUnreadInTab?: () => Promise<number>;
   priority: PriorityFilter;
   onPriority: (v: PriorityFilter) => void;
   search: string;
@@ -358,6 +368,37 @@ export default function InboxCommandBar({
   onBitrixFilter?: (v: BitrixFilter) => void;
 }) {
   const [filtersEl, setFiltersEl] = useState<HTMLElement | null>(null);
+  const [markAllOpen, setMarkAllOpen] = useState(false);
+  const [markAllCount, setMarkAllCount] = useState<number | null>(null);
+  const [markAllBusy, setMarkAllBusy] = useState(false);
+
+  async function openMarkAllDialog() {
+    if (!onCountUnreadInTab || markAllBusy) return;
+    setMarkAllBusy(true);
+    try {
+      const n = await onCountUnreadInTab();
+      setMarkAllCount(n);
+      setMarkAllOpen(true);
+    } catch {
+      /* toast from App */
+    } finally {
+      setMarkAllBusy(false);
+    }
+  }
+
+  async function confirmMarkAll() {
+    if (!onMarkAllUnreadInTab || markAllBusy) return;
+    setMarkAllBusy(true);
+    try {
+      await onMarkAllUnreadInTab();
+      setMarkAllOpen(false);
+      setMarkAllCount(null);
+    } catch {
+      /* toast from App */
+    } finally {
+      setMarkAllBusy(false);
+    }
+  }
 
   function togglePriority(tier: SalesTier) {
     onPriority(priority.includes(tier) ? priority.filter((t) => t !== tier) : [...priority, tier]);
@@ -492,6 +533,17 @@ export default function InboxCommandBar({
           >
             {copy.filter_unread}
           </Button>
+          {onCountUnreadInTab && onMarkAllUnreadInTab ? (
+            <Button
+              variant="text"
+              size="small"
+              disabled={markAllBusy}
+              onClick={() => void openMarkAllDialog()}
+              sx={{ flexShrink: 0, color: stripe.blurple, width: { xs: "100%", md: "auto" } }}
+            >
+              {copy.action_mark_all_viewed}
+            </Button>
+          ) : null}
           <FilterTriggerButton
             label={copy.filter_menu}
             badgeContent={activeCount}
@@ -750,6 +802,42 @@ export default function InboxCommandBar({
           ) : null}
         </Stack>
       </Popover>
+
+      <Dialog
+        open={markAllOpen}
+        onClose={() => {
+          if (markAllBusy) return;
+          setMarkAllOpen(false);
+        }}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>{copy.mark_all_viewed_confirm_title}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            {markAllCount != null && markAllCount > 0
+              ? copy.mark_all_viewed_confirm_body.replace("{n}", String(markAllCount))
+              : copy.mark_all_viewed_none}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setMarkAllOpen(false)}
+            disabled={markAllBusy}
+          >
+            {copy.mark_all_viewed_cancel}
+          </Button>
+          {markAllCount != null && markAllCount > 0 ? (
+            <Button
+              variant="contained"
+              disabled={markAllBusy}
+              onClick={() => void confirmMarkAll()}
+            >
+              {copy.mark_all_viewed_confirm}
+            </Button>
+          ) : null}
+        </DialogActions>
+      </Dialog>
 
       <TextField
         fullWidth

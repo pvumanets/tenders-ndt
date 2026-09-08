@@ -266,3 +266,101 @@ def test_inbox_sort_relevance_appeared_deadline(smoke_db: sessionmaker[Session])
             assert _ids("garbage") == [b_id, a_id]
     finally:
         _cleanup(smoke_db, username=username, lot_ids=lot_ids, query=query)
+
+@pytest.mark.smoke
+def test_inbox_mark_all_viewed_tab_scope(smoke_db: sessionmaker[Session]) -> None:
+    suffix = uuid4().hex[:12]
+    username = f"{SMOKE_PREFIX}markall_{suffix}"
+    manual_id = f"{SMOKE_PREFIX}man_{suffix}"
+    auto_id = f"{SMOKE_PREFIX}auto_{suffix}"
+    query = f"{SMOKE_PREFIX}markall_run_{suffix}"
+    lot_ids = [manual_id, auto_id]
+    try:
+        with smoke_db() as session:
+            session.add(
+                User(
+                    username=username,
+                    password_hash=_hash(_PASS),
+                    display_name="qa_smoke_markall",
+                )
+            )
+            session.add(Run(query=query, status="done", limit_n=10))
+            session.flush()
+            run = session.scalar(select(Run).where(Run.query == query))
+            assert run is not None
+            now = datetime(2026, 9, 1, 12, 0, tzinfo=timezone.utc)
+            session.add(
+                Lot(
+                    tender_id=manual_id,
+                    run_id=run.id,
+                    title="mark-all manual unread",
+                    url=f"https://rostender.info/tender/{manual_id}",
+                    score=7,
+                    tier="L2",
+                    deadline_msk="20.10.2030",
+                    source_platform_id="rostender",
+                    ingested_at=now,
+                )
+            )
+            session.add(
+                Lot(
+                    tender_id=auto_id,
+                    run_id=run.id,
+                    title="mark-all auto unread",
+                    url=f"https://rostender.info/tender/{auto_id}",
+                    score=7,
+                    tier="L1",
+                    deadline_msk="21.10.2030",
+                    source_platform_id="rostender",
+                    ingested_at=now,
+                )
+            )
+            session.add(
+                LotState(
+                    tender_id=auto_id,
+                    viewed=False,
+                    ai_reviewed_at=now,
+                    ai_tier="L1",
+                    ai_trigger="auto",
+                )
+            )
+            session.commit()
+
+        with _client() as client:
+            assert (
+                client.post(
+                    "/api/auth/login",
+                    json={"username": username, "password": _PASS},
+                ).status_code
+                == 200
+            )
+            preview_auto = client.post(
+                "/api/inbox/mark-all-viewed",
+                json={"dry_run": True, "ai_reviewed": True, "ai_trigger": "auto"},
+            )
+            assert preview_auto.status_code == 200
+            assert preview_auto.json()["count"] == 1
+            assert preview_auto.json()["updated"] == 0
+
+            applied_auto = client.post(
+                "/api/inbox/mark-all-viewed",
+                json={"ai_reviewed": True, "ai_trigger": "auto"},
+            )
+            assert applied_auto.status_code == 200
+            assert applied_auto.json()["updated"] == 1
+
+            auto_row = client.get(f"/api/inbox/{auto_id}").json()
+            assert auto_row["viewed"] is True
+            manual_row = client.get(f"/api/inbox/{manual_id}").json()
+            assert manual_row["viewed"] is False
+
+            preview_all = client.post("/api/inbox/mark-all-viewed", json={"dry_run": True})
+            assert preview_all.status_code == 200
+            assert preview_all.json()["count"] >= 1
+
+            applied_all = client.post("/api/inbox/mark-all-viewed", json={})
+            assert applied_all.status_code == 200
+            assert applied_all.json()["updated"] >= 1
+            assert client.get(f"/api/inbox/{manual_id}").json()["viewed"] is True
+    finally:
+        _cleanup(smoke_db, username=username, lot_ids=lot_ids, query=query)

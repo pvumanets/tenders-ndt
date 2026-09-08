@@ -19,6 +19,7 @@ from app.api.inbox import (
     parse_bitrix_filter,
     parse_board_hidden_body,
     parse_inbox_sort,
+    parse_mark_all_viewed_body,
     parse_platform_filter,
     parse_price_min_rub,
     parse_priority_body,
@@ -73,6 +74,7 @@ def test_inbox_routes_include_documents() -> None:
     assert "/api/inbox" in paths
     assert "/api/inbox/{tender_id}" in paths
     assert "/api/inbox/{tender_id}/viewed" in paths
+    assert "/api/inbox/mark-all-viewed" in paths
     assert "/api/inbox/{tender_id}/priority" in paths
     assert "/api/inbox/{tender_id}/board-hidden" in paths
     assert "/api/inbox/{tender_id}/documents" in paths
@@ -90,12 +92,14 @@ def test_inbox_unauthorized_without_cookie() -> None:
         listing = client.get("/api/inbox")
         one = client.get("/api/inbox/qa_unit_missing")
         viewed = client.put("/api/inbox/qa_unit_missing/viewed", json={"viewed": True})
+        mark_all = client.post("/api/inbox/mark-all-viewed", json={"dry_run": True})
         priority = client.put("/api/inbox/qa_unit_missing/priority", json={"tier": "L1"})
         docs = client.get("/api/inbox/qa_unit_missing/documents")
         download = client.get("/api/inbox/qa_unit_missing/documents/TZ.pdf")
     assert listing.status_code == 401
     assert one.status_code == 401
     assert viewed.status_code == 401
+    assert mark_all.status_code == 401
     assert priority.status_code == 401
     assert docs.status_code == 401
     assert download.status_code == 401
@@ -297,3 +301,11 @@ def test_parse_bodies() -> None:
         parse_priority_body({"tier": "L9"})
     with pytest.raises(InboxQueryError, match="invalid_body"):
         parse_priority_body({"tier": "L1", "extra": True})
+    assert parse_mark_all_viewed_body({}) == (None, None, False)
+    assert parse_mark_all_viewed_body({"dry_run": True, "ai_reviewed": True, "ai_trigger": "auto"}) == (
+        True,
+        "auto",
+        True,
+    )
+    with pytest.raises(InboxQueryError, match="invalid_ai_trigger"):
+        parse_mark_all_viewed_body({"ai_trigger": "nope"})

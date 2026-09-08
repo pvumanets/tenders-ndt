@@ -46,6 +46,7 @@ import {
   putPriority,
   postTierTeach,
   putViewed,
+  postMarkAllViewed,
   putBoardHidden,
   postAiReview,
   postAiWrong,
@@ -172,6 +173,7 @@ function AppInner() {
   const [view, setView] = useState<ViewMode>("cards");
   const [sort, setSort] = useState<InboxSort>("relevance");
   const [unreadOnly, setUnreadOnly] = useState(true);
+  const [lotsEpoch, setLotsEpoch] = useState(0);
   const [aiReviewedOnly, setAiReviewedOnly] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const [priority, setPriority] = useState<PriorityFilter>([]);
@@ -273,6 +275,7 @@ function AppInner() {
     gate,
     tab,
     unreadOnly,
+    lotsEpoch,
     aiReviewedOnly,
     priority,
     debouncedSearch,
@@ -550,6 +553,41 @@ function AppInner() {
     }
   }
 
+  function markAllViewedScope(): { ai_reviewed?: boolean; ai_trigger?: "auto" } {
+    if (tab === "auto") return { ai_reviewed: true, ai_trigger: "auto" };
+    return {};
+  }
+
+  async function onCountUnreadInTab(): Promise<number> {
+    try {
+      const { count } = await postMarkAllViewed({ dry_run: true, ...markAllViewedScope() });
+      return count;
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return 0;
+      }
+      setToast(copy.mark_all_viewed_failed);
+      throw err;
+    }
+  }
+
+  async function onMarkAllUnreadInTab(): Promise<number> {
+    try {
+      const { updated } = await postMarkAllViewed({ dry_run: false, ...markAllViewedScope() });
+      setLotsEpoch((n) => n + 1);
+      setToast(copy.mark_all_viewed_done.replace("{n}", String(updated)));
+      return updated;
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return 0;
+      }
+      setToast(copy.mark_all_viewed_failed);
+      throw err;
+    }
+  }
+
   async function onSetPriority(id: string, tier: SalesTier | null) {
     try {
       replaceLot(await putPriority(id, tier));
@@ -689,6 +727,8 @@ function AppInner() {
     <InboxCommandBar
       unreadOnly={unreadOnly}
       onUnreadOnly={setUnreadOnly}
+      onCountUnreadInTab={tab === "auto" || tab === "manual" ? onCountUnreadInTab : undefined}
+      onMarkAllUnreadInTab={tab === "auto" || tab === "manual" ? onMarkAllUnreadInTab : undefined}
       priority={priority}
       onPriority={setPriority}
       search={search}
