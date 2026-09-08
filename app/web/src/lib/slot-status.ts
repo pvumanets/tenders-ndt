@@ -34,6 +34,21 @@ export function formatMskDateTime(stamp: string): string {
   }).format(parsed);
 }
 
+/** Next slot label: weekday + date + time in MSK (e.g. «чт, 10.09.2026, 18:55»). */
+export function formatMskNextSlot(stamp: string): string {
+  const parsed = new Date(stamp);
+  if (Number.isNaN(parsed.getTime())) return stamp;
+  return new Intl.DateTimeFormat("ru-RU", {
+    timeZone: "Europe/Moscow",
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
 export function isAutoAiInProgress(
   status: Pick<TechStatus, "pipeline" | "running" | "ai_review_done" | "ai_review_total">,
 ): boolean {
@@ -76,5 +91,8 @@ export function slotStatusText(
   if (variant === "last" && schedule.last_fired_at) {
     return copy.auto_slot_last.replace("{datetime}", formatMskDateTime(schedule.last_fired_at));
   }
-  return copy.auto_slot_idle.replace("{time}", schedule.time_msk);
+  const when = schedule.next_fire_at
+    ? formatMskNextSlot(schedule.next_fire_at)
+    : schedule.time_msk;
+  return copy.auto_slot_idle.replace("{when}", when);
 }

@@ -7,8 +7,6 @@ import {
   Stack,
   Switch,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import { copy } from "../../copy";
@@ -58,6 +56,14 @@ export default function SettingsSchedule({
       : !enabled
         ? copy.schedule_disabled_hint
         : slotStatusText(schedule, status);
+
+  function toggleDay(day: number) {
+    setWeekdays((prev) => {
+      const next = prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day];
+      return next.sort((a, b) => a - b);
+    });
+    setSaved(false);
+  }
 
   async function onSave() {
     setError(null);
@@ -140,42 +146,39 @@ export default function SettingsSchedule({
         >
           {copy.schedule_weekdays}
         </Typography>
-        <ToggleButtonGroup
-          exclusive={false}
-          size="small"
-          value={weekdays}
-          disabled={locked || busy}
-          onChange={(_, next: number[]) => {
-            setWeekdays([...next].sort((a, b) => a - b));
-            setSaved(false);
-          }}
-          sx={{
-            flexWrap: "wrap",
-            gap: 0.75,
-            "& .MuiToggleButtonGroup-grouped": {
-              border: `1px solid ${stripe.border} !important`,
-              borderRadius: "10px !important",
-              margin: 0,
-              px: 1.25,
-              minWidth: 44,
-              color: stripe.navy,
-              bgcolor: stripe.surface,
-              "&.Mui-selected": {
-                bgcolor: stripe.blurpleSoft,
-                color: stripe.blurple,
-                borderColor: `${stripe.blurple} !important`,
-                fontWeight: 600,
-                "&:hover": { bgcolor: stripe.blurpleSoft },
-              },
-            },
-          }}
-        >
-          {WEEKDAY_OPTIONS.map((opt) => (
-            <ToggleButton key={opt.id} value={opt.id} aria-label={opt.label}>
-              {opt.label}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+          {WEEKDAY_OPTIONS.map((opt) => {
+            const selected = weekdays.includes(opt.id);
+            return (
+              <Button
+                key={opt.id}
+                size="small"
+                variant="outlined"
+                aria-label={opt.label}
+                aria-pressed={selected}
+                disabled={locked || busy}
+                onClick={() => toggleDay(opt.id)}
+                sx={{
+                  minWidth: 44,
+                  px: 1.25,
+                  borderRadius: "10px",
+                  borderColor: selected ? stripe.blurple : stripe.border,
+                  bgcolor: selected ? stripe.blurpleSoft : stripe.surface,
+                  color: selected ? stripe.blurple : stripe.navy,
+                  fontWeight: selected ? 600 : 500,
+                  boxShadow: "none",
+                  "&:hover": {
+                    borderColor: selected ? stripe.blurple : stripe.borderHover,
+                    bgcolor: selected ? stripe.blurpleSoft : stripe.surface,
+                    boxShadow: "none",
+                  },
+                }}
+              >
+                {opt.label}
+              </Button>
+            );
+          })}
+        </Box>
         <Typography variant="caption" sx={{ display: "block", mt: 0.75, color: stripe.textMuted }}>
           {copy.schedule_weekdays_hint}
         </Typography>
