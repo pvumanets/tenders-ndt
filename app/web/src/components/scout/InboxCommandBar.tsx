@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Chip,
   Divider,
   FormControlLabel,
   Link,
@@ -18,7 +19,16 @@ import {
 import { useTheme } from "@mui/material/styles";
 import ViewWeekOutlinedIcon from "@mui/icons-material/ViewWeekOutlined";
 import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
-import type { DeadlinePreset, IngestedPreset, InboxSort, PriorityFilter, SalesTier, ViewMode, PlatformRow, BitrixFilter } from "../../types";
+import type {
+  DeadlinePreset,
+  IngestedPreset,
+  InboxSort,
+  PriorityFilter,
+  SalesTier,
+  ViewMode,
+  PlatformRow,
+  BitrixFilter,
+} from "../../types";
 import { copy } from "../../copy";
 import { formatPrice } from "../../lib/format";
 import { stripe } from "../../theme/palette";
@@ -26,12 +36,139 @@ import { viewCommandBarLayout } from "../../vendor/personal/layout/view-command-
 import FilterTriggerButton from "../../vendor/personal/shell/FilterTriggerButton";
 import ViewCommandBar from "../../vendor/personal/shell/ViewCommandBar";
 
-const MENU_WIDTH = 280;
+const MENU_WIDTH = 340;
+
+const PRIORITY_OPTIONS: { id: SalesTier; label: string }[] = [
+  { id: "L1", label: copy.filter_priority_hot },
+  { id: "L2", label: copy.filter_priority_strong },
+  { id: "L3", label: copy.filter_priority_watch },
+];
+
+function deadlinePresetLabel(preset: DeadlinePreset): string {
+  switch (preset) {
+    case "d7":
+      return copy.filter_deadline_7;
+    case "d14":
+      return copy.filter_deadline_14;
+    case "d30":
+      return copy.filter_deadline_30;
+    case "custom":
+      return copy.filter_date_custom;
+    default:
+      return copy.filter_date_any;
+  }
+}
+
+function ingestedPresetLabel(preset: IngestedPreset): string {
+  switch (preset) {
+    case "today":
+      return copy.filter_ingested_today;
+    case "d3":
+      return copy.filter_ingested_3;
+    case "d7":
+      return copy.filter_ingested_7;
+    case "custom":
+      return copy.filter_date_custom;
+    default:
+      return copy.filter_date_any_f;
+  }
+}
+
+function bitrixLabel(filter: BitrixFilter): string {
+  if (filter === "in") return copy.filter_bitrix_in;
+  if (filter === "out") return copy.filter_bitrix_out;
+  return copy.filter_bitrix_any;
+}
+
+export type ActiveFilterChip = {
+  id: string;
+  label: string;
+};
+
+/** Grouped-filter axes that contribute to badge + chips (not unread/sort/view). */
+export function countActiveGroupedFilters(args: {
+  priority: PriorityFilter;
+  deadlinePreset: DeadlinePreset;
+  ingestedPreset: IngestedPreset;
+  priceMinRub: number | null;
+  platformsSelected: string[];
+  bitrixFilter: BitrixFilter;
+  showAiReviewedFilter: boolean;
+  aiReviewedOnly: boolean;
+}): number {
+  let n = 0;
+  if (args.priority.length > 0) n += 1;
+  if (args.deadlinePreset !== "any") n += 1;
+  if (args.ingestedPreset !== "any") n += 1;
+  if (args.priceMinRub != null && args.priceMinRub > 0) n += 1;
+  if (args.platformsSelected.length > 0) n += 1;
+  if (args.bitrixFilter !== "any") n += 1;
+  if (args.showAiReviewedFilter && args.aiReviewedOnly) n += 1;
+  return n;
+}
+
+export function buildActiveFilterChips(args: {
+  priority: PriorityFilter;
+  deadlinePreset: DeadlinePreset;
+  ingestedPreset: IngestedPreset;
+  priceMinRub: number | null;
+  platformsSelected: string[];
+  bitrixFilter: BitrixFilter;
+  showAiReviewedFilter: boolean;
+  aiReviewedOnly: boolean;
+}): ActiveFilterChip[] {
+  const chips: ActiveFilterChip[] = [];
+  if (args.priority.length > 0) {
+    const names = PRIORITY_OPTIONS.filter((o) => args.priority.includes(o.id))
+      .map((o) => o.label)
+      .join(", ");
+    chips.push({
+      id: "priority",
+      label: copy.filter_chip_priority.replace("{value}", names),
+    });
+  }
+  if (args.deadlinePreset !== "any") {
+    chips.push({
+      id: "deadline",
+      label: copy.filter_chip_deadline.replace("{value}", deadlinePresetLabel(args.deadlinePreset)),
+    });
+  }
+  if (args.ingestedPreset !== "any") {
+    chips.push({
+      id: "ingested",
+      label: copy.filter_chip_ingested.replace("{value}", ingestedPresetLabel(args.ingestedPreset)),
+    });
+  }
+  if (args.priceMinRub != null && args.priceMinRub > 0) {
+    chips.push({
+      id: "price",
+      label: copy.filter_chip_price.replace("{price}", formatPrice(args.priceMinRub)),
+    });
+  }
+  if (args.platformsSelected.length > 0) {
+    chips.push({
+      id: "platform",
+      label: copy.filter_chip_platform.replace("{n}", String(args.platformsSelected.length)),
+    });
+  }
+  if (args.bitrixFilter !== "any") {
+    chips.push({
+      id: "bitrix",
+      label: copy.filter_chip_bitrix.replace("{value}", bitrixLabel(args.bitrixFilter)),
+    });
+  }
+  if (args.showAiReviewedFilter && args.aiReviewedOnly) {
+    chips.push({ id: "ai", label: copy.filter_chip_ai });
+  }
+  return chips;
+}
 
 function menuPaperSx() {
   return {
     width: MENU_WIDTH,
     maxWidth: "calc(100vw - 32px)",
+    maxHeight: "min(70vh, 560px)",
+    overflowY: "auto",
     p: 1.5,
     mt: 0.5,
     border: `1px solid ${stripe.border}`,
@@ -39,63 +176,31 @@ function menuPaperSx() {
   };
 }
 
-function FilterMenuPopover({
-  open,
-  anchorEl,
-  onClose,
-  title,
-  children,
-  resetVisible,
-  onReset,
-}: {
-  open: boolean;
-  anchorEl: HTMLElement | null;
-  onClose: () => void;
-  title: string;
-  children: ReactNode;
-  resetVisible: boolean;
-  onReset: () => void;
-}) {
+function SectionTitle({ children }: { children: ReactNode }) {
   const theme = useTheme();
   return (
-    <Popover
-      open={open}
-      anchorEl={anchorEl}
-      onClose={onClose}
-      anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-      transformOrigin={{ vertical: "top", horizontal: "left" }}
-      slotProps={{ paper: { sx: menuPaperSx() } }}
+    <Typography
+      variant="caption"
+      sx={{
+        display: "block",
+        color: stripe.textMuted,
+        fontWeight: theme.density.weight.medium,
+        mb: 0.75,
+        px: 0.5,
+        textTransform: "uppercase",
+        letterSpacing: "0.04em",
+      }}
     >
-      <Typography
-        variant="caption"
-        sx={{
-          display: "block",
-          color: stripe.textMuted,
-          fontWeight: theme.density.weight.medium,
-          mb: 1,
-          px: 0.5,
-        }}
-      >
-        {title}
-      </Typography>
       {children}
-      {resetVisible ? (
-        <>
-          <Divider sx={{ my: 1 }} />
-          <Box sx={{ textAlign: "right", px: 0.5 }}>
-            <Link
-              component="button"
-              variant="caption"
-              underline="hover"
-              onClick={onReset}
-              sx={{ cursor: "pointer", border: "none", background: "none" }}
-            >
-              {copy.filter_menu_reset}
-            </Link>
-          </Box>
-        </>
-      ) : null}
-    </Popover>
+    </Typography>
+  );
+}
+
+function FieldTitle({ children }: { children: ReactNode }) {
+  return (
+    <Typography variant="body2" sx={{ px: 0.5, pt: 0.5, pb: 0.25, color: stripe.navy, fontWeight: 600 }}>
+      {children}
+    </Typography>
   );
 }
 
@@ -181,12 +286,6 @@ function DateRangeFields({
   );
 }
 
-const PRIORITY_OPTIONS: { id: SalesTier; label: string }[] = [
-  { id: "L1", label: copy.filter_priority_hot },
-  { id: "L2", label: copy.filter_priority_strong },
-  { id: "L3", label: copy.filter_priority_watch },
-];
-
 export default function InboxCommandBar({
   unreadOnly,
   onUnreadOnly,
@@ -258,13 +357,7 @@ export default function InboxCommandBar({
   bitrixFilter?: BitrixFilter;
   onBitrixFilter?: (v: BitrixFilter) => void;
 }) {
-  const [priorityEl, setPriorityEl] = useState<HTMLElement | null>(null);
-  const [deadlineEl, setDeadlineEl] = useState<HTMLElement | null>(null);
-  const [ingestedEl, setIngestedEl] = useState<HTMLElement | null>(null);
-  const [aiEl, setAiEl] = useState<HTMLElement | null>(null);
-  const [priceEl, setPriceEl] = useState<HTMLElement | null>(null);
-  const [platformEl, setPlatformEl] = useState<HTMLElement | null>(null);
-  const [bitrixEl, setBitrixEl] = useState<HTMLElement | null>(null);
+  const [filtersEl, setFiltersEl] = useState<HTMLElement | null>(null);
 
   function togglePriority(tier: SalesTier) {
     onPriority(priority.includes(tier) ? priority.filter((t) => t !== tier) : [...priority, tier]);
@@ -296,9 +389,56 @@ export default function InboxCommandBar({
   }
 
   const priceActive = priceMinRub != null && priceMinRub > 0;
-  const priceBadge = priceActive ? 1 : 0;
-  const platformBadge = platformsSelected.length;
-  const bitrixBadge = bitrixFilter === "any" ? 0 : 1;
+  const groupedArgs = {
+    priority,
+    deadlinePreset,
+    ingestedPreset,
+    priceMinRub,
+    platformsSelected,
+    bitrixFilter,
+    showAiReviewedFilter,
+    aiReviewedOnly,
+  };
+  const activeCount = countActiveGroupedFilters(groupedArgs);
+  const chips = buildActiveFilterChips(groupedArgs);
+
+  function clearChip(id: string) {
+    switch (id) {
+      case "priority":
+        onPriority([]);
+        break;
+      case "deadline":
+        setDeadline("any");
+        break;
+      case "ingested":
+        setIngested("any");
+        break;
+      case "price":
+        onPriceMinRub?.(null);
+        break;
+      case "platform":
+        onPlatformsSelected?.([]);
+        break;
+      case "bitrix":
+        onBitrixFilter?.("any");
+        break;
+      case "ai":
+        onAiReviewedOnly?.(false);
+        break;
+      default:
+        break;
+    }
+  }
+
+  function clearAllGrouped() {
+    onPriority([]);
+    setDeadline("any");
+    setIngested("any");
+    onPriceMinRub?.(null);
+    onPlatformsSelected?.([]);
+    onBitrixFilter?.("any");
+    onAiReviewedOnly?.(false);
+  }
 
   return (
     <Box
@@ -354,50 +494,14 @@ export default function InboxCommandBar({
           </Button>
           <FilterTriggerButton
             label={copy.filter_menu}
-            badgeContent={priority.length}
-            onClick={(e) => setPriorityEl(e.currentTarget)}
+            badgeContent={activeCount}
+            onClick={(e) => setFiltersEl(e.currentTarget)}
           />
-          <FilterTriggerButton
-            label={copy.filter_deadline}
-            badgeContent={deadlinePreset === "any" ? 0 : 1}
-            onClick={(e) => setDeadlineEl(e.currentTarget)}
-          />
-          <FilterTriggerButton
-            label={copy.filter_ingested}
-            badgeContent={ingestedPreset === "any" ? 0 : 1}
-            onClick={(e) => setIngestedEl(e.currentTarget)}
-          />
-          {onPriceMinRub ? (
-            <FilterTriggerButton
-              label={copy.filter_price}
-              badgeContent={priceBadge}
-              onClick={(e) => setPriceEl(e.currentTarget)}
-            />
-          ) : null}
-          {onPlatformsSelected ? (
-            <FilterTriggerButton
-              label={copy.filter_platform}
-              badgeContent={platformBadge}
-              onClick={(e) => setPlatformEl(e.currentTarget)}
-            />
-          ) : null}
-          {onBitrixFilter ? (
-            <FilterTriggerButton
-              label={copy.filter_bitrix}
-              badgeContent={bitrixBadge}
-              onClick={(e) => setBitrixEl(e.currentTarget)}
-            />
-          ) : null}
-          {showAiReviewedFilter ? (
-            <FilterTriggerButton
-              label={copy.filter_ai_reviewed_trigger}
-              badgeContent={aiReviewedOnly ? 1 : 0}
-              onClick={(e) => setAiEl(e.currentTarget)}
-            />
-          ) : null}
         </ViewCommandBar.Start>
 
-        <ViewCommandBar.End sx={{ width: { xs: "100%", md: "auto" }, justifyContent: "flex-end", gap: 1, flexWrap: "wrap" }}>
+        <ViewCommandBar.End
+          sx={{ width: { xs: "100%", md: "auto" }, justifyContent: "flex-end", gap: 1, flexWrap: "wrap" }}
+        >
           {onSort ? (
             <ToggleButtonGroup
               exclusive
@@ -433,189 +537,219 @@ export default function InboxCommandBar({
         </ViewCommandBar.End>
       </ViewCommandBar>
 
-      <FilterMenuPopover
-        open={Boolean(priorityEl)}
-        anchorEl={priorityEl}
-        onClose={() => setPriorityEl(null)}
-        title={copy.col_priority}
-        resetVisible={priority.length > 0}
-        onReset={() => onPriority([])}
-      >
-        <Stack spacing={0} divider={<Divider flexItem />}>
-          {PRIORITY_OPTIONS.map((opt) => (
-            <CheckRow
-              key={opt.id}
-              checked={priority.includes(opt.id)}
-              label={opt.label}
-              onToggle={() => togglePriority(opt.id)}
+      {chips.length > 0 ? (
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 0.75,
+            mb: 1,
+          }}
+        >
+          {chips.map((chip) => (
+            <Chip
+              key={chip.id}
+              size="small"
+              label={chip.label}
+              onDelete={() => clearChip(chip.id)}
+              sx={{
+                borderColor: stripe.border,
+                bgcolor: stripe.surface,
+                color: stripe.navy,
+              }}
+              variant="outlined"
             />
           ))}
-        </Stack>
-      </FilterMenuPopover>
-
-      <FilterMenuPopover
-        open={Boolean(deadlineEl)}
-        anchorEl={deadlineEl}
-        onClose={() => setDeadlineEl(null)}
-        title={copy.filter_deadline}
-        resetVisible={deadlinePreset !== "any"}
-        onReset={() => setDeadline("any")}
-      >
-        <RadioGroup
-          value={deadlinePreset}
-          onChange={(_, v) => setDeadline(v as DeadlinePreset)}
-        >
-          <RadioRow value="any" label={copy.filter_date_any} />
-          <RadioRow value="d7" label={copy.filter_deadline_7} />
-          <RadioRow value="d14" label={copy.filter_deadline_14} />
-          <RadioRow value="d30" label={copy.filter_deadline_30} />
-          <RadioRow value="custom" label={copy.filter_date_custom} />
-        </RadioGroup>
-        {deadlinePreset === "custom" ? (
-          <DateRangeFields
-            from={deadlineFrom}
-            to={deadlineTo}
-            onFrom={onDeadlineFrom}
-            onTo={onDeadlineTo}
-          />
-        ) : null}
-      </FilterMenuPopover>
-
-      <FilterMenuPopover
-        open={Boolean(ingestedEl)}
-        anchorEl={ingestedEl}
-        onClose={() => setIngestedEl(null)}
-        title={copy.filter_ingested}
-        resetVisible={ingestedPreset !== "any"}
-        onReset={() => setIngested("any")}
-      >
-        <RadioGroup
-          value={ingestedPreset}
-          onChange={(_, v) => setIngested(v as IngestedPreset)}
-        >
-          <RadioRow value="any" label={copy.filter_date_any_f} />
-          <RadioRow value="today" label={copy.filter_ingested_today} />
-          <RadioRow value="d3" label={copy.filter_ingested_3} />
-          <RadioRow value="d7" label={copy.filter_ingested_7} />
-          <RadioRow value="custom" label={copy.filter_date_custom} />
-        </RadioGroup>
-        {ingestedPreset === "custom" ? (
-          <DateRangeFields
-            from={ingestedFrom}
-            to={ingestedTo}
-            onFrom={onIngestedFrom}
-            onTo={onIngestedTo}
-          />
-        ) : null}
-      </FilterMenuPopover>
-
-      {onPriceMinRub ? (
-        <FilterMenuPopover
-          open={Boolean(priceEl)}
-          anchorEl={priceEl}
-          onClose={() => setPriceEl(null)}
-          title={copy.filter_price}
-          resetVisible={priceActive}
-          onReset={() => onPriceMinRub(null)}
-        >
-          <Typography variant="body2" sx={{ px: 0.5, py: 0.75, color: stripe.navy }}>
-            {priceActive
-              ? copy.filter_price_from.replace("{price}", formatPrice(priceMinRub))
-              : copy.filter_date_any_f}
-          </Typography>
-          <Stack spacing={0.5} sx={{ px: 0.5, pt: 0.5 }}>
-            <Button
-              size="small"
-              variant="text"
-              onClick={() => onPriceMinRub(null)}
-              sx={{ justifyContent: "flex-start" }}
-            >
-              {copy.filter_price_show_all}
-            </Button>
-            <Button
-              size="small"
-              variant="text"
-              onClick={() => onPriceMinRub(settingsMinPrice)}
-              sx={{ justifyContent: "flex-start" }}
-            >
-              {copy.filter_price_from.replace("{price}", formatPrice(settingsMinPrice))}
-            </Button>
-            {onOpenSettings ? (
-              <Link
-                component="button"
-                variant="caption"
-                underline="hover"
-                onClick={() => {
-                  setPriceEl(null);
-                  onOpenSettings();
-                }}
-                sx={{ cursor: "pointer", border: "none", background: "none", textAlign: "left" }}
-              >
-                {copy.filter_price_settings_link}
-              </Link>
-            ) : null}
-          </Stack>
-        </FilterMenuPopover>
-      ) : null}
-
-      {onPlatformsSelected ? (
-        <FilterMenuPopover
-          open={Boolean(platformEl)}
-          anchorEl={platformEl}
-          onClose={() => setPlatformEl(null)}
-          title={copy.filter_platform}
-          resetVisible={platformsSelected.length > 0}
-          onReset={() => onPlatformsSelected([])}
-        >
-          <Stack spacing={0} divider={<Divider flexItem />}>
-            {platforms.map((platform) => (
-              <CheckRow
-                key={platform.platform_id}
-                checked={platformsSelected.includes(platform.platform_id)}
-                label={platform.name}
-                onToggle={() => togglePlatform(platform.platform_id)}
-              />
-            ))}
-          </Stack>
-        </FilterMenuPopover>
-      ) : null}
-
-      {onBitrixFilter ? (
-        <FilterMenuPopover
-          open={Boolean(bitrixEl)}
-          anchorEl={bitrixEl}
-          onClose={() => setBitrixEl(null)}
-          title={copy.filter_bitrix}
-          resetVisible={bitrixFilter !== "any"}
-          onReset={() => onBitrixFilter("any")}
-        >
-          <RadioGroup
-            value={bitrixFilter}
-            onChange={(_, v) => onBitrixFilter(v as BitrixFilter)}
+          <Link
+            component="button"
+            variant="caption"
+            underline="hover"
+            onClick={clearAllGrouped}
+            sx={{ cursor: "pointer", border: "none", background: "none", ml: 0.5 }}
           >
-            <RadioRow value="any" label={copy.filter_bitrix_any} />
-            <RadioRow value="in" label={copy.filter_bitrix_in} />
-            <RadioRow value="out" label={copy.filter_bitrix_out} />
-          </RadioGroup>
-        </FilterMenuPopover>
+            {copy.filter_chips_clear_all}
+          </Link>
+        </Box>
       ) : null}
 
-      {showAiReviewedFilter && onAiReviewedOnly ? (
-        <FilterMenuPopover
-          open={Boolean(aiEl)}
-          anchorEl={aiEl}
-          onClose={() => setAiEl(null)}
-          title={copy.filter_ai_reviewed_menu_title}
-          resetVisible={aiReviewedOnly}
-          onReset={() => onAiReviewedOnly(false)}
-        >
-          <CheckRow
-            checked={aiReviewedOnly}
-            label={copy.filter_ai_reviewed}
-            onToggle={() => onAiReviewedOnly(!aiReviewedOnly)}
-          />
-        </FilterMenuPopover>
-      ) : null}
+      <Popover
+        open={Boolean(filtersEl)}
+        anchorEl={filtersEl}
+        onClose={() => setFiltersEl(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
+        slotProps={{ paper: { sx: menuPaperSx() } }}
+      >
+        <Stack spacing={1.5}>
+          <Box>
+            <SectionTitle>{copy.filter_section_dates}</SectionTitle>
+            <FieldTitle>{copy.filter_deadline}</FieldTitle>
+            <RadioGroup
+              value={deadlinePreset}
+              onChange={(_, v) => setDeadline(v as DeadlinePreset)}
+            >
+              <RadioRow value="any" label={copy.filter_date_any} />
+              <RadioRow value="d7" label={copy.filter_deadline_7} />
+              <RadioRow value="d14" label={copy.filter_deadline_14} />
+              <RadioRow value="d30" label={copy.filter_deadline_30} />
+              <RadioRow value="custom" label={copy.filter_date_custom} />
+            </RadioGroup>
+            {deadlinePreset === "custom" ? (
+              <DateRangeFields
+                from={deadlineFrom}
+                to={deadlineTo}
+                onFrom={onDeadlineFrom}
+                onTo={onDeadlineTo}
+              />
+            ) : null}
+            <FieldTitle>{copy.filter_ingested}</FieldTitle>
+            <RadioGroup
+              value={ingestedPreset}
+              onChange={(_, v) => setIngested(v as IngestedPreset)}
+            >
+              <RadioRow value="any" label={copy.filter_date_any_f} />
+              <RadioRow value="today" label={copy.filter_ingested_today} />
+              <RadioRow value="d3" label={copy.filter_ingested_3} />
+              <RadioRow value="d7" label={copy.filter_ingested_7} />
+              <RadioRow value="custom" label={copy.filter_date_custom} />
+            </RadioGroup>
+            {ingestedPreset === "custom" ? (
+              <DateRangeFields
+                from={ingestedFrom}
+                to={ingestedTo}
+                onFrom={onIngestedFrom}
+                onTo={onIngestedTo}
+              />
+            ) : null}
+          </Box>
+
+          <Divider />
+
+          <Box>
+            <SectionTitle>{copy.filter_section_class}</SectionTitle>
+            <FieldTitle>{copy.filter_priority_title}</FieldTitle>
+            <Stack spacing={0} divider={<Divider flexItem />}>
+              {PRIORITY_OPTIONS.map((opt) => (
+                <CheckRow
+                  key={opt.id}
+                  checked={priority.includes(opt.id)}
+                  label={opt.label}
+                  onToggle={() => togglePriority(opt.id)}
+                />
+              ))}
+            </Stack>
+            {onPriceMinRub ? (
+              <>
+                <FieldTitle>{copy.filter_price}</FieldTitle>
+                <Typography variant="body2" sx={{ px: 0.5, py: 0.5, color: stripe.navy }}>
+                  {priceActive
+                    ? copy.filter_price_from.replace("{price}", formatPrice(priceMinRub))
+                    : copy.filter_date_any_f}
+                </Typography>
+                <Stack spacing={0.5} sx={{ px: 0.5, pt: 0.25 }}>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => onPriceMinRub(null)}
+                    sx={{ justifyContent: "flex-start" }}
+                  >
+                    {copy.filter_price_show_all}
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => onPriceMinRub(settingsMinPrice)}
+                    sx={{ justifyContent: "flex-start" }}
+                  >
+                    {copy.filter_price_from.replace("{price}", formatPrice(settingsMinPrice))}
+                  </Button>
+                  {onOpenSettings ? (
+                    <Link
+                      component="button"
+                      variant="caption"
+                      underline="hover"
+                      onClick={() => {
+                        setFiltersEl(null);
+                        onOpenSettings();
+                      }}
+                      sx={{
+                        cursor: "pointer",
+                        border: "none",
+                        background: "none",
+                        textAlign: "left",
+                      }}
+                    >
+                      {copy.filter_price_settings_link}
+                    </Link>
+                  ) : null}
+                </Stack>
+              </>
+            ) : null}
+          </Box>
+
+          <Divider />
+
+          <Box>
+            <SectionTitle>{copy.filter_section_source}</SectionTitle>
+            {onPlatformsSelected ? (
+              <>
+                <FieldTitle>{copy.filter_platform}</FieldTitle>
+                <Stack spacing={0} divider={<Divider flexItem />}>
+                  {platforms.map((platform) => (
+                    <CheckRow
+                      key={platform.platform_id}
+                      checked={platformsSelected.includes(platform.platform_id)}
+                      label={platform.name}
+                      onToggle={() => togglePlatform(platform.platform_id)}
+                    />
+                  ))}
+                </Stack>
+              </>
+            ) : null}
+            {onBitrixFilter ? (
+              <>
+                <FieldTitle>{copy.filter_bitrix}</FieldTitle>
+                <RadioGroup
+                  value={bitrixFilter}
+                  onChange={(_, v) => onBitrixFilter(v as BitrixFilter)}
+                >
+                  <RadioRow value="any" label={copy.filter_bitrix_any} />
+                  <RadioRow value="in" label={copy.filter_bitrix_in} />
+                  <RadioRow value="out" label={copy.filter_bitrix_out} />
+                </RadioGroup>
+              </>
+            ) : null}
+            {showAiReviewedFilter && onAiReviewedOnly ? (
+              <>
+                <FieldTitle>{copy.filter_ai_reviewed_menu_title}</FieldTitle>
+                <CheckRow
+                  checked={aiReviewedOnly}
+                  label={copy.filter_ai_reviewed}
+                  onToggle={() => onAiReviewedOnly(!aiReviewedOnly)}
+                />
+              </>
+            ) : null}
+          </Box>
+
+          {activeCount > 0 ? (
+            <>
+              <Divider />
+              <Box sx={{ textAlign: "right", px: 0.5 }}>
+                <Link
+                  component="button"
+                  variant="caption"
+                  underline="hover"
+                  onClick={clearAllGrouped}
+                  sx={{ cursor: "pointer", border: "none", background: "none" }}
+                >
+                  {copy.filter_menu_reset}
+                </Link>
+              </Box>
+            </>
+          ) : null}
+        </Stack>
+      </Popover>
 
       <TextField
         fullWidth
