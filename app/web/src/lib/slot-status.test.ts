@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { ScheduleSettings, TechStatus } from "../types";
 import { copy } from "../copy";
-import { needsSessionBanner, slotVariant, slotStatusText } from "./slot-status";
+import {
+  formatMskNextSlot,
+  needsSessionBanner,
+  slotVariant,
+  slotStatusText,
+} from "./slot-status";
 
 const idleStatus: Pick<TechStatus, "pipeline" | "running" | "ai_review_done" | "ai_review_total"> = {
   pipeline: "manual",
@@ -45,7 +50,7 @@ describe("slotVariant", () => {
         ai_review_done: 1,
         ai_review_total: 4,
       }),
-    ).toBe(copy.auto_slot_idle.replace("{time}", "07:00"));
+    ).toBe(copy.auto_slot_idle.replace("{when}", "07:00"));
   });
 
   it("shows skip already_running for today's attempt", () => {
@@ -59,10 +64,25 @@ describe("slotVariant", () => {
     expect(slotStatusText(row, idleStatus, now)).toBe(copy.auto_slot_skipped_already_running);
   });
 
-  it("falls back to idle with time_msk", () => {
+  it("falls back to idle with time_msk when next_fire_at missing", () => {
     expect(slotStatusText(schedule, idleStatus)).toBe(
-      copy.auto_slot_idle.replace("{time}", "07:00"),
+      copy.auto_slot_idle.replace("{when}", "07:00"),
     );
+  });
+
+  it("idle uses next_fire_at with weekday when present", () => {
+    const row = {
+      ...schedule,
+      time_msk: "18:55",
+      weekdays: [0, 3],
+      next_fire_at: "2026-09-10T15:55:00.000Z", // Thu 18:55 MSK
+    };
+    const text = slotStatusText(row, idleStatus);
+    expect(text).toBe(
+      copy.auto_slot_idle.replace("{when}", formatMskNextSlot(row.next_fire_at)),
+    );
+    expect(text).toMatch(/чт/i);
+    expect(text).toContain("18:55");
   });
 });
 

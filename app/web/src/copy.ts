@@ -249,7 +249,7 @@ export const copy = {
   queue_status_skipped: "пропущен",
   queue_status_error: "ошибка",
   queue_status_cancelled: "отменён",
-  auto_slot_idle: "Следующий слот: {time} МСК",
+  auto_slot_idle: "Следующий слот: {when} МСК",
   auto_slot_running: "Идёт авторазбор…",
   auto_slot_skipped_already_running: "Слот пропущен: прогон уже шёл",
   auto_slot_skipped_empty_queue: "Слот пропущен: нет групп или площадок в очереди",
