@@ -1,6 +1,8 @@
-import { Children, type ReactNode } from "react";
+import { Children, useState, type DragEvent, type ReactNode } from "react";
 import { Paper, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import type { TeachBucket } from "../../../types";
+import { createBoardDropHandlers } from "../../../lib/board-dnd";
 import { semantic, stripe } from "../../../theme/palette";
 import { stripeScrollbarSx } from "../../../theme/scrollbars";
 import ColumnHeader, { type ColumnHeaderVariant } from "./ColumnHeader";
@@ -18,9 +20,12 @@ export interface BoardColumnProps {
   /** Scout board: share row width; keep personal minWidth, drop maxWidth cap. */
   fluid?: boolean;
   children?: ReactNode;
+  /** HTML5 drop zone (ndt-personal pattern). */
+  dropBucket?: TeachBucket;
+  onDropLot?: (tenderId: string, bucket: TeachBucket) => void;
 }
 
-/** Vendored from personal BoardColumn — DnD/domain removed; children slot for LotMiniCard. */
+/** Vendored from personal BoardColumn — HTML5 DnD restored for Scout teach (092). */
 export default function BoardColumn({
   title,
   city: cityProp,
@@ -33,14 +38,37 @@ export default function BoardColumn({
   columnVariant = "scroll",
   fluid = false,
   children,
+  dropBucket,
+  onDropLot,
 }: BoardColumnProps) {
   const theme = useTheme();
   const city = cityProp ?? title ?? "";
   const childList = Children.toArray(children);
+  const [dropActive, setDropActive] = useState(false);
+
+  const dropHandlers =
+    dropBucket && onDropLot ? createBoardDropHandlers(dropBucket, onDropLot) : null;
+
+  function handleDropZoneOver(event: DragEvent) {
+    setDropActive(true);
+    dropHandlers?.onDragOver(event);
+  }
+
+  function handleDropZoneLeave() {
+    setDropActive(false);
+  }
+
+  function handleDropZoneDrop(event: DragEvent) {
+    setDropActive(false);
+    dropHandlers?.onDrop(event);
+  }
 
   return (
     <Paper
       elevation={0}
+      onDragOver={dropHandlers ? handleDropZoneOver : undefined}
+      onDragLeave={dropHandlers ? handleDropZoneLeave : undefined}
+      onDrop={dropHandlers ? handleDropZoneDrop : undefined}
       sx={{
         p: 1.25,
         minWidth: { xs: 0, md: theme.density.column.minWidth },
@@ -60,7 +88,9 @@ export default function BoardColumn({
             }),
         boxSizing: "border-box",
         bgcolor: columnVariant === "fixed" ? semantic.surfaceFixed : semantic.surfaceScroll,
-        border: `1px solid ${stripe.border}`,
+        border: `1px solid ${dropActive ? stripe.blurple : stripe.border}`,
+        outline: dropActive ? `2px solid ${stripe.blurple}` : "none",
+        outlineOffset: 2,
         borderRadius: `${theme.density.radius.sm}px`,
         display: "flex",
         flexDirection: "column",
