@@ -13,7 +13,6 @@ from app.api import runner
 from app.api.main import app
 from app.api.notify import notify_ops_session
 from app.api.state import STATE
-from app.mail import smtp as smtp_mod
 from app.worker.cookies import (
     CookieConvertError,
     json_locor_to_netscape,
