@@ -44,6 +44,8 @@ export type InboxLot = {
   ai_error: string | null;
   ai_wrong: boolean;
   ai_trigger: AiTrigger | null;
+  bitrix_sent_at: string | null;
+  customer_inn: string | null;
 };
 
 export type SearchGroup = {

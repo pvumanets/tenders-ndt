@@ -35,6 +35,7 @@ export default function TenderDrawer({
   onSetPriority,
   onSetBoardHidden,
   onAiWrong,
+  onBitrixSend,
   drawerMode = "rules",
 }: {
   lot: InboxLot;
@@ -43,11 +44,14 @@ export default function TenderDrawer({
   onSetPriority: (id: string, tier: SalesTier | null) => void;
   onSetBoardHidden: (id: string, hidden: boolean) => void;
   onAiWrong?: (id: string) => void;
+  onBitrixSend?: (id: string) => Promise<void>;
   drawerMode?: "rules" | "ai";
 }) {
   const [menuEl, setMenuEl] = useState<null | HTMLElement>(null);
+  const [bitrixBusy, setBitrixBusy] = useState(false);
   const tier = drawerMode === "ai" ? aiBoardTier(lot) : rulesBoardTier(lot);
   const rulesTier = lot.rules_tier ?? lot.tier;
+  const bitrixSent = Boolean(lot.bitrix_sent_at);
 
   const contactBits = [lot.contact_name, lot.contact_phone, lot.contact_email]
     .filter(Boolean)
@@ -220,6 +224,23 @@ export default function TenderDrawer({
             onClick={() => onAiWrong(lot.tender_id)}
           >
             {copy.action_ai_wrong}
+          </Button>
+        ) : null}
+        {onBitrixSend ? (
+          <Button
+            size="small"
+            variant="contained"
+            disabled={bitrixBusy || bitrixSent}
+            onClick={() => {
+              setBitrixBusy(true);
+              void onBitrixSend(lot.tender_id).finally(() => setBitrixBusy(false));
+            }}
+          >
+            {bitrixSent
+              ? copy.bitrix_already
+              : bitrixBusy
+                ? copy.action_bitrix_busy
+                : copy.action_bitrix}
           </Button>
         ) : null}
         <Menu anchorEl={menuEl} open={Boolean(menuEl)} onClose={() => setMenuEl(null)}>

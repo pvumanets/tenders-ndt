@@ -38,6 +38,14 @@ class InboxNotFound(LookupError):
     """Lot missing from the L1–L3 pool — map to HTTP 404."""
 
 
+class InboxConflict(RuntimeError):
+    """HTTP 409 — e.g. already_sent to Bitrix."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
 def parse_query_date(value: str | None) -> date | None:
     if value is None or value.strip() == "":
         return None
@@ -330,6 +338,10 @@ def serialize_lot(
         "ai_error": state.ai_error if state is not None else None,
         "ai_wrong": bool(state is not None and state.ai_wrong_at is not None),
         "ai_trigger": state.ai_trigger if state is not None else None,
+        "bitrix_sent_at": ingested_iso(state.bitrix_sent_at)
+        if state is not None and state.bitrix_sent_at is not None
+        else None,
+        "customer_inn": lot.customer_inn,
     }
     if include_documents:
         rows = documents if documents is not None else []
@@ -1027,3 +1039,48 @@ def list_tier_teach(*, limit: int | None = None) -> dict[str, Any]:
             for row in rows
         ]
         return {"items": items, "total": total}
+
+
+def send_lot_to_bitrix(tender_id: str) -> dict[str, Any]:
+    """POST send → lead + chat; set bitrix_sent_at. Raises InboxConflict if already sent."""
+    from app.bitrix import BitrixApiError, BitrixConfigError
+    from app.bitrix.send import send_lead_and_chat
+
+    factory = session_factory()
+    with factory() as session:
+        lot = _require_pool_lot(session, tender_id)
+        state = session.get(LotState, tender_id)
+        if state is not None and state.bitrix_sent_at is not None:
+            raise InboxConflict("already_sent")
+        min_price = read_l1_min_price_rub(session)
+        payload = serialize_lot(lot, state, min_price=min_price)
+        # ensure inn from ORM (also on serialize now)
+        payload["customer_inn"] = lot.customer_inn
+
+    try:
+        result = send_lead_and_chat(payload)
+    except BitrixConfigError as exc:
+        raise InboxQueryError(str(exc) or "bitrix_unconfigured") from exc
+    except BitrixApiError as exc:
+        raise InboxQueryError(exc.code) from exc
+
+    now = datetime.now(timezone.utc)
+    with factory() as session:
+        lot = _require_pool_lot(session, tender_id)
+        state = _ensure_lot_state(session, tender_id)
+        if state.bitrix_sent_at is not None:
+            raise InboxConflict("already_sent")
+        state.bitrix_sent_at = now
+        session.commit()
+        min_price = read_l1_min_price_rub(session)
+        docs = list(
+            session.scalars(select(Document).where(Document.tender_id == tender_id)).all()
+        )
+        item = serialize_lot(
+            lot, state, documents=docs, include_documents=True, min_price=min_price
+        )
+    return {
+        "lead_id": result["lead_id"],
+        "chat_message_id": result.get("chat_message_id"),
+        "item": item,
+    }

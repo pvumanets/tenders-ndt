@@ -39,6 +39,8 @@ const lot: InboxLot = {
   ai_error: null,
   ai_wrong: false,
   ai_trigger: null,
+  bitrix_sent_at: null,
+  customer_inn: null,
 };
 
 describe("LotTable keyboard", () => {

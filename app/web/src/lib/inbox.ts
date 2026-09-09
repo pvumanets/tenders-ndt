@@ -24,6 +24,13 @@ export class UnauthorizedError extends Error {
   }
 }
 
+export class BitrixSendError extends Error {
+  constructor(public readonly code: string) {
+    super(code);
+    this.name = "BitrixSendError";
+  }
+}
+
 export type RunControlCode = "already_running" | "missing_cookies" | "empty_queue" | "failed";
 
 export class RunControlError extends Error {
@@ -151,6 +158,8 @@ export function normalizeLot(raw: ApiLot): InboxLot {
     ai_error: raw.ai_error ? text(raw.ai_error) : null,
     ai_wrong: Boolean(raw.ai_wrong),
     ai_trigger: raw.ai_trigger === "auto" || raw.ai_trigger === "manual" ? raw.ai_trigger : null,
+    bitrix_sent_at: raw.bitrix_sent_at ? text(raw.bitrix_sent_at) : null,
+    customer_inn: raw.customer_inn ? text(raw.customer_inn) : null,
   };
 }
 
@@ -301,6 +310,27 @@ export async function postAiWrong(tenderId: string, note?: string): Promise<Inbo
   });
   if (!res.ok) throw new Error("ai_wrong_failed");
   return normalizeLot((await res.json()) as ApiLot);
+}
+
+export async function postBitrixSend(
+  tenderId: string,
+): Promise<{ lead_id: number | string; item: InboxLot }> {
+  const res = await apiFetch(`/api/inbox/${encodeURIComponent(tenderId)}/bitrix`, {
+    method: "POST",
+  });
+  if (res.status === 409) throw new BitrixSendError("already_sent");
+  if (res.status === 400) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: unknown };
+    const code = typeof body.detail === "string" ? body.detail : "bitrix_error";
+    throw new BitrixSendError(code);
+  }
+  if (!res.ok) throw new BitrixSendError("bitrix_error");
+  const raw = (await res.json()) as { lead_id?: unknown; item?: ApiLot };
+  if (!raw.item) throw new BitrixSendError("bitrix_error");
+  return {
+    lead_id: typeof raw.lead_id === "number" || typeof raw.lead_id === "string" ? raw.lead_id : "",
+    item: normalizeLot(raw.item),
+  };
 }
 
 function phaseLabel(phase: string): string {
