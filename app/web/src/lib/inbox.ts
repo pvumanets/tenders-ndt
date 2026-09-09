@@ -25,9 +25,12 @@ export class UnauthorizedError extends Error {
 }
 
 export class BitrixSendError extends Error {
-  constructor(public readonly code: string) {
+  readonly code: string;
+
+  constructor(code: string) {
     super(code);
     this.name = "BitrixSendError";
+    this.code = code;
   }
 }
 
