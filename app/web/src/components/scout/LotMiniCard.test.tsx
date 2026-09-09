@@ -40,6 +40,8 @@ function baseLot(partial: Partial<InboxLot> = {}): InboxLot {
     ai_error: null,
     ai_wrong: false,
     ai_trigger: "manual",
+    bitrix_sent_at: null,
+    customer_inn: null,
     ...partial,
   };
 }

@@ -33,6 +33,7 @@ import {
   RunControlError,
   SearchControlError,
   UnauthorizedError,
+  BitrixSendError,
   apiTierParam,
   createSearchGroup,
   deleteSearchGroup,
@@ -50,6 +51,7 @@ import {
   putBoardHidden,
   postAiReview,
   postAiWrong,
+  postBitrixSend,
   runControlMessage,
   searchControlMessage,
   setPlatformEnabled,
@@ -706,6 +708,32 @@ function AppInner() {
     }
   }
 
+  async function onBitrixSend(id: string) {
+    try {
+      const { item } = await postBitrixSend(id);
+      replaceLot(item);
+      setToast(copy.bitrix_sent_ok);
+    } catch (err: unknown) {
+      if (err instanceof UnauthorizedError) {
+        onUnauthorized();
+        return;
+      }
+      if (err instanceof BitrixSendError) {
+        if (err.code === "already_sent") {
+          setToast(copy.bitrix_already);
+          return;
+        }
+        if (err.code === "bitrix_unconfigured") {
+          setToast(copy.bitrix_unconfigured);
+          return;
+        }
+        setToast(copy.bitrix_error);
+        return;
+      }
+      setToast(copy.bitrix_error);
+    }
+  }
+
   function onCookieSession(platformId: string, session: PlatformSession) {
     setPlatforms((prev) =>
       prev.map((row) => (row.platform_id === platformId ? { ...row, session } : row)),
@@ -866,6 +894,7 @@ function AppInner() {
                 onSetPriority={onSetPriority}
                 onSetBoardHidden={onSetBoardHidden}
                 onAiWrong={(id) => void onAiWrong(id)}
+                onBitrixSend={onBitrixSend}
               />
             ) : null}
           </>
@@ -902,6 +931,7 @@ function AppInner() {
                 onSetPriority={onSetPriority}
                 onSetBoardHidden={onSetBoardHidden}
                 onAiWrong={(id) => void onAiWrong(id)}
+                onBitrixSend={onBitrixSend}
               />
             ) : null}
           </Suspense>

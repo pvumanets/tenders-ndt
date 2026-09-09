@@ -418,6 +418,8 @@ def _inbox_http(exc: Exception) -> None:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if isinstance(exc, inbox.InboxNotFound):
         raise HTTPException(status_code=404, detail="not_found") from exc
+    if isinstance(exc, inbox.InboxConflict):
+        raise HTTPException(status_code=409, detail=str(exc.code)) from exc
     if isinstance(exc, RuntimeError) and str(exc) == "database_unconfigured":
         raise HTTPException(status_code=503, detail="db_down") from exc
     raise exc
@@ -511,7 +513,15 @@ def api_inbox_board_hidden(tender_id: str, body: dict):
 def api_inbox_ai_wrong(tender_id: str, body: dict | None = None):
     try:
         return inbox.mark_ai_wrong(tender_id, body or {})
-    except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
+    except (inbox.InboxQueryError, inbox.InboxNotFound, inbox.InboxConflict, RuntimeError) as exc:
+        _inbox_http(exc)
+
+
+@app.post("/api/inbox/{tender_id}/bitrix")
+def api_inbox_bitrix(tender_id: str):
+    try:
+        return inbox.send_lot_to_bitrix(tender_id)
+    except (inbox.InboxQueryError, inbox.InboxNotFound, inbox.InboxConflict, RuntimeError) as exc:
         _inbox_http(exc)
 
 
