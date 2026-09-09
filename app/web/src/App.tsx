@@ -879,7 +879,7 @@ function AppInner() {
             />
             <AutoSlotStatus schedule={schedule} status={tech} />
             <Typography variant="body2" sx={{ color: stripe.textMuted, mb: 1.5 }}>
-              {copy.auto_mail_hint}
+              {copy.auto_lead_hint}
             </Typography>
             <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
               {commandBar}
@@ -916,7 +916,7 @@ function AppInner() {
               aiTotal={tech.ai_review_total}
             />
             <Typography variant="body2" sx={{ color: stripe.textMuted, mb: 1 }}>
-              {copy.manual_no_mail_hint} {copy.manual_session_muted}
+              {copy.manual_lead_hint} {copy.manual_session_muted}
             </Typography>
             <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
               {commandBar}

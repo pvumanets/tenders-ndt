@@ -1,4 +1,4 @@
-"""Bitrix24 REST helpers for Scout leads. Never log webhook URL or secrets."""
+"""Bitrix24 REST helpers for CRM leads and IM. Never log webhook URL or secrets."""
 from __future__ import annotations
 
 import json
@@ -13,6 +13,7 @@ log = logging.getLogger("uvicorn.error")
 
 SOURCE_ID_DEFAULT = "TENDERS_UMANETS"
 CHAT_TENDERY_DEFAULT = "chat7543"
+OPS_DIALOG_DEFAULT = "951"
 
 UF_DEADLINE = "UF_CRM_1788934584"
 UF_LOT_URL = "UF_CRM_1788934648"
@@ -56,6 +57,10 @@ def chat_dialog_id() -> str:
     return (os.getenv("BITRIX_CHAT_DIALOG_ID") or CHAT_TENDERY_DEFAULT).strip() or CHAT_TENDERY_DEFAULT
 
 
+def ops_dialog_id() -> str:
+    return (os.getenv("BITRIX_OPS_DIALOG_ID") or OPS_DIALOG_DEFAULT).strip() or OPS_DIALOG_DEFAULT
+
+
 def assigned_by_id() -> str | None:
     raw = (os.getenv("BITRIX_ASSIGNED_BY_ID") or "").strip()
     return raw or None
@@ -80,7 +85,6 @@ def call_method(method: str, params: dict[str, Any]) -> Any:
         with urllib.request.urlopen(req, timeout=45) as resp:
             body = resp.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
-        err_body = exc.read().decode("utf-8", errors="replace")[:300]
         log.warning("bitrix_http_error method=%s status=%s", method, exc.code)
         raise BitrixApiError(f"http_{exc.code}", code="bitrix_http") from exc
     except urllib.error.URLError as exc:

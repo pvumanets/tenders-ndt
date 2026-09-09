@@ -157,7 +157,7 @@ describe("AppTabs", () => {
     expect(screen.queryByText(copy.tab_lots)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: copy.run_start })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: copy.action_ai_review })).not.toBeInTheDocument();
-    expect(screen.getByText(copy.auto_mail_hint)).toBeInTheDocument();
+    expect(screen.getByText(copy.auto_lead_hint)).toBeInTheDocument();
   });
 
   it("shows Start and AI review on Ручной, settings controls on Настройки", async () => {
@@ -168,7 +168,7 @@ describe("AppTabs", () => {
     await user.click(screen.getByRole("tab", { name: copy.tab_manual }));
     expect(await screen.findByRole("button", { name: copy.run_start })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: copy.action_ai_review })).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(copy.manual_no_mail_hint))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(copy.manual_lead_hint))).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: copy.tab_settings }));
     expect(await screen.findByText(copy.settings_section_schedule)).toBeInTheDocument();
     expect(screen.getByText(copy.settings_section_platforms)).toBeInTheDocument();

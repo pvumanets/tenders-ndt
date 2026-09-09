@@ -218,7 +218,7 @@ def test_notify_auto_l1_empty_and_wrapper(monkeypatch: pytest.MonkeyPatch) -> No
         called.append(ids)
         return {"sent": 0, "skipped": 0, "failed": 0}
 
-    monkeypatch.setattr("app.api.notify.notify_auto_l1_lots", fake_lots)
+    monkeypatch.setattr("app.api.notify.notify_auto_l1_leads", fake_lots)
     notify_auto_l1([])
     assert called == []
     notify_auto_l1(["rostender:qa_l1"])

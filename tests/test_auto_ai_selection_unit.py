@@ -97,6 +97,6 @@ def test_notify_auto_l1_delegates(monkeypatch: pytest.MonkeyPatch) -> None:
         seen.append(ids)
         return {"sent": 0, "skipped": 1, "failed": 0}
 
-    monkeypatch.setattr("app.api.notify.notify_auto_l1_lots", fake)
+    monkeypatch.setattr("app.api.notify.notify_auto_l1_leads", fake)
     notify_auto_l1(["rostender:qa_l1"])
     assert seen == [["rostender:qa_l1"]]
