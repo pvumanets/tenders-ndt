@@ -469,16 +469,59 @@ def _run_queue(*, items: list[dict], run_dir: Path, pipeline: str = "manual") ->
     except Exception as exc:  # noqa: BLE001
         overall = "error"
         STATE.log_msg(f"{type(exc).__name__}: {exc}", level="error")
+        try:
+            from app.api.notify import notify_ops_event
+
+            notify_ops_event(
+                subject="падение прогона",
+                body=f"{type(exc).__name__}: {exc}",
+            )
+        except Exception:  # noqa: BLE001
+            pass
         STATE.finish("error", error=f"{type(exc).__name__}: {exc}")
         return
+    ai_processed = 0
+    ai_failed = 0
+    leads_sent = 0
     if pipeline == "auto" and overall in {"done", "partial"}:
         prefer = STATE.affected_ids()
         try:
             from app.api.inbox import run_auto_ai_review
 
-            run_auto_ai_review(prefer)
+            ai_result = run_auto_ai_review(prefer)
+            ai_processed = int(ai_result.get("processed") or 0)
+            ai_failed = int(ai_result.get("failed") or 0)
+            leads_sent = int(ai_result.get("leads_sent") or 0)
         except Exception as exc:  # noqa: BLE001
             STATE.log_msg(f"Auto AI: {type(exc).__name__}: {exc}", level="error")
+            try:
+                from app.api.notify import notify_ops_event
+
+                notify_ops_event(
+                    subject="падение авто-ИИ",
+                    body=f"{type(exc).__name__}: {exc}",
+                )
+            except Exception:  # noqa: BLE001
+                pass
+        try:
+            from app.api.notify import notify_run_digest
+            from app.api.schedule import get_schedule
+
+            nxt = None
+            try:
+                sched = get_schedule()
+                nxt = sched.get("next_fire_at") if isinstance(sched, dict) else None
+            except Exception:  # noqa: BLE001
+                nxt = None
+            notify_run_digest(
+                report=dict(STATE.run_report),
+                ai_processed=ai_processed,
+                ai_failed=ai_failed,
+                leads_sent=leads_sent,
+                next_fire_at=str(nxt) if nxt else None,
+            )
+        except Exception as exc:  # noqa: BLE001
+            STATE.log_msg(f"Digest: {type(exc).__name__}: {exc}", level="warn")
     STATE.finish(overall)
 
 

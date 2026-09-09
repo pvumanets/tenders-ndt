@@ -1,4 +1,4 @@
-"""Bitrix24 field builders for Scout → lead + chat. No secrets."""
+"""Bitrix24 field builders for lot → lead + chat. No secrets. Brand: Разведчик."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -104,7 +104,7 @@ def build_comments(
 ) -> str:
     """Must-visible block: Bitrix form often hides Компания/Сумма/wrong INN UF."""
     origin = public_origin()
-    scout_url = f"{origin}/"
+    app_url = f"{origin}/"
     lines = [
         f"Заказчик: {_clean(customer) or 'не указан'}",
         f"ИНН: {_clean(inn) or 'не указан'}",
@@ -115,14 +115,14 @@ def build_comments(
     why_c = _clean(why)
     if why_c:
         lines.append(f"Почему: {why_c}")
-    lines.append(f"Scout tender_id: {tender_id}")
-    lines.append(f"Scout: {scout_url}")
+    lines.append(f"Внутренний id: {tender_id}")
+    lines.append(f"Разведчик: {app_url}")
     return "\n".join(lines)
 
 
 def build_lead_fields(lot: dict[str, Any]) -> dict[str, Any]:
-    """Map Scout lot dict → crm.lead.add FIELDS (flat keys)."""
-    title = _clean(lot.get("title")) or "Тендер Scout"
+    """Map lot dict → crm.lead.add FIELDS (flat keys)."""
+    title = _clean(lot.get("title")) or "Тендер"
     customer = _clean(lot.get("customer_name")) or "не указан"
     inn = _clean(lot.get("customer_inn"))
     tier = _clean(lot.get("effective_tier") or lot.get("tier") or "L3") or "L3"
@@ -235,6 +235,6 @@ def build_chat_message(*, lot: dict[str, Any], lead_id: int | str) -> str:
     ]
     if url:
         lines.append(f"[url={url}]Лот на ЭТП[/url]")
-    lines.append(f"[url={origin}/]Scout[/url]")
-    lines.append("[i]Сообщение отправлено автоматически из Scout.[/i]")
+    lines.append(f"[url={origin}/]Разведчик[/url]")
+    lines.append("[i]Сообщение отправлено автоматически из Разведчика.[/i]")
     return "\n".join(lines)

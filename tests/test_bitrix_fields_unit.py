@@ -39,6 +39,9 @@ def test_build_comments_has_customer_sum_inn() -> None:
     assert "1 250 000" in text
     assert "Площадка: РосТендер" in text
     assert "Тир: L1" in text
+    assert "Внутренний id: rostender:1" in text
+    assert "Разведчик:" in text
+    assert "Scout" not in text
 
 
 def test_build_lead_fields_must_map(monkeypatch) -> None:
@@ -105,3 +108,5 @@ def test_build_chat_message_includes_sum_and_customer() -> None:
     assert "1 250 000" in msg
     assert "#6765" in msg
     assert "РосТендер" in msg
+    assert "Разведчик" in msg
+    assert "Scout" not in msg

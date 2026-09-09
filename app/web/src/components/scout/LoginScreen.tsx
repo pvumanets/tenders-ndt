@@ -61,6 +61,9 @@ export default function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
             {copy.product_title}
           </Typography>
         </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          {copy.product_subtitle}
+        </Typography>
         <Box component="form" onSubmit={onSubmit}>
           <FieldRow label={copy.login_username}>
             <TextField

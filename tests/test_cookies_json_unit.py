@@ -96,7 +96,7 @@ def test_upload_cookies_writes_and_probes(
         platforms_api, "_probe_platform", lambda platform_id: "ok"
     )
     monkeypatch.setattr(
-        platforms_api.notify, "notify_ops_session", lambda **_kw: "smtp_unconfigured"
+        platforms_api.notify, "notify_ops_session", lambda **_kw: "bitrix_unconfigured"
     )
 
     result = platforms_api.upload_platform_cookies("rostender", _locor_items())
@@ -150,7 +150,7 @@ def test_upload_bad_session_triggers_ops(
 
     def _ops(**kwargs: str) -> str:
         calls.append(dict(kwargs))
-        return "smtp_unconfigured"
+        return "bitrix_unconfigured"
 
     monkeypatch.setattr(platforms_api.notify, "notify_ops_session", _ops)
     result = platforms_api.upload_platform_cookies("roseltorg", _locor_items())
@@ -167,14 +167,13 @@ def test_upload_bad_session_triggers_ops(
 
 
 @pytest.mark.unit
-def test_ops_smtp_unconfigured(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
-    monkeypatch.delenv("SMTP_HOST", raising=False)
-    monkeypatch.delenv("MAIL_OPS_TO", raising=False)
-    with caplog.at_level("INFO"):
-        status = notify_ops_session(platform_id="rostender", session="expired")
-    assert status == "smtp_unconfigured"
-    assert any("smtp_unconfigured" in r.message for r in caplog.records)
-    assert smtp_mod.smtp_configured() is False
+def test_ops_bitrix_unconfigured(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.api.notify.send_ops_dm",
+        lambda _msg: "bitrix_unconfigured",
+    )
+    status = notify_ops_session(platform_id="rostender", session="expired")
+    assert status == "bitrix_unconfigured"
 
 
 @pytest.mark.unit

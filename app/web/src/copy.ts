@@ -1,6 +1,7 @@
 /** RU microcopy — канон docs/discovery/design/sales-inbox-copy.md */
 export const copy = {
-  product_title: "Мониторинг тендеров",
+  product_title: "Разведчик",
+  product_subtitle: "Мониторинг тендеров",
   tab_auto: "Авторазбор",
   tab_manual: "Ручной",
   tab_settings: "Настройки",
@@ -262,7 +263,8 @@ export const copy = {
   auto_slot_last: "Последний запуск: {datetime}",
   auto_session_banner: "Сессия площадки устарела или отсутствует — обновите в Настройках",
   auto_session_banner_action: "Открыть Настройки",
-  auto_mail_hint: "Подходящие лоты после авторазбора уходят на почту. Здесь отправлять не нужно.",
+  auto_lead_hint:
+    "После разбора ИИ лоты L1 уходят в Битрикс лидами и в чат «Тендеры». Здесь — ручная отправка остальных.",
   empty_auto_title: "Пока нет лотов авторазбора",
   empty_auto_body: "Дождитесь слота или проверьте сессии площадок в Настройках.",
   empty_auto_no_match_title: "Нет лотов по фильтру",
@@ -274,7 +276,8 @@ export const copy = {
     "Обновите страницу. Если ошибка повторяется — откройте Настройки и проверьте сессии.",
   ai_eta_progress: "Разбираю {n} из {m}…",
   ai_eta_done: "Разбор с ИИ завершён",
-  manual_no_mail_hint: "С ручного прогона письма не уходят — только авторазбор.",
+  manual_lead_hint:
+    "С ручного прогона автолиды L1 уходят после «Разобрать с ИИ». Кнопка в карточке — для остальных.",
   manual_session_muted: "Если сессия площадки устарела — обновите её в Настройках.",
   filter_ai_reviewed_trigger: "С ИИ",
   filter_ai_reviewed_menu_title: "Разбор ИИ",

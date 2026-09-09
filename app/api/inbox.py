@@ -743,7 +743,6 @@ def _apply_ai_review(
     skip_hidden_expired: bool = True,
 ) -> dict[str, Any]:
     from app.ai.provod import AiTierError, review_tier
-    from app.api.notify import notify_auto_l1
     from app.api.state import STATE
 
     factory = session_factory()
@@ -785,7 +784,7 @@ def _apply_ai_review(
                 state.ai_error = None
                 state.ai_trigger = trigger
                 processed += 1
-                if trigger == "auto" and result.tier == "L1":
+                if result.tier == "L1":
                     l1_ids.append(lot.tender_id)
             except AiTierError as exc:
                 state.ai_error = str(exc.message)
@@ -808,11 +807,27 @@ def _apply_ai_review(
     STATE.set_ai_failures(failed)
     if failed:
         STATE.log_msg(f"ИИ: сбоев {failed}, успешно {processed}", level="warn")
+        from app.api.notify import notify_ops_event
+
+        notify_ops_event(
+            subject="сбой ИИ",
+            body=f"Успешно: {processed}\nСбоев: {failed}",
+        )
     else:
         STATE.log_msg(f"ИИ: разобрано {processed}")
-    if trigger == "auto":
-        notify_auto_l1(l1_ids)
-    return {"processed": processed, "failed": failed, "items": items}
+    leads_sent = 0
+    if l1_ids:
+        from app.bitrix.auto_leads import notify_auto_l1_leads
+
+        counts = notify_auto_l1_leads(l1_ids)
+        leads_sent = int(counts.get("sent") or 0)
+    return {
+        "processed": processed,
+        "failed": failed,
+        "items": items,
+        "leads_sent": leads_sent,
+        "l1_candidate_n": len(l1_ids),
+    }
 
 
 def run_ai_review(body: Any) -> dict[str, Any]:
@@ -1045,6 +1060,7 @@ def send_lot_to_bitrix(tender_id: str) -> dict[str, Any]:
     """POST send → lead + chat; set bitrix_sent_at. Raises InboxConflict if already sent."""
     from app.bitrix import BitrixApiError, BitrixConfigError
     from app.bitrix.send import send_lead_and_chat
+    from app.api.notify import notify_ops_event
 
     factory = session_factory()
     with factory() as session:
@@ -1060,8 +1076,16 @@ def send_lot_to_bitrix(tender_id: str) -> dict[str, Any]:
     try:
         result = send_lead_and_chat(payload)
     except BitrixConfigError as exc:
+        notify_ops_event(
+            subject="лид не создан",
+            body=f"ID: {tender_id}\nПричина: Битрикс не настроен",
+        )
         raise InboxQueryError(str(exc) or "bitrix_unconfigured") from exc
     except BitrixApiError as exc:
+        notify_ops_event(
+            subject="лид не создан",
+            body=f"ID: {tender_id}\nКод: {exc.code}",
+        )
         raise InboxQueryError(exc.code) from exc
 
     now = datetime.now(timezone.utc)
