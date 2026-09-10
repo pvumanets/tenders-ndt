@@ -5,10 +5,16 @@ export interface DetailDrawerShellProps {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
+  /** Paper width on sm+ (default 400). */
+  width?: number;
 }
 
-/** Vendored from personal PersonDetailDrawerShell (400px). */
-export default function DetailDrawerShell({ open, onClose, children }: DetailDrawerShellProps) {
+export default function DetailDrawerShell({
+  open,
+  onClose,
+  children,
+  width = 400,
+}: DetailDrawerShellProps) {
   return (
     <Drawer
       anchor="right"
@@ -16,7 +22,7 @@ export default function DetailDrawerShell({ open, onClose, children }: DetailDra
       onClose={onClose}
       sx={{
         "& .MuiDrawer-paper": {
-          width: { xs: "100%", sm: 400 },
+          width: { xs: "100%", sm: width },
           maxWidth: "100%",
           p: 0,
         },

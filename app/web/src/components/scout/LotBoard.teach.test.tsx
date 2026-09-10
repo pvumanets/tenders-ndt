@@ -35,6 +35,7 @@ function lot(partial: Partial<InboxLot>): InboxLot {
     ai_reason_ru: "",
     ai_error: null,
     ai_wrong: false,
+    ai_wrong_note: null,
     ai_trigger: null,
     bitrix_sent_at: null,
     customer_inn: null,

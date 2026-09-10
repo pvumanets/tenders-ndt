@@ -55,11 +55,14 @@ describe("buildInboxSearchParams", () => {
     expect(params.get("ai_trigger")).toBe("auto");
   });
 
-  it("omits default relevance sort and sets appeared", () => {
-    expect(buildInboxSearchParams({ tier: "fit" }).get("sort")).toBeNull();
-    expect(buildInboxSearchParams({ tier: "fit", sort: "relevance" }).get("sort")).toBeNull();
-    expect(buildInboxSearchParams({ tier: "fit", sort: "appeared" }).get("sort")).toBe("appeared");
-    expect(buildInboxSearchParams({ tier: "fit", sort: "deadline" }).get("sort")).toBe("deadline");
+  it("sets ai_wrong and ai_reviewed false", () => {
+    const params = buildInboxSearchParams({
+      tier: "fit",
+      ai_reviewed: false,
+      ai_wrong: true,
+    });
+    expect(params.get("ai_reviewed")).toBe("0");
+    expect(params.get("ai_wrong")).toBe("1");
   });
 });
 

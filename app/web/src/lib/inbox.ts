@@ -63,6 +63,7 @@ export type InboxListQuery = {
   ingested_to?: string;
   ai_reviewed?: boolean;
   ai_trigger?: AiTrigger;
+  ai_wrong?: boolean;
   price_min_rub?: number;
   platform?: string;
   bitrix?: Exclude<BitrixFilter, "any">;
@@ -160,6 +161,7 @@ export function normalizeLot(raw: ApiLot): InboxLot {
     ai_reason_ru: text(raw.ai_reason_ru),
     ai_error: raw.ai_error ? text(raw.ai_error) : null,
     ai_wrong: Boolean(raw.ai_wrong),
+    ai_wrong_note: raw.ai_wrong_note ? text(raw.ai_wrong_note) : null,
     ai_trigger: raw.ai_trigger === "auto" || raw.ai_trigger === "manual" ? raw.ai_trigger : null,
     bitrix_sent_at: raw.bitrix_sent_at ? text(raw.bitrix_sent_at) : null,
     customer_inn: raw.customer_inn ? text(raw.customer_inn) : null,
@@ -179,8 +181,11 @@ export function buildInboxSearchParams(query: InboxListQuery): URLSearchParams {
   if (query.deadline_to) params.set("deadline_to", query.deadline_to);
   if (query.ingested_from) params.set("ingested_from", query.ingested_from);
   if (query.ingested_to) params.set("ingested_to", query.ingested_to);
-  if (query.ai_reviewed) params.set("ai_reviewed", "1");
+  if (query.ai_reviewed === true) params.set("ai_reviewed", "1");
+  if (query.ai_reviewed === false) params.set("ai_reviewed", "0");
   if (query.ai_trigger) params.set("ai_trigger", query.ai_trigger);
+  if (query.ai_wrong === true) params.set("ai_wrong", "1");
+  if (query.ai_wrong === false) params.set("ai_wrong", "0");
   if (query.price_min_rub != null && query.price_min_rub > 0) {
     params.set("price_min_rub", String(query.price_min_rub));
   }
@@ -201,6 +206,74 @@ export async function fetchInbox(query: InboxListQuery): Promise<InboxLot[]> {
   if (!res.ok) throw new Error("inbox_load_failed");
   const body = (await res.json()) as { items?: ApiLot[] };
   return Array.isArray(body.items) ? body.items.map(normalizeLot) : [];
+}
+
+export async function fetchInboxTotal(query: InboxListQuery): Promise<number> {
+  const res = await apiFetch(`/api/inbox?${buildInboxSearchParams(query).toString()}`);
+  if (!res.ok) throw new Error("inbox_load_failed");
+  const body = (await res.json()) as { total?: unknown; items?: unknown[] };
+  if (typeof body.total === "number") return body.total;
+  return Array.isArray(body.items) ? body.items.length : 0;
+}
+
+export type InboxExportBody = InboxListQuery & {
+  format: "csv" | "xlsx";
+  columns: string[];
+};
+
+function filenameFromDisposition(header: string | null, fallback: string): string {
+  if (!header) return fallback;
+  const star = /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (star?.[1]) {
+    try {
+      return decodeURIComponent(star[1].trim());
+    } catch {
+      /* keep fallback */
+    }
+  }
+  const plain = /filename="([^"]+)"/i.exec(header) || /filename=([^;]+)/i.exec(header);
+  if (plain?.[1]) return plain[1].trim();
+  return fallback;
+}
+
+export async function postInboxExport(
+  body: InboxExportBody,
+): Promise<{ blob: Blob; filename: string }> {
+  const payload: Record<string, unknown> = {
+    format: body.format,
+    columns: body.columns,
+    tier: body.tier ?? "fit",
+    q: body.q ?? "",
+  };
+  if (body.unread) payload.unread = true;
+  if (body.deadline_from) payload.deadline_from = body.deadline_from;
+  if (body.deadline_to) payload.deadline_to = body.deadline_to;
+  if (body.ingested_from) payload.ingested_from = body.ingested_from;
+  if (body.ingested_to) payload.ingested_to = body.ingested_to;
+  if (body.ai_reviewed === true) payload.ai_reviewed = true;
+  if (body.ai_reviewed === false) payload.ai_reviewed = false;
+  if (body.ai_trigger) payload.ai_trigger = body.ai_trigger;
+  if (body.ai_wrong === true) payload.ai_wrong = true;
+  if (body.ai_wrong === false) payload.ai_wrong = false;
+  if (body.price_min_rub != null && body.price_min_rub > 0) {
+    payload.price_min_rub = body.price_min_rub;
+  }
+  if (body.platform) payload.platform = body.platform;
+  if (body.bitrix) payload.bitrix = body.bitrix;
+  if (body.sort && body.sort !== "relevance") payload.sort = body.sort;
+
+  const res = await apiFetch("/api/inbox/export", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("export_failed");
+  const blob = await res.blob();
+  const filename = filenameFromDisposition(
+    res.headers.get("Content-Disposition"),
+    `inbox-export.${body.format}`,
+  );
+  return { blob, filename };
 }
 
 export async function fetchInboxItem(tenderId: string): Promise<InboxLot> {

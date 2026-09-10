@@ -43,6 +43,7 @@ export type InboxLot = {
   ai_reason_ru: string;
   ai_error: string | null;
   ai_wrong: boolean;
+  ai_wrong_note: string | null;
   ai_trigger: AiTrigger | null;
   bitrix_sent_at: string | null;
   customer_inn: string | null;
