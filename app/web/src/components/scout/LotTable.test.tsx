@@ -32,6 +32,8 @@ const lot: InboxLot = {
   url: "https://example.test/1",
   source_platform_id: "rostender",
   documents: [],
+  docs_status: "missing" as const,
+  docs_external_url: null,
   rules_tier: "L1",
   ai_reviewed: false,
   ai_tier: null,

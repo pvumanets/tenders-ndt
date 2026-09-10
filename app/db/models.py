@@ -219,6 +219,8 @@ class LotState(Base):
     bitrix_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    docs_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    docs_external_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Document(Base):

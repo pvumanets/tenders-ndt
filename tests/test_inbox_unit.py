@@ -281,6 +281,8 @@ def test_serialize_lot_iso_dates_and_effective_tier() -> None:
     assert item["price_rub"] == 1850000
     assert item["source_platform_id"] == "rostender"
     assert item["deadline_expired"] is False
+    assert item["docs_status"] == "pending_ai"
+    assert item.get("docs_external_url") is None
     assert "documents" not in item
     _assert_no_secrets(item)
 
@@ -290,6 +292,8 @@ def test_serialize_lot_iso_dates_and_effective_tier() -> None:
     assert card["manual_tier"] == "L2"
     assert card["viewed"] is True
     assert card["documents"] == []
+    assert card["documents_count"] == 0
+    assert card["docs_status"] == "pending_ai"
     _assert_no_secrets(card)
 
 

@@ -7,6 +7,15 @@ export type AppTab = "auto" | "manual" | "settings";
 export type AiTrigger = "auto" | "manual";
 export type RunPipeline = "manual" | "auto";
 
+export type DocStatus =
+  | "missing"
+  | "pending_ai"
+  | "pending_download"
+  | "ready"
+  | "external_only"
+  | "unsupported_platform"
+  | "error";
+
 export type DocFile = {
   name: string;
   size_kb?: number;
@@ -37,6 +46,8 @@ export type InboxLot = {
   /** slug из docs/discovery/platforms.md */
   source_platform_id: string;
   documents: DocFile[];
+  docs_status: DocStatus;
+  docs_external_url: string | null;
   rules_tier: SalesTier | null;
   ai_reviewed: boolean;
   ai_tier: SalesTier | null;

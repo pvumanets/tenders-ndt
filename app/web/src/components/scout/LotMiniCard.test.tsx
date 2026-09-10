@@ -33,6 +33,8 @@ function baseLot(partial: Partial<InboxLot> = {}): InboxLot {
     url: "",
     source_platform_id: "rostender",
     documents: [],
+    docs_status: "missing" as const,
+    docs_external_url: null,
     rules_tier: "L3",
     ai_reviewed: true,
     ai_tier: "L1",

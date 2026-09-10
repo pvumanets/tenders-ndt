@@ -51,6 +51,8 @@ function lot(partial: Partial<InboxLot> & Pick<InboxLot, "tender_id" | "tier">):
     url: "",
     source_platform_id: "rostender",
     documents: [],
+    docs_status: "missing",
+    docs_external_url: null,
     rules_tier: null,
     ai_reviewed: false,
     ai_tier: null,
