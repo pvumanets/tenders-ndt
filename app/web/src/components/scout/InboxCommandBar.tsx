@@ -327,6 +327,7 @@ export default function InboxCommandBar({
   onPlatformsSelected,
   bitrixFilter = "any",
   onBitrixFilter,
+  onExport,
 }: {
   unreadOnly: boolean;
   onUnreadOnly: (v: boolean) => void;
@@ -366,6 +367,7 @@ export default function InboxCommandBar({
   onPlatformsSelected?: (v: string[]) => void;
   bitrixFilter?: BitrixFilter;
   onBitrixFilter?: (v: BitrixFilter) => void;
+  onExport?: () => void;
 }) {
   const [filtersEl, setFiltersEl] = useState<HTMLElement | null>(null);
   const [markAllOpen, setMarkAllOpen] = useState(false);
@@ -554,6 +556,17 @@ export default function InboxCommandBar({
         <ViewCommandBar.End
           sx={{ width: { xs: "100%", md: "auto" }, justifyContent: "flex-end", gap: 1, flexWrap: "wrap" }}
         >
+          {onExport ? (
+            <Button
+              size="small"
+              variant="outlined"
+              color="secondary"
+              onClick={onExport}
+              sx={{ flexShrink: 0 }}
+            >
+              {copy.export_button}
+            </Button>
+          ) : null}
           {onSort ? (
             <ToggleButtonGroup
               exclusive

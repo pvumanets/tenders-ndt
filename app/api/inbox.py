@@ -189,6 +189,22 @@ def parse_bitrix_filter(value: str | None) -> str | None:
     raise InboxQueryError("invalid_bitrix")
 
 
+def parse_ai_wrong(value: str | bool | None) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    text = value.strip()
+    if text == "":
+        return None
+    key = text.lower()
+    if key in {"true", "1", "yes"}:
+        return True
+    if key in {"false", "0", "no"}:
+        return False
+    raise InboxQueryError("invalid_ai_wrong")
+
+
 def _price_below_min(lot: Lot, min_price: int | None) -> bool:
     if min_price is None:
         return False
@@ -341,6 +357,7 @@ def serialize_lot(
         "ai_reason_ru": state.ai_reason_ru if state is not None else None,
         "ai_error": state.ai_error if state is not None else None,
         "ai_wrong": bool(state is not None and state.ai_wrong_at is not None),
+        "ai_wrong_note": (state.ai_wrong_note if state is not None else None) or None,
         "ai_trigger": state.ai_trigger if state is not None else None,
         "bitrix_sent_at": ingested_iso(state.bitrix_sent_at)
         if state is not None and state.bitrix_sent_at is not None
@@ -397,6 +414,7 @@ def list_inbox(
     ingested_to: str | None = None,
     ai_reviewed: str | None = None,
     ai_trigger: str | None = None,
+    ai_wrong: str | bool | None = None,
     price_min_rub: str | None = None,
     platform: str | None = None,
     bitrix: str | None = None,
@@ -408,6 +426,7 @@ def list_inbox(
     sort_mode = parse_inbox_sort(sort)
     ai_flag = parse_ai_reviewed(ai_reviewed)
     trigger = parse_ai_trigger(ai_trigger)
+    ai_wrong_flag = parse_ai_wrong(ai_wrong)
     price_min = parse_price_min_rub(price_min_rub)
     platform_ids = parse_platform_filter(platform)
     bitrix_filter = parse_bitrix_filter(bitrix)
@@ -436,6 +455,12 @@ def list_inbox(
             )
         if trigger is not None:
             stmt = stmt.where(LotState.ai_trigger == trigger)
+        if ai_wrong_flag is True:
+            stmt = stmt.where(LotState.ai_wrong_at.is_not(None))
+        elif ai_wrong_flag is False:
+            stmt = stmt.where(
+                or_(LotState.ai_wrong_at.is_(None), LotState.tender_id.is_(None))
+            )
         if platform_ids is not None:
             stmt = stmt.where(Lot.source_platform_id.in_(tuple(platform_ids)))
         if bitrix_filter == "in":

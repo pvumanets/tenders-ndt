@@ -75,6 +75,7 @@ def test_inbox_routes_include_documents() -> None:
     assert "/api/inbox/{tender_id}" in paths
     assert "/api/inbox/{tender_id}/viewed" in paths
     assert "/api/inbox/mark-all-viewed" in paths
+    assert "/api/inbox/export" in paths
     assert "/api/inbox/{tender_id}/priority" in paths
     assert "/api/inbox/{tender_id}/board-hidden" in paths
     assert "/api/inbox/{tender_id}/documents" in paths
@@ -249,11 +250,20 @@ def test_serialize_lot_deadline_expired_and_board_hidden() -> None:
     assert live["deadline_expired"] is False
     assert live["board_hidden"] is False
     assert live["ai_trigger"] is None
+    assert live["ai_wrong"] is False
+    assert live["ai_wrong_note"] is None
     expired = serialize_lot(_lot(deadline_msk="26.08.2026"), None, today=today)
     assert expired["deadline_expired"] is True
-    state = LotState(tender_id="45289101", board_hidden=True)
+    state = LotState(
+        tender_id="45289101",
+        board_hidden=True,
+        ai_wrong_at=datetime(2026, 9, 1, tzinfo=timezone.utc),
+        ai_wrong_note="косяк",
+    )
     hidden = serialize_lot(_lot(), state, today=today)
     assert hidden["board_hidden"] is True
+    assert hidden["ai_wrong"] is True
+    assert hidden["ai_wrong_note"] == "косяк"
 
 
 @pytest.mark.unit
