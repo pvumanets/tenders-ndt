@@ -15,7 +15,7 @@ afterEach(() => {
 const baseProps = {
   unreadOnly: false,
   onUnreadOnly: () => {},
-  priority: [] as const,
+  priority: [] as import("../../types").PriorityFilter,
   onPriority: () => {},
   search: "",
   onSearch: () => {},
