@@ -1,6 +1,7 @@
 import type {
   AiTrigger,
   BitrixFilter,
+  DocStatus,
   InboxLot,
   PlatformRow,
   PlatformSession,
@@ -16,6 +17,23 @@ import type {
   TeachBucket,
 } from "../types";
 import { copy } from "../copy";
+
+const DOC_STATUSES = new Set<DocStatus>([
+  "missing",
+  "pending_ai",
+  "pending_download",
+  "ready",
+  "external_only",
+  "unsupported_platform",
+  "error",
+]);
+
+function normalizeDocsStatus(raw: unknown, aiReviewed: boolean): DocStatus {
+  if (typeof raw === "string" && DOC_STATUSES.has(raw as DocStatus)) {
+    return raw as DocStatus;
+  }
+  return aiReviewed ? "pending_download" : "pending_ai";
+}
 
 export class UnauthorizedError extends Error {
   constructor() {
@@ -154,6 +172,13 @@ export function normalizeLot(raw: ApiLot): InboxLot {
     url: text(raw.url),
     source_platform_id: text(raw.source_platform_id) || "rostender",
     documents: Array.isArray(raw.documents) ? raw.documents : [],
+    docs_status: normalizeDocsStatus(
+      (raw as { docs_status?: unknown }).docs_status,
+      Boolean(raw.ai_reviewed),
+    ),
+    docs_external_url: (raw as { docs_external_url?: string | null }).docs_external_url
+      ? text((raw as { docs_external_url?: string | null }).docs_external_url)
+      : null,
     rules_tier: rulesTier,
     ai_reviewed: Boolean(raw.ai_reviewed),
     ai_tier: aiTier,

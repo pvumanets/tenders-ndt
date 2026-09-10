@@ -29,6 +29,8 @@ function lot(partial: Partial<InboxLot>): InboxLot {
     url: "",
     source_platform_id: "rostender",
     documents: [],
+    docs_status: "missing" as const,
+    docs_external_url: null,
     rules_tier: "L2",
     ai_reviewed: false,
     ai_tier: null,

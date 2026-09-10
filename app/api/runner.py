@@ -23,7 +23,6 @@ from app.worker import sibur_srm as sibur_srm_worker
 from app.worker import tender_pro as tender_pro_worker
 from app.worker.artifacts import write_artifacts
 from app.worker.card_scrape import enrich_cards
-from app.worker.docs import download_docs_enabled, download_inbox_docs
 from app.deadline import drop_past_deadline_rows
 from app.worker.ingest import ingest_run, redact_db_error, snapshot_expired_tender_ids
 from app.worker.list_scrape import AuthError, probe_rostender_cookies, scrape_queries
@@ -352,88 +351,6 @@ def _ingest_step(
             STATE.log_msg(error, level="error")
 
 
-def _download_docs(rows: list[dict], *, platform_id: str) -> None:
-    if not download_docs_enabled():
-        STATE.log_msg("Docs: skip (DOWNLOAD_DOCS=0)")
-        return
-    if not rows:
-        return
-    cookies = _cookies_path(platform_id)
-    if platform_id == PLATFORM_ROSELTORG and not cookies.is_file():
-        STATE.log_msg("Docs: Росэлторг cookies missing — skip files", level="warn")
-        return
-    if platform_id == PLATFORM_TENDER_PRO:
-        if not cookies.is_file():
-            STATE.log_msg("Docs: Tender.Pro cookies missing — skip files", level="warn")
-            return
-        tp_base = os.getenv("TENDER_PRO_BASE_URL", tender_pro_worker.DEFAULT_BASE)
-        tp_probe = tender_pro_worker.probe_tender_pro_cookies(
-            cookies, tp_base, on_retry=_http_retry_callback
-        )
-        if tp_probe != "ok":
-            STATE.log_msg(
-                f"Docs: Tender.Pro session {tp_probe} — skip files",
-                level="warn",
-            )
-            return
-    if platform_id == PLATFORM_B2B_CENTER:
-        if not cookies.is_file():
-            STATE.log_msg("Docs: B2B-Center cookies missing — skip files", level="warn")
-            return
-        b2b_base = os.getenv("B2B_CENTER_BASE_URL", b2b_center_worker.DEFAULT_BASE)
-        b2b_probe = b2b_center_worker.probe_b2b_center_session(
-            cookies, b2b_base, on_retry=_http_retry_callback
-        )
-        if b2b_probe != "ok":
-            STATE.log_msg(
-                f"Docs: B2B-Center session {b2b_probe} — skip files",
-                level="warn",
-            )
-            return
-    if platform_id == PLATFORM_RTS_ROSATOM:
-        if not cookies.is_file():
-            STATE.log_msg("Docs: РТС Росатом cookies missing — skip files", level="warn")
-            return
-        rts_base = os.getenv("RTS_ROSATOM_BASE_URL", rts_rosatom_worker.DEFAULT_BASE)
-        rts_probe = rts_rosatom_worker.probe_rts_rosatom_session(
-            cookies, rts_base, on_retry=_http_retry_callback
-        )
-        if rts_probe != "ok":
-            STATE.log_msg(
-                f"Docs: РТС Росатом session {rts_probe} — skip files",
-                level="warn",
-            )
-            return
-    if platform_id == PLATFORM_OILB2BCS:
-        STATE.log_msg("Docs: OilB2B — скачивание файлов не поддержано", level="warn")
-        return
-    if platform_id == PLATFORM_SIBUR_SRM:
-        STATE.log_msg("Docs: СИБУР SRM — скачивание файлов не поддержано (v1)", level="warn")
-        return
-    if platform_id == PLATFORM_ROSTENDER and not cookies.is_file():
-        STATE.log_msg("Docs: rostender cookies missing — skip files", level="warn")
-        return
-    STATE.log_msg("Docs: downloading L1–L3…")
-    try:
-        result = download_inbox_docs(
-            rows,
-            cookies_path=cookies,
-            delay_s=0.2,
-            should_stop=STATE.should_stop,
-        )
-        STATE.log_msg(
-            f"Docs: saved={result.saved} skipped={result.skipped} errors={result.errors}"
-        )
-    except AuthError as exc:
-        if platform_id == PLATFORM_ROSTENDER:
-            STATE.set_session("expired")
-        else:
-            STATE.set_session("expired", platform_id=platform_id)
-        STATE.log_msg(f"Docs AuthError: {exc}", level="error")
-    except Exception as exc:  # noqa: BLE001
-        STATE.log_msg(f"Docs error: {type(exc).__name__}: {exc}", level="error")
-
-
 def _run_queue(*, items: list[dict], run_dir: Path, pipeline: str = "manual") -> None:
     overall = "done"
     try:
@@ -575,7 +492,6 @@ def _finish_artifacts(
     )
     STATE.log_msg(f"P4 done → {run_dir}")
     _ingest_step(item=item, status=status, rows=enriched, started_at=started_at)
-    _download_docs(enriched, platform_id=platform_id)
     return "done" if status == "done" else status
 
 

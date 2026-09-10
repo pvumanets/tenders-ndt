@@ -5,7 +5,7 @@ import {
   Divider,
   FormControlLabel,
   IconButton,
-  Link,
+  Link as MuiLink,
   List,
   ListItem,
   ListItemIcon,
@@ -91,7 +91,7 @@ export default function TenderDrawer({
               sx={{ alignItems: "center", mt: 0.75 }}
             >
               <PlatformIcon platformId={lot.source_platform_id} size={16} />
-              <Link
+              <MuiLink
                 href={lot.url}
                 target="_blank"
                 rel="noreferrer"
@@ -99,7 +99,7 @@ export default function TenderDrawer({
                 sx={{ fontSize: 13 }}
               >
                 {copy.link_on_site}
-              </Link>
+              </MuiLink>
             </Stack>
           </Box>
           <IconButton size="small" aria-label={copy.drawer_close_aria} onClick={onClose}>
@@ -159,11 +159,9 @@ export default function TenderDrawer({
         <Typography sx={{ ...personProfileTokens.fieldLabel, mb: 0.5 }}>
           {copy.section_docs}
         </Typography>
-        {lot.documents.length === 0 ? (
-          <Typography color="text.secondary">{copy.docs_empty_none}</Typography>
-        ) : (
+        {lot.docs_status === "ready" && lot.documents.length > 0 ? (
           <List dense disablePadding>
-            {lot.documents.map((d) => (
+            {lot.documents.slice(0, 1).map((d) => (
               <ListItem
                 key={d.name}
                 disableGutters
@@ -185,6 +183,33 @@ export default function TenderDrawer({
               </ListItem>
             ))}
           </List>
+        ) : lot.docs_status === "external_only" ? (
+          <Stack spacing={1} sx={{ mb: 0 }}>
+            <Typography color="text.secondary">{copy.docs_external_only}</Typography>
+            {(lot.docs_external_url || lot.url) ? (
+              <Button
+                size="small"
+                component={MuiLink}
+                href={lot.docs_external_url || lot.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {copy.docs_external_open}
+              </Button>
+            ) : null}
+          </Stack>
+        ) : (
+          <Typography color="text.secondary">
+            {lot.docs_status === "pending_ai"
+              ? copy.docs_empty_pending_ai
+              : lot.docs_status === "pending_download"
+                ? copy.docs_empty_pending_download
+                : lot.docs_status === "unsupported_platform"
+                  ? copy.docs_unsupported_platform
+                  : lot.docs_status === "error"
+                    ? copy.docs_error
+                    : copy.docs_empty_none}
+          </Typography>
         )}
       </Box>
 

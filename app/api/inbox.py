@@ -307,6 +307,10 @@ def serialize_lot(
     due = deadline_date(lot.deadline_msk)
     today_d = today_msk_date(today)
     expired = due is not None and due < today_d
+    ai_reviewed = bool(state is not None and state.ai_reviewed_at is not None)
+    from app.worker.docs import resolve_docs_status_for_api
+
+    docs_status = resolve_docs_status_for_api(state, ai_reviewed=ai_reviewed)
     payload: dict[str, Any] = {
         "tender_id": lot.tender_id,
         "title": lot.title,
@@ -331,7 +335,7 @@ def serialize_lot(
         "contact_phone": lot.contact_phone,
         "contact_email": lot.contact_email,
         "rules_tier": (state.rules_tier if state is not None else None) or lot.tier,
-        "ai_reviewed": bool(state is not None and state.ai_reviewed_at is not None),
+        "ai_reviewed": ai_reviewed,
         "ai_reviewed_at": ingested_iso(state.ai_reviewed_at) if state is not None else None,
         "ai_tier": state.ai_tier if state is not None else None,
         "ai_reason_ru": state.ai_reason_ru if state is not None else None,
@@ -342,10 +346,16 @@ def serialize_lot(
         if state is not None and state.bitrix_sent_at is not None
         else None,
         "customer_inn": lot.customer_inn,
+        "docs_status": docs_status,
+        "docs_external_url": (state.docs_external_url if state is not None else None),
     }
     if include_documents:
         rows = documents if documents is not None else []
-        payload["documents"] = [_doc_meta(row) for row in rows]
+        # TO-BE: one zip only
+        zip_rows = [row for row in rows if row.filename.lower().endswith(".zip")]
+        show = zip_rows[:1] if zip_rows else []
+        payload["documents"] = [_doc_meta(row) for row in show]
+        payload["documents_count"] = len(show)
     return payload
 
 
@@ -821,13 +831,43 @@ def _apply_ai_review(
 
         counts = notify_auto_l1_leads(l1_ids)
         leads_sent = int(counts.get("sent") or 0)
+    docs_ids = [lot.tender_id for lot, _state in work if lot.tier in INBOX_TIERS]
+    docs_report = _run_docs_pass_after_ai(docs_ids)
     return {
         "processed": processed,
         "failed": failed,
         "items": items,
         "leads_sent": leads_sent,
         "l1_candidate_n": len(l1_ids),
+        "docs": docs_report,
     }
+
+
+def _run_docs_pass_after_ai(tender_ids: list[str]) -> dict[str, Any]:
+    """094: zip docs-pass after AI batch (manual or auto)."""
+    from app.api.state import STATE
+    from app.worker.docs import download_docs_enabled, run_docs_pass
+
+    if not tender_ids:
+        return {"saved": 0, "skipped": 0, "errors": 0}
+    if not download_docs_enabled():
+        STATE.log_msg("Docs: skip (DOWNLOAD_DOCS=0)")
+        return {"saved": 0, "skipped": 0, "errors": 0, "skipped_flag": True}
+    STATE.log_msg(f"Docs: after AI — {len(tender_ids)} lot(s)…")
+    try:
+        result = run_docs_pass(tender_ids, should_stop=STATE.should_stop)
+        STATE.log_msg(
+            f"Docs: saved={result.saved} skipped={result.skipped} errors={result.errors}"
+        )
+        return {
+            "saved": result.saved,
+            "skipped": result.skipped,
+            "errors": result.errors,
+            "by_status": dict(result.by_status),
+        }
+    except Exception as exc:  # noqa: BLE001
+        STATE.log_msg(f"Docs error: {type(exc).__name__}: {exc}", level="error")
+        return {"saved": 0, "skipped": 0, "errors": 1, "error": type(exc).__name__}
 
 
 def run_ai_review(body: Any) -> dict[str, Any]:
