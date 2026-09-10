@@ -22,6 +22,9 @@ FALLBACK_MODEL = _DEFAULT_MODEL_CHAIN[1]
 _CHAT_TIMEOUT = 120.0
 _TIERS = frozenset({"L1", "L2", "L3"})
 _DESC_MAX = 800
+# Same-model retries on transient host errors (103).
+_RETRY_BACKOFFS_SEC = (2.0, 5.0)
+_HOST_TRANSIENT_PREFIXES = ("http_429", "http_503", "timeout", "transport")
 
 # SoT seed: docs/delivery/ai-master-prompt.md (accepted session 1).
 # Live override: operator_settings.ai_system_prompt (092).
@@ -116,6 +119,32 @@ def _parse_json_content(text: str) -> dict[str, Any]:
     return {"tier": tier, "reason_ru": reason}
 
 
+def is_host_transient_error(message: str) -> bool:
+    """True for rate-limit / outage / transport — worth backoff or circuit-break."""
+    msg = (message or "").strip().lower()
+    return any(msg == p or msg.startswith(p + "_") or msg.startswith(p) for p in _HOST_TRANSIENT_PREFIXES)
+
+
+def _call_with_same_model_retry(call: Callable[[], AiTierResult]) -> AiTierResult:
+    """1–2 short backoffs on transient errors, then raise last error."""
+    import time
+
+    last: AiTierError | None = None
+    attempts = 1 + len(_RETRY_BACKOFFS_SEC)
+    for attempt in range(attempts):
+        try:
+            return call()
+        except AiTierError as exc:
+            last = exc
+            if not is_host_transient_error(exc.message):
+                raise
+            if attempt >= len(_RETRY_BACKOFFS_SEC):
+                raise
+            time.sleep(_RETRY_BACKOFFS_SEC[attempt])
+    assert last is not None
+    raise last
+
+
 def _chat_once(
     *,
     client: httpx.Client,
@@ -198,15 +227,16 @@ def review_tier(
     if post_chat is not None:
         for model in chain:
             try:
-                return post_chat(model=model, user_content=prompt, system_prompt=system)
-            except TypeError:
-                try:
-                    return post_chat(model=model, user_content=prompt)
-                except AiTierError as exc:
-                    last_error = exc
-                    continue
+                def _once(m: str = model) -> AiTierResult:
+                    try:
+                        return post_chat(model=m, user_content=prompt, system_prompt=system)
+                    except TypeError:
+                        return post_chat(model=m, user_content=prompt)
+
+                return _call_with_same_model_retry(_once)
             except AiTierError as exc:
                 last_error = exc
+                continue
         assert last_error is not None
         raise last_error
 
@@ -215,15 +245,19 @@ def review_tier(
     try:
         for model in chain:
             try:
-                return _chat_once(
-                    client=client,
-                    key=key,
-                    model=model,
-                    user_content=prompt,
-                    system_prompt=system,
-                )
+                def _once(m: str = model) -> AiTierResult:
+                    return _chat_once(
+                        client=client,
+                        key=key,
+                        model=m,
+                        user_content=prompt,
+                        system_prompt=system,
+                    )
+
+                return _call_with_same_model_retry(_once)
             except AiTierError as exc:
                 last_error = exc
+                continue
         assert last_error is not None
         raise last_error
     finally:

@@ -29,4 +29,15 @@ describe("AiReviewCommandBar", () => {
     );
     expect(screen.getByText(copy.ai_review_cap_hint)).toBeInTheDocument();
   });
+
+  it("shows retry errors action when failures present", () => {
+    const onRetry = vi.fn();
+    render(
+      <ThemeRegistry>
+        <AiReviewCommandBar onAiReview={vi.fn()} onRetryErrors={onRetry} aiFailures={3} />
+      </ThemeRegistry>,
+    );
+    expect(screen.getByRole("button", { name: copy.action_ai_retry_errors })).toBeInTheDocument();
+    expect(screen.getByText(copy.ai_banner_failures.replace("{n}", "3"))).toBeInTheDocument();
+  });
 });

@@ -380,26 +380,35 @@ export async function putBoardHidden(tenderId: string, hidden: boolean): Promise
   return normalizeLot((await res.json()) as ApiLot);
 }
 
-export async function postAiReview(tenderIds?: string[]): Promise<{
+export async function postAiReview(options?: {
+  tenderIds?: string[];
+  retryErrors?: boolean;
+}): Promise<{
   processed: number;
   failed: number;
   items: InboxLot[];
+  circuit_broken?: boolean;
 }> {
+  const payload: Record<string, unknown> = {};
+  if (options?.tenderIds?.length) payload.tender_ids = options.tenderIds;
+  if (options?.retryErrors) payload.retry_errors = true;
   const res = await apiFetch("/api/inbox/ai-review", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(tenderIds ? { tender_ids: tenderIds } : {}),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error("ai_review_failed");
   const body = (await res.json()) as {
     processed?: number;
     failed?: number;
     items?: ApiLot[];
+    circuit_broken?: boolean;
   };
   return {
     processed: body.processed ?? 0,
     failed: body.failed ?? 0,
     items: Array.isArray(body.items) ? body.items.map(normalizeLot) : [],
+    circuit_broken: Boolean(body.circuit_broken),
   };
 }
 

@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   AppBar,
   Box,
+  Button,
   Snackbar,
   Tab,
   Tabs,
@@ -676,10 +678,12 @@ function AppInner() {
     };
   }, [gate, tab, tech.running, tech.phase]);
 
-  async function onAiReview() {
+  async function onAiReview(opts?: { retryErrors?: boolean }) {
     setAiBusy(true);
     try {
-      const result = await postAiReview();
+      const result = await postAiReview(
+        opts?.retryErrors ? { retryErrors: true } : undefined,
+      );
       const moved = result.items.filter((item) => tierMoved(item)).length;
       if (tab === "manual") {
         await reloadInbox();
@@ -689,7 +693,17 @@ function AppInner() {
           return prev.map((lot) => byId.get(lot.tender_id) ?? lot);
         });
       }
-      setToast(copy.ai_review_toast.replace("{n}", String(result.processed)).replace("{m}", String(moved)));
+      if (result.failed > 0) {
+        setToast(
+          copy.ai_review_toast_failed
+            .replace("{n}", String(result.processed))
+            .replace("{m}", String(result.failed)),
+        );
+      } else {
+        setToast(
+          copy.ai_review_toast.replace("{n}", String(result.processed)).replace("{m}", String(moved)),
+        );
+      }
       const status = await fetchStatus();
       setTech(status);
     } catch (err: unknown) {
@@ -887,6 +901,26 @@ function AppInner() {
               }}
             />
             <AutoSlotStatus schedule={schedule} status={tech} />
+            {tech.ai_failures > 0 ? (
+              <Alert
+                severity="warning"
+                sx={{ mb: 1.5, py: 0.5 }}
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => {
+                      setTab("manual");
+                      setSelectedId(null);
+                    }}
+                  >
+                    {copy.tab_manual}
+                  </Button>
+                }
+              >
+                {copy.ai_auto_incomplete.replace("{n}", String(tech.ai_failures))}
+              </Alert>
+            ) : null}
             <Typography variant="body2" sx={{ color: stripe.textMuted, mb: 1.5 }}>
               {copy.auto_lead_hint}
             </Typography>
@@ -920,9 +954,11 @@ function AppInner() {
             />
             <AiReviewCommandBar
               onAiReview={() => void onAiReview()}
+              onRetryErrors={() => void onAiReview({ retryErrors: true })}
               aiBusy={aiBusy}
               aiDone={tech.ai_review_done}
               aiTotal={tech.ai_review_total}
+              aiFailures={tech.ai_failures}
             />
             <Typography variant="body2" sx={{ color: stripe.textMuted, mb: 1 }}>
               {copy.manual_lead_hint} {copy.manual_session_muted}

@@ -777,7 +777,7 @@ def _apply_ai_review(
     trigger: str,
     skip_hidden_expired: bool = True,
 ) -> dict[str, Any]:
-    from app.ai.provod import AiTierError, review_tier
+    from app.ai.provod import AiTierError, is_host_transient_error, review_tier
     from app.api.state import STATE
 
     factory = session_factory()
@@ -786,11 +786,16 @@ def _apply_ai_review(
     items: list[dict[str, Any]] = []
     l1_ids: list[str] = []
     work = list(pairs)
+    consecutive_host_fails = 0
+    circuit_broken = False
+    host_fail_limit = 3
     STATE.set_ai_progress(0, len(work))
     with factory() as session:
         min_price = read_l1_min_price_rub(session)
         system_prompt = read_ai_system_prompt(session)
         for index, (lot, state) in enumerate(work):
+            if circuit_broken:
+                break
             if skip_hidden_expired:
                 if state is not None and state.board_hidden:
                     STATE.set_ai_progress(index + 1, len(work))
@@ -819,14 +824,26 @@ def _apply_ai_review(
                 state.ai_error = None
                 state.ai_trigger = trigger
                 processed += 1
+                consecutive_host_fails = 0
                 if result.tier == "L1":
                     l1_ids.append(lot.tender_id)
             except AiTierError as exc:
                 state.ai_error = str(exc.message)
                 failed += 1
+                if is_host_transient_error(exc.message):
+                    consecutive_host_fails += 1
+                    if consecutive_host_fails >= host_fail_limit:
+                        circuit_broken = True
+                        STATE.log_msg(
+                            f"ИИ: circuit-break после {consecutive_host_fails} host-сбоев подряд",
+                            level="warn",
+                        )
+                else:
+                    consecutive_host_fails = 0
             except Exception as exc:
                 state.ai_error = str(exc)[:240]
                 failed += 1
+                consecutive_host_fails = 0
             session.flush()
             session.commit()
             docs = list(
@@ -846,7 +863,8 @@ def _apply_ai_review(
 
         notify_ops_event(
             subject="сбой ИИ",
-            body=f"Успешно: {processed}\nСбоев: {failed}",
+            body=f"Успешно: {processed}\nСбоев: {failed}"
+            + ("\nCircuit-break: да" if circuit_broken else ""),
         )
     else:
         STATE.log_msg(f"ИИ: разобрано {processed}")
@@ -865,6 +883,7 @@ def _apply_ai_review(
         "leads_sent": leads_sent,
         "l1_candidate_n": len(l1_ids),
         "docs": docs_report,
+        "circuit_broken": circuit_broken,
     }
 
 
@@ -898,9 +917,11 @@ def _run_docs_pass_after_ai(tender_ids: list[str]) -> dict[str, Any]:
 def run_ai_review(body: Any) -> dict[str, Any]:
     """POST /api/inbox/ai-review — operator-triggered; never called from runner."""
     ids: list[str] | None = None
+    retry_errors = False
     if body is None or body == {}:
         ids = None
     elif isinstance(body, dict):
+        retry_errors = bool(body.get("retry_errors"))
         raw_ids = body.get("tender_ids")
         if raw_ids is None:
             ids = None
@@ -921,6 +942,11 @@ def run_ai_review(body: Any) -> dict[str, Any]:
                 .where(Lot.tier.in_(tuple(INBOX_TIERS)))
                 .where(or_(LotState.ai_reviewed_at.is_(None), LotState.tender_id.is_(None)))
             )
+            if retry_errors:
+                stmt = stmt.where(
+                    LotState.ai_error.is_not(None),
+                    LotState.ai_error != "",
+                )
             pairs = list(session.execute(stmt).all())
         else:
             pairs = []
