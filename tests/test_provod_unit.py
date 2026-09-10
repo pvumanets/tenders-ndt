@@ -100,6 +100,7 @@ def test_review_tier_golden_hydrocracking_prompt(monkeypatch: pytest.MonkeyPatch
 def test_review_tier_fallback_then_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PROVOD_API_KEY", "test-key")
     monkeypatch.delenv("PROVOD_MODEL_CHAIN", raising=False)
+    monkeypatch.setattr("app.ai.provod._RETRY_BACKOFFS_SEC", ())
     calls: list[str] = []
 
     def post_chat(*, model: str, user_content: str) -> AiTierResult:
@@ -118,6 +119,7 @@ def test_review_tier_fallback_then_ok(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_review_tier_third_model_after_two_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PROVOD_API_KEY", "test-key")
     monkeypatch.delenv("PROVOD_MODEL_CHAIN", raising=False)
+    monkeypatch.setattr("app.ai.provod._RETRY_BACKOFFS_SEC", ())
     calls: list[str] = []
 
     def post_chat(*, model: str, user_content: str) -> AiTierResult:
@@ -136,6 +138,7 @@ def test_review_tier_third_model_after_two_fails(monkeypatch: pytest.MonkeyPatch
 def test_review_tier_all_models_fail(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PROVOD_API_KEY", "test-key")
     monkeypatch.setenv("PROVOD_MODEL_CHAIN", "m1,m2")
+    monkeypatch.setattr("app.ai.provod._RETRY_BACKOFFS_SEC", ())
 
     def post_chat(*, model: str, user_content: str) -> AiTierResult:
         raise AiTierError("timeout")
@@ -143,6 +146,39 @@ def test_review_tier_all_models_fail(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(AiTierError) as exc:
         review_tier(title="x", post_chat=post_chat)
     assert exc.value.message == "timeout"
+
+
+@pytest.mark.unit
+def test_review_tier_same_model_retry_on_503(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PROVOD_API_KEY", "test-key")
+    monkeypatch.setenv("PROVOD_MODEL_CHAIN", "only-one")
+    monkeypatch.setattr("app.ai.provod._RETRY_BACKOFFS_SEC", (0.0, 0.0))
+    sleeps: list[float] = []
+    monkeypatch.setattr("time.sleep", lambda s: sleeps.append(float(s)))
+    calls = {"n": 0}
+
+    def post_chat(*, model: str, user_content: str) -> AiTierResult:
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise AiTierError("http_503")
+        return AiTierResult(tier="L1", reason_ru="ок", model=model)
+
+    result = review_tier(title="УЗК", post_chat=post_chat)
+    assert result.tier == "L1"
+    assert calls["n"] == 3
+    assert sleeps == [0.0, 0.0]
+
+
+@pytest.mark.unit
+def test_is_host_transient_error() -> None:
+    from app.ai.provod import is_host_transient_error
+
+    assert is_host_transient_error("http_503")
+    assert is_host_transient_error("http_429")
+    assert is_host_transient_error("timeout")
+    assert is_host_transient_error("transport")
+    assert not is_host_transient_error("invalid_json")
+    assert not is_host_transient_error("http_400")
 
 
 @pytest.mark.unit
