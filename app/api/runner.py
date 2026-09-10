@@ -597,7 +597,6 @@ def _run_rostender(*, item: dict, run_dir: Path) -> str:
                 rows=_board_rows(enriched),
                 started_at=started_at,
             )
-            _download_docs(enriched, platform_id=PLATFORM_ROSTENDER)
             return "cancelled"
 
         STATE.set_phase("P4")
@@ -732,7 +731,6 @@ def _run_tender_pro(*, item: dict, run_dir: Path) -> str:
                 rows=_board_rows(enriched),
                 started_at=started_at,
             )
-            _download_docs(enriched, platform_id=PLATFORM_TENDER_PRO)
             return "cancelled"
 
         STATE.set_phase("P4")
@@ -861,7 +859,6 @@ def _run_b2b_center(*, item: dict, run_dir: Path) -> str:
                 rows=_board_rows(enriched),
                 started_at=started_at,
             )
-            _download_docs(enriched, platform_id=PLATFORM_B2B_CENTER)
             return "cancelled"
 
         STATE.set_phase("P4")
@@ -1044,7 +1041,6 @@ def _run_cookie_platform(
                 rows=_board_rows(enriched),
                 started_at=started_at,
             )
-            _download_docs(enriched, platform_id=platform_id)
             return "cancelled"
 
         STATE.set_phase("P4")
@@ -1261,7 +1257,6 @@ def _run_roseltorg(*, item: dict, run_dir: Path) -> str:
                 rows=_board_rows(enriched),
                 started_at=started_at,
             )
-            _download_docs(enriched, platform_id=PLATFORM_ROSELTORG)
             return "cancelled"
 
         STATE.set_phase("P4")
