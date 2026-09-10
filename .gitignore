@@ -56,5 +56,9 @@ Thumbs.db
 
 runs/_probe/
 
-# Черновики зондов (не в origin)
+# Черновики зондов / one-shot ops (не в origin)
 _probe_*
+_ops_*
+_tmp_*
+scripts/_ops_*
+scripts/_tmp_*

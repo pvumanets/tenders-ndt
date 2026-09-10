@@ -11,10 +11,6 @@ from typing import Any
 
 log = logging.getLogger("uvicorn.error")
 
-SOURCE_ID_DEFAULT = "TENDERS_UMANETS"
-CHAT_TENDERY_DEFAULT = "chat7543"
-OPS_DIALOG_DEFAULT = "951"
-
 UF_DEADLINE = "UF_CRM_1788934584"
 UF_LOT_URL = "UF_CRM_1788934648"
 UF_INN = "UF_CRM_1788934669"
@@ -49,16 +45,23 @@ def webhook_base() -> str:
     return raw if raw.endswith("/") else raw + "/"
 
 
+def _require_env(name: str) -> str:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        raise BitrixConfigError("bitrix_unconfigured")
+    return raw
+
+
 def source_id() -> str:
-    return (os.getenv("BITRIX_LEAD_SOURCE_ID") or SOURCE_ID_DEFAULT).strip() or SOURCE_ID_DEFAULT
+    return _require_env("BITRIX_LEAD_SOURCE_ID")
 
 
 def chat_dialog_id() -> str:
-    return (os.getenv("BITRIX_CHAT_DIALOG_ID") or CHAT_TENDERY_DEFAULT).strip() or CHAT_TENDERY_DEFAULT
+    return _require_env("BITRIX_CHAT_DIALOG_ID")
 
 
 def ops_dialog_id() -> str:
-    return (os.getenv("BITRIX_OPS_DIALOG_ID") or OPS_DIALOG_DEFAULT).strip() or OPS_DIALOG_DEFAULT
+    return _require_env("BITRIX_OPS_DIALOG_ID")
 
 
 def assigned_by_id() -> str | None:
