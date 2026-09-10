@@ -26,7 +26,7 @@ def notify_auto_l1(tender_ids: list[str]) -> None:
 
 def notify_ops_session(*, platform_id: str, session: str) -> str:
     """
-    Soft ops alert to owner DM (951) when platform session is bad.
+    Soft ops alert to owner DM when platform session is bad.
     Returns send status. Never raises; never logs cookie values. No SMTP.
     """
     code = str(session or "unknown")

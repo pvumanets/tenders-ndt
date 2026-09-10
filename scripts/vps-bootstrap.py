@@ -86,11 +86,17 @@ COPY_ENV_KEYS = (
 SKIP_ENV_PREFIXES = ("SCOUT_VPS_",)
 COOKIE_GLOBS = ("cookies*.txt",)
 HOST_PUBLIC = "tenders.ndtexam.ru"
-HOST_IP = "77.91.94.111"
 # Untracked on VPS that reset/clean must not treat as product edits.
 _ALLOW_UNTRACKED_NAMES = (".env", ".env.vps")
 _ALLOW_UNTRACKED_GLOBS = ("cookies*.txt",)
 _ALLOW_UNTRACKED_PREFIXES = ("runs/",)
+
+
+def _vps_host(vps: dict[str, str]) -> str:
+    host = (vps.get("SCOUT_VPS_HOST") or "").strip()
+    if not host:
+        raise SystemExit("missing SCOUT_VPS_HOST in .env.vps")
+    return host
 
 
 def _load_dotenv(path: Path) -> dict[str, str]:
@@ -298,8 +304,8 @@ def _ensure_ufw(client: Any) -> None:
     print("ufw: 22/80/443 allowed")
 
 
-def _wait_dns(client: Any) -> None:
-    print(f"dns: waiting {HOST_PUBLIC} -> {HOST_IP}")
+def _wait_dns(client: Any, expected_ip: str) -> None:
+    print(f"dns: waiting {HOST_PUBLIC} -> {expected_ip}")
     for _ in range(36):
         code, out, err = _run(
             client,
@@ -307,11 +313,11 @@ def _wait_dns(client: Any) -> None:
             timeout=20,
         )
         text = (out or err).strip()
-        if HOST_IP in text:
+        if expected_ip in text:
             print(f"dns: {text.splitlines()[0]}")
             return
         time.sleep(5)
-    raise SystemExit(f"dns: {HOST_PUBLIC} does not resolve to {HOST_IP} yet")
+    raise SystemExit(f"dns: {HOST_PUBLIC} does not resolve to {expected_ip} yet")
 
 
 def _sync_prod_files(client: Any) -> None:
@@ -364,7 +370,7 @@ def sync_p7() -> None:
     if not PRIVKEY.is_file():
         raise SystemExit("missing ~/.ssh/id_ed25519_tenders_ndt_vps")
     vps = _load_dotenv(ENV_VPS) if ENV_VPS.is_file() else {}
-    host = vps.get("SCOUT_VPS_HOST") or HOST_IP
+    host = _vps_host(vps)
     user = vps.get("SCOUT_VPS_USER") or "root"
     print(f"ssh: key {user}@{host}")
     client = _ssh(host, user, key=PRIVKEY)
@@ -372,7 +378,7 @@ def sync_p7() -> None:
         print("remote:", _must(client, "hostname").strip())
         _sync_prod_files(client)
         _ensure_ufw(client)
-        _wait_dns(client)
+        _wait_dns(client, host)
         print("compose: up (Caddy + api Secure=1)")
         _must(
             client,
@@ -393,7 +399,7 @@ def deploy_from_github() -> None:
     if not PRIVKEY.is_file():
         raise SystemExit("missing ~/.ssh/id_ed25519_tenders_ndt_vps")
     vps = _load_dotenv(ENV_VPS) if ENV_VPS.is_file() else {}
-    host = vps.get("SCOUT_VPS_HOST") or HOST_IP
+    host = _vps_host(vps)
     user = vps.get("SCOUT_VPS_USER") or "root"
     print(f"ssh: key {user}@{host}")
     client = _ssh(host, user, key=PRIVKEY)

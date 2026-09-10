@@ -81,7 +81,7 @@ def send_im(*, dialog_id: str, message: str) -> Any:
 
 def send_ops_dm(message: str) -> str:
     """
-    Soft ops alert to owner DM (default user 951).
+    Soft ops alert to owner DM (BITRIX_OPS_DIALOG_ID).
     Returns sent | bitrix_unconfigured | bitrix_failed. Never raises.
     """
     try:
