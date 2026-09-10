@@ -57,6 +57,7 @@ function lot(partial: Partial<InboxLot> & Pick<InboxLot, "tender_id" | "tier">):
     ai_reason_ru: "",
     ai_error: null,
     ai_wrong: false,
+    ai_wrong_note: null,
     ai_trigger: null,
     bitrix_sent_at: null,
     customer_inn: null,

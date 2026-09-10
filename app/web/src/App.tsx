@@ -63,6 +63,7 @@ import {
 import { stripe } from "./theme/palette";
 import ThemeRegistry from "./theme/ThemeRegistry";
 import InboxCommandBar from "./components/scout/InboxCommandBar";
+import InboxExportDrawer, { type ExportPrefill } from "./components/scout/InboxExportDrawer";
 import AutoSlotStatus from "./components/scout/AutoSlotStatus";
 import LotBoard from "./components/scout/LotBoard";
 import LotTable from "./components/scout/LotTable";
@@ -202,6 +203,8 @@ function AppInner() {
   const priceFilterInitialized = useRef(false);
   const [platformsSelected, setPlatformsSelected] = useState<string[]>([]);
   const [bitrixFilter, setBitrixFilter] = useState<BitrixFilter>("any");
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportPrefill, setExportPrefill] = useState<ExportPrefill | null>(null);
   const [groupError, setGroupError] = useState<string | null>(null);
   const [highlightSessions, setHighlightSessions] = useState(false);
   const prevRunningRef = useRef(false);
@@ -249,6 +252,11 @@ function AppInner() {
       sort,
       ...dates,
     };
+  }
+
+  function openExportDrawer() {
+    setExportPrefill({ ...inboxQuery() });
+    setExportOpen(true);
   }
 
   useEffect(() => {
@@ -790,6 +798,7 @@ function AppInner() {
       onPlatformsSelected={setPlatformsSelected}
       bitrixFilter={bitrixFilter}
       onBitrixFilter={setBitrixFilter}
+      onExport={openExportDrawer}
     />
   );
 
@@ -968,6 +977,15 @@ function AppInner() {
         message={toast}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       />
+      {exportPrefill ? (
+        <InboxExportDrawer
+          open={exportOpen}
+          onClose={() => setExportOpen(false)}
+          prefill={exportPrefill}
+          onUnauthorized={onUnauthorized}
+          onError={(message) => setToast(message)}
+        />
+      ) : null}
     </Box>
   );
 }

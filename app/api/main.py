@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api import auth, inbox, platforms as platforms_api, results, runner, search_groups as search_groups_api
+from app.api import auth, inbox, inbox_export, platforms as platforms_api, results, runner, search_groups as search_groups_api
 from app.api import schedule as schedule_api
 from app.api import operator_settings as operator_settings_api
 from app.api import searches as searches_api
@@ -436,6 +436,7 @@ def api_inbox(
     ingested_to: str | None = Query(default=None),
     ai_reviewed: str | None = Query(default=None),
     ai_trigger: str | None = Query(default=None),
+    ai_wrong: str | None = Query(default=None),
     price_min_rub: str | None = Query(default=None),
     platform: str | None = Query(default=None),
     bitrix: str | None = Query(default=None),
@@ -452,6 +453,7 @@ def api_inbox(
             ingested_to=ingested_to,
             ai_reviewed=ai_reviewed,
             ai_trigger=ai_trigger,
+            ai_wrong=ai_wrong,
             price_min_rub=price_min_rub,
             platform=platform,
             bitrix=bitrix,
@@ -459,6 +461,22 @@ def api_inbox(
         )
     except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
         _inbox_http(exc)
+
+
+@app.post("/api/inbox/export")
+def api_inbox_export(body: dict | None = None):
+    try:
+        payload, filename, media_type = inbox_export.export_inbox(body or {})
+    except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
+        _inbox_http(exc)
+        return
+    return Response(
+        content=payload,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
 
 
 @app.post("/api/inbox/ai-review")
