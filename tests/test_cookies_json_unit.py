@@ -217,8 +217,6 @@ def test_tender_pro_missing_jar_still_lists(
     )
     monkeypatch.setattr(runner, "write_artifacts", lambda *_a, **_k: None)
     monkeypatch.setattr(runner, "_ingest_step", lambda **_k: None)
-    monkeypatch.setattr(runner, "_download_docs", lambda *_a, **_k: None)
-    monkeypatch.setattr(runner, "download_docs_enabled", lambda: False)
 
     run_dir = tmp_path / "run"
     run_dir.mkdir()
