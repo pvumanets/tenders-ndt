@@ -86,6 +86,8 @@ COPY_ENV_KEYS = (
 SKIP_ENV_PREFIXES = ("SCOUT_VPS_",)
 COOKIE_GLOBS = ("cookies*.txt",)
 HOST_PUBLIC = "tenders.ndtexam.ru"
+COMPOSE_DEPLOY_LOG = "/tmp/scout-compose-deploy.log"
+COMPOSE_DEPLOY_PID = "/tmp/scout-compose-deploy.pid"
 # Untracked on VPS that reset/clean must not treat as product edits.
 _ALLOW_UNTRACKED_NAMES = (".env", ".env.vps")
 _ALLOW_UNTRACKED_GLOBS = ("cookies*.txt",)
@@ -166,6 +168,7 @@ def deploy_blocked_reason(porcelain: str) -> str | None:
 
 
 def _ssh(host: str, user: str, *, password: str | None = None, key: Path | None = None) -> Any:
+    """SSH with keepalive so long remote jobs are not killed by idle NAT/firewall."""
     import paramiko
 
     client = paramiko.SSHClient()
@@ -174,13 +177,33 @@ def _ssh(host: str, user: str, *, password: str | None = None, key: Path | None 
     if known.is_file():
         client.load_host_keys(str(known))
     client.set_missing_host_key_policy(paramiko.RejectPolicy())
-    kwargs: dict = {"hostname": host, "username": user, "timeout": 45, "allow_agent": False, "look_for_keys": False}
+    kwargs: dict = {
+        "hostname": host,
+        "username": user,
+        "timeout": 60,
+        "banner_timeout": 60,
+        "auth_timeout": 60,
+        "allow_agent": False,
+        "look_for_keys": False,
+    }
     if key is not None:
         kwargs["pkey"] = paramiko.Ed25519Key.from_private_key_file(str(key))
     else:
         kwargs["password"] = password
-    client.connect(**kwargs)
-    return client
+    last: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            client.connect(**kwargs)
+            transport = client.get_transport()
+            if transport is not None:
+                # TCP keepalive every 15s — critical for Windows↔VPS long compose builds.
+                transport.set_keepalive(15)
+            return client
+        except Exception as exc:  # noqa: BLE001 — reconnect on any connect failure
+            last = exc
+            print(f"ssh: connect attempt {attempt}/3 failed: {type(exc).__name__}")
+            time.sleep(2 * attempt)
+    raise SystemExit(f"ssh: connect failed after retries: {last}")
 
 
 def _run(client: Any, cmd: str, *, timeout: int = 120) -> tuple[int, str, str]:
@@ -196,6 +219,86 @@ def _must(client: Any, cmd: str, *, timeout: int = 120) -> str:
     if code != 0:
         raise SystemExit(f"remote failed ({code}): {cmd}\n{err or out}")
     return out
+
+
+def _start_compose_detached(client: Any, *, build: bool) -> None:
+    """Run compose in nohup/setsid so a dropped SSH session does not kill the build."""
+    flag = "up -d --build" if build else "up -d"
+    # Background + pid file. setsid + stdin closed: survives client disconnect on Windows↔VPS.
+    script = (
+        f"cd {REMOTE_DIR} && "
+        f"rm -f {COMPOSE_DEPLOY_PID} {COMPOSE_DEPLOY_LOG} && "
+        f"setsid nohup docker compose -f docker-compose.prod.yml {flag} "
+        f"< /dev/null > {COMPOSE_DEPLOY_LOG} 2>&1 & echo $! > {COMPOSE_DEPLOY_PID}"
+    )
+    _must(client, script, timeout=30)
+    print(f"compose: detached ({flag}); log {COMPOSE_DEPLOY_LOG}")
+
+
+def _compose_pid_running(client: Any) -> bool:
+    code, out, _ = _run(
+        client,
+        f"if test -f {COMPOSE_DEPLOY_PID}; then "
+        f"kill -0 \"$(cat {COMPOSE_DEPLOY_PID})\" 2>/dev/null && echo RUNNING || echo DONE; "
+        f"else echo DONE; fi",
+        timeout=20,
+    )
+    return code == 0 and "RUNNING" in out
+
+
+def _compose_log_tail(client: Any, n: int = 40) -> str:
+    _, out, err = _run(client, f"tail -n {n} {COMPOSE_DEPLOY_LOG} 2>/dev/null || true", timeout=20)
+    return (out or err or "").strip()
+
+
+def _wait_detached_compose(
+    host: str,
+    user: str,
+    *,
+    key: Path,
+    build: bool,
+    poll_sec: int = 15,
+    max_wait_sec: int = 1200,
+) -> None:
+    """Poll on fresh SSH until detached compose exits, then require health.
+
+    Do not treat mid-build health as success — old containers can stay up while
+    the new image is still building. Each poll opens a new SSH session so a
+    dropped Windows↔VPS link does not kill the remote job.
+    """
+    print("compose: polling (new SSH each tick — survives mid-build disconnect)")
+    deadline = time.time() + max_wait_sec
+    last_log = ""
+    while time.time() < deadline:
+        time.sleep(poll_sec)
+        client = _ssh(host, user, key=key)
+        try:
+            running = _compose_pid_running(client)
+            last_log = _compose_log_tail(client, 20)
+            status = "RUNNING" if running else "DONE"
+            print(f"compose: poll status={status}")
+            if running:
+                continue
+            # Detached job finished — require health (retry a few times for restart).
+            for _ in range(12):
+                _, health, _ = _run(
+                    client,
+                    "curl -fsS http://127.0.0.1:8765/api/health || true",
+                    timeout=25,
+                )
+                if '"db":"ok"' in health or '"db": "ok"' in health:
+                    print(f"health: {health.strip()}")
+                    return
+                time.sleep(5)
+            print("compose log tail:\n" + (last_log or "(empty)"))
+            raise SystemExit(
+                "compose detached finished but /api/health not ok — see "
+                f"{COMPOSE_DEPLOY_LOG}"
+            )
+        finally:
+            client.close()
+    print("compose log tail:\n" + (last_log or "(empty)"))
+    raise SystemExit(f"compose: timed out after {max_wait_sec}s ({'build' if build else 'up'})")
 
 
 def _sftp_put(client: Any, local: Path, remote: str) -> None:
@@ -379,13 +482,13 @@ def sync_p7() -> None:
         _sync_prod_files(client)
         _ensure_ufw(client)
         _wait_dns(client, host)
-        print("compose: up (Caddy + api Secure=1)")
-        _must(
-            client,
-            f"cd {REMOTE_DIR} && docker compose -f docker-compose.prod.yml up -d",
-            timeout=300,
-        )
-        _wait_local_health(client)
+        print("compose: up (Caddy + api Secure=1) detached")
+        _start_compose_detached(client, build=False)
+    finally:
+        client.close()
+    _wait_detached_compose(host, user, key=PRIVKEY, build=False, max_wait_sec=600)
+    client = _ssh(host, user, key=PRIVKEY)
+    try:
         _wait_https(client)
         listen = _run(client, "ss -lnt | grep -E ':8765|:5433|:80|:443' || true")[1]
         print("listen:\n" + (listen.strip() or "(none)"))
@@ -395,7 +498,11 @@ def sync_p7() -> None:
 
 
 def deploy_from_github() -> None:
-    """Pull origin/main onto VPS if the tree is clean. Does not sync secrets."""
+    """Pull origin/main onto VPS if the tree is clean. Does not sync secrets.
+
+    Git runs on a short SSH session. Compose build is nohup'd on the server and
+    polled via fresh SSH connections so mid-build disconnects do not abort deploy.
+    """
     if not PRIVKEY.is_file():
         raise SystemExit("missing ~/.ssh/id_ed25519_tenders_ndt_vps")
     vps = _load_dotenv(ENV_VPS) if ENV_VPS.is_file() else {}
@@ -416,13 +523,14 @@ def deploy_from_github() -> None:
         _must(client, f"git -C {REMOTE_DIR} clean -fd")
         head = _must(client, f"git -C {REMOTE_DIR} log -1 --oneline").strip()
         print(f"git: {head}")
-        print("compose: up --build")
-        _must(
-            client,
-            f"cd {REMOTE_DIR} && docker compose -f docker-compose.prod.yml up -d --build",
-            timeout=900,
-        )
-        _wait_local_health(client)
+        print("compose: up --build (detached)")
+        _start_compose_detached(client, build=True)
+    finally:
+        client.close()
+
+    _wait_detached_compose(host, user, key=PRIVKEY, build=True, max_wait_sec=1200)
+    client = _ssh(host, user, key=PRIVKEY)
+    try:
         _wait_https(client)
         listen = _run(client, "ss -lnt | grep -E ':8765|:5433|:80|:443' || true")[1]
         print("listen:\n" + (listen.strip() or "(none)"))
@@ -474,14 +582,13 @@ def main() -> None:
         _sync_prod_files(client)
         _ensure_ufw(client)
 
-        print("compose: build and up")
-        _must(
-            client,
-            f"cd {REMOTE_DIR} && docker compose -f docker-compose.prod.yml up -d --build",
-            timeout=900,
-        )
-        _wait_local_health(client)
-
+        print("compose: build and up (detached)")
+        _start_compose_detached(client, build=True)
+    finally:
+        client.close()
+    _wait_detached_compose(host, user, key=PRIVKEY, build=True, max_wait_sec=1200)
+    client = _ssh(host, user, key=PRIVKEY)
+    try:
         pub_8765 = _run(client, "ss -lnt | grep -E ':8765|:5433|:80|:443' || true")[1]
         print("listen:\n" + (pub_8765.strip() or "(none)"))
     finally:
