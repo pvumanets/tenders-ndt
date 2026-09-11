@@ -82,6 +82,7 @@ export type InboxListQuery = {
   ai_reviewed?: boolean;
   ai_trigger?: AiTrigger;
   ai_wrong?: boolean;
+  ai_error?: boolean;
   price_min_rub?: number;
   platform?: string;
   bitrix?: Exclude<BitrixFilter, "any">;
@@ -211,6 +212,8 @@ export function buildInboxSearchParams(query: InboxListQuery): URLSearchParams {
   if (query.ai_trigger) params.set("ai_trigger", query.ai_trigger);
   if (query.ai_wrong === true) params.set("ai_wrong", "1");
   if (query.ai_wrong === false) params.set("ai_wrong", "0");
+  if (query.ai_error === true) params.set("ai_error", "1");
+  if (query.ai_error === false) params.set("ai_error", "0");
   if (query.price_min_rub != null && query.price_min_rub > 0) {
     params.set("price_min_rub", String(query.price_min_rub));
   }
@@ -280,6 +283,8 @@ export async function postInboxExport(
   if (body.ai_trigger) payload.ai_trigger = body.ai_trigger;
   if (body.ai_wrong === true) payload.ai_wrong = true;
   if (body.ai_wrong === false) payload.ai_wrong = false;
+  if (body.ai_error === true) payload.ai_error = true;
+  if (body.ai_error === false) payload.ai_error = false;
   if (body.price_min_rub != null && body.price_min_rub > 0) {
     payload.price_min_rub = body.price_min_rub;
   }

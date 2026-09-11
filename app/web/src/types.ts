@@ -3,8 +3,10 @@ export type TeachBucket = SalesTier | "expired";
 export type ViewMode = "cards" | "table";
 /** Inbox list order: relevance (default) | first-seen | nearest deadline */
 export type InboxSort = "relevance" | "appeared" | "deadline";
-export type AppTab = "auto" | "manual" | "settings";
+export type AppTab = "lots" | "settings";
 export type AiTrigger = "auto" | "manual";
+/** Grouped filter: AI review state on Lots board */
+export type AiStateFilter = "any" | "none" | "done" | "failed";
 export type RunPipeline = "manual" | "auto";
 
 export type DocStatus =

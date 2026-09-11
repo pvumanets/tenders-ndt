@@ -64,7 +64,10 @@ if (-not (Test-Path -LiteralPath $cookies)) {
     Write-Host "created empty cookies.rostender.txt (file bind)"
 }
 
-Write-Host "docker compose up -d --build"
+# BuildKit cache mounts in Dockerfile (pip + Playwright browsers) need BuildKit.
+$env:DOCKER_BUILDKIT = "1"
+$env:COMPOSE_DOCKER_CLI_BUILD = "1"
+Write-Host "docker compose up -d --build (DOCKER_BUILDKIT=1)"
 docker compose up -d --build
 if ($LASTEXITCODE -ne 0) {
     Write-Error "docker compose up failed (exit $LASTEXITCODE)"

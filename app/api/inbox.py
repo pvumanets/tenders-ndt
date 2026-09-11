@@ -205,6 +205,14 @@ def parse_ai_wrong(value: str | bool | None) -> bool | None:
     raise InboxQueryError("invalid_ai_wrong")
 
 
+def parse_ai_error(value: str | bool | None) -> bool | None:
+    """Filter lots with non-empty lot_state.ai_error (ИИ сбой)."""
+    try:
+        return parse_ai_wrong(value)
+    except InboxQueryError as exc:
+        raise InboxQueryError("invalid_ai_error") from exc
+
+
 def _price_below_min(lot: Lot, min_price: int | None) -> bool:
     if min_price is None:
         return False
@@ -415,6 +423,7 @@ def list_inbox(
     ai_reviewed: str | None = None,
     ai_trigger: str | None = None,
     ai_wrong: str | bool | None = None,
+    ai_error: str | bool | None = None,
     price_min_rub: str | None = None,
     platform: str | None = None,
     bitrix: str | None = None,
@@ -427,6 +436,7 @@ def list_inbox(
     ai_flag = parse_ai_reviewed(ai_reviewed)
     trigger = parse_ai_trigger(ai_trigger)
     ai_wrong_flag = parse_ai_wrong(ai_wrong)
+    ai_error_flag = parse_ai_error(ai_error)
     price_min = parse_price_min_rub(price_min_rub)
     platform_ids = parse_platform_filter(platform)
     bitrix_filter = parse_bitrix_filter(bitrix)
@@ -460,6 +470,15 @@ def list_inbox(
         elif ai_wrong_flag is False:
             stmt = stmt.where(
                 or_(LotState.ai_wrong_at.is_(None), LotState.tender_id.is_(None))
+            )
+        if ai_error_flag is True:
+            stmt = stmt.where(
+                LotState.ai_error.is_not(None),
+                LotState.ai_error != "",
+            )
+        elif ai_error_flag is False:
+            stmt = stmt.where(
+                or_(LotState.ai_error.is_(None), LotState.ai_error == "", LotState.tender_id.is_(None))
             )
         if platform_ids is not None:
             stmt = stmt.where(Lot.source_platform_id.in_(tuple(platform_ids)))
@@ -963,13 +982,15 @@ def run_ai_review(body: Any) -> dict[str, Any]:
     return result
 
 
-def run_auto_ai_review(prefer_ids: set[str]) -> dict[str, Any]:
-    """After auto queue: prefer ∩ eligible. Empty prefer → no-op. Sets ai_trigger=auto."""
+def run_auto_ai_review(prefer_ids: set[str], *, trigger: str = "auto") -> dict[str, Any]:
+    """After scrape queue: prefer ∩ eligible. Empty prefer → no-op. Sets ai_trigger."""
     from app.api.state import STATE
 
+    if trigger not in {"auto", "manual"}:
+        trigger = "auto"
     if not prefer_ids:
-        STATE.log_msg("Auto AI: no-op (empty prefer)")
-        return {"processed": 0, "failed": 0, "items": []}
+        STATE.log_msg("Pipeline AI: no-op (empty prefer)")
+        return {"processed": 0, "failed": 0, "items": [], "leads_sent": 0}
     factory = session_factory()
     with factory() as session:
         stmt = (
@@ -989,10 +1010,10 @@ def run_auto_ai_review(prefer_ids: set[str]) -> dict[str, Any]:
             ):
                 pairs.append((lot, state))
     if not pairs:
-        STATE.log_msg("Auto AI: no-op (no eligible lots)")
-        return {"processed": 0, "failed": 0, "items": []}
+        STATE.log_msg("Pipeline AI: no-op (no eligible lots)")
+        return {"processed": 0, "failed": 0, "items": [], "leads_sent": 0}
     pairs = pairs[:AI_REVIEW_CAP]
-    return _apply_ai_review(pairs, trigger="auto", skip_hidden_expired=False)
+    return _apply_ai_review(pairs, trigger=trigger, skip_hidden_expired=False)
 
 
 def mark_ai_wrong(tender_id: str, body: Any) -> dict[str, Any]:

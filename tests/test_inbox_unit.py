@@ -15,6 +15,7 @@ from app.api.inbox import (
     deadline_iso,
     is_deadline_expired,
     list_inbox,
+    parse_ai_error,
     parse_ai_trigger,
     parse_bitrix_filter,
     parse_board_hidden_body,
@@ -134,6 +135,11 @@ def test_list_inbox_rejects_bad_query_before_db() -> None:
         list_inbox(ai_trigger="both")
     assert parse_ai_trigger("auto") == "auto"
     assert parse_ai_trigger("manual") == "manual"
+    assert parse_ai_error("1") is True
+    assert parse_ai_error("0") is False
+    assert parse_ai_error(None) is None
+    with pytest.raises(InboxQueryError, match="invalid_ai_error"):
+        parse_ai_error("maybe")
 
 
 @pytest.mark.unit

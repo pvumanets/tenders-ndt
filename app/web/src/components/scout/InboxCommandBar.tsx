@@ -24,6 +24,8 @@ import { useTheme } from "@mui/material/styles";
 import ViewWeekOutlinedIcon from "@mui/icons-material/ViewWeekOutlined";
 import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
 import type {
+  AiStateFilter,
+  AiTrigger,
   DeadlinePreset,
   IngestedPreset,
   InboxSort,
@@ -89,6 +91,19 @@ export type ActiveFilterChip = {
   label: string;
 };
 
+function aiStateLabel(state: AiStateFilter): string {
+  if (state === "none") return copy.filter_ai_state_none;
+  if (state === "done") return copy.filter_ai_state_done;
+  if (state === "failed") return copy.filter_ai_state_failed;
+  return copy.filter_ai_state_any;
+}
+
+function aiTriggerLabel(trigger: AiTrigger | "any"): string {
+  if (trigger === "auto") return copy.filter_ai_trigger_auto;
+  if (trigger === "manual") return copy.filter_ai_trigger_manual;
+  return copy.filter_ai_trigger_any;
+}
+
 /** Grouped-filter axes that contribute to badge + chips (not unread/sort/view). */
 export function countActiveGroupedFilters(args: {
   priority: PriorityFilter;
@@ -97,8 +112,8 @@ export function countActiveGroupedFilters(args: {
   priceMinRub: number | null;
   platformsSelected: string[];
   bitrixFilter: BitrixFilter;
-  showAiReviewedFilter: boolean;
-  aiReviewedOnly: boolean;
+  aiState: AiStateFilter;
+  aiTriggerFilter: AiTrigger | "any";
 }): number {
   let n = 0;
   if (args.priority.length > 0) n += 1;
@@ -107,7 +122,8 @@ export function countActiveGroupedFilters(args: {
   if (args.priceMinRub != null && args.priceMinRub > 0) n += 1;
   if (args.platformsSelected.length > 0) n += 1;
   if (args.bitrixFilter !== "any") n += 1;
-  if (args.showAiReviewedFilter && args.aiReviewedOnly) n += 1;
+  if (args.aiState !== "any") n += 1;
+  if (args.aiTriggerFilter !== "any") n += 1;
   return n;
 }
 
@@ -118,8 +134,8 @@ export function buildActiveFilterChips(args: {
   priceMinRub: number | null;
   platformsSelected: string[];
   bitrixFilter: BitrixFilter;
-  showAiReviewedFilter: boolean;
-  aiReviewedOnly: boolean;
+  aiState: AiStateFilter;
+  aiTriggerFilter: AiTrigger | "any";
 }): ActiveFilterChip[] {
   const chips: ActiveFilterChip[] = [];
   if (args.priority.length > 0) {
@@ -161,8 +177,17 @@ export function buildActiveFilterChips(args: {
       label: copy.filter_chip_bitrix.replace("{value}", bitrixLabel(args.bitrixFilter)),
     });
   }
-  if (args.showAiReviewedFilter && args.aiReviewedOnly) {
-    chips.push({ id: "ai", label: copy.filter_chip_ai });
+  if (args.aiState !== "any") {
+    chips.push({
+      id: "ai_state",
+      label: copy.filter_chip_ai_state.replace("{value}", aiStateLabel(args.aiState)),
+    });
+  }
+  if (args.aiTriggerFilter !== "any") {
+    chips.push({
+      id: "ai_trigger",
+      label: copy.filter_chip_ai_trigger.replace("{value}", aiTriggerLabel(args.aiTriggerFilter)),
+    });
   }
   return chips;
 }
@@ -315,9 +340,10 @@ export default function InboxCommandBar({
   onView,
   sort = "relevance",
   onSort,
-  showAiReviewedFilter = false,
-  aiReviewedOnly = false,
-  onAiReviewedOnly,
+  aiState = "any",
+  onAiState,
+  aiTriggerFilter = "any",
+  onAiTriggerFilter,
   priceMinRub = null,
   onPriceMinRub,
   settingsMinPrice = 100_000,
@@ -355,9 +381,10 @@ export default function InboxCommandBar({
   onView: (v: ViewMode) => void;
   sort?: InboxSort;
   onSort?: (v: InboxSort) => void;
-  showAiReviewedFilter?: boolean;
-  aiReviewedOnly?: boolean;
-  onAiReviewedOnly?: (v: boolean) => void;
+  aiState?: AiStateFilter;
+  onAiState?: (v: AiStateFilter) => void;
+  aiTriggerFilter?: AiTrigger | "any";
+  onAiTriggerFilter?: (v: AiTrigger | "any") => void;
   priceMinRub?: number | null;
   onPriceMinRub?: (v: number | null) => void;
   settingsMinPrice?: number;
@@ -439,8 +466,8 @@ export default function InboxCommandBar({
     priceMinRub,
     platformsSelected,
     bitrixFilter,
-    showAiReviewedFilter,
-    aiReviewedOnly,
+    aiState,
+    aiTriggerFilter,
   };
   const activeCount = countActiveGroupedFilters(groupedArgs);
   const chips = buildActiveFilterChips(groupedArgs);
@@ -465,8 +492,11 @@ export default function InboxCommandBar({
       case "bitrix":
         onBitrixFilter?.("any");
         break;
-      case "ai":
-        onAiReviewedOnly?.(false);
+      case "ai_state":
+        onAiState?.("any");
+        break;
+      case "ai_trigger":
+        onAiTriggerFilter?.("any");
         break;
       default:
         break;
@@ -480,7 +510,8 @@ export default function InboxCommandBar({
     onPriceMinRub?.(null);
     onPlatformsSelected?.([]);
     onBitrixFilter?.("any");
-    onAiReviewedOnly?.(false);
+    onAiState?.("any");
+    onAiTriggerFilter?.("any");
   }
 
   return (
@@ -785,14 +816,31 @@ export default function InboxCommandBar({
                 </RadioGroup>
               </>
             ) : null}
-            {showAiReviewedFilter && onAiReviewedOnly ? (
+            {onAiState ? (
               <>
-                <FieldTitle>{copy.filter_ai_reviewed_menu_title}</FieldTitle>
-                <CheckRow
-                  checked={aiReviewedOnly}
-                  label={copy.filter_ai_reviewed}
-                  onToggle={() => onAiReviewedOnly(!aiReviewedOnly)}
-                />
+                <FieldTitle>{copy.filter_ai_state_title}</FieldTitle>
+                <RadioGroup
+                  value={aiState}
+                  onChange={(_, v) => onAiState(v as AiStateFilter)}
+                >
+                  <RadioRow value="any" label={copy.filter_ai_state_any} />
+                  <RadioRow value="none" label={copy.filter_ai_state_none} />
+                  <RadioRow value="done" label={copy.filter_ai_state_done} />
+                  <RadioRow value="failed" label={copy.filter_ai_state_failed} />
+                </RadioGroup>
+              </>
+            ) : null}
+            {onAiTriggerFilter ? (
+              <>
+                <FieldTitle>{copy.filter_ai_trigger_title}</FieldTitle>
+                <RadioGroup
+                  value={aiTriggerFilter}
+                  onChange={(_, v) => onAiTriggerFilter(v as AiTrigger | "any")}
+                >
+                  <RadioRow value="any" label={copy.filter_ai_trigger_any} />
+                  <RadioRow value="auto" label={copy.filter_ai_trigger_auto} />
+                  <RadioRow value="manual" label={copy.filter_ai_trigger_manual} />
+                </RadioGroup>
               </>
             ) : null}
           </Box>

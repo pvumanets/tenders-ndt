@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+# BuildKit required for cache mounts (DOCKER_BUILDKIT=1 — default in Compose v2).
 FROM node:22-alpine AS web
 WORKDIR /web
 COPY app/web/package.json app/web/package-lock.json ./
@@ -13,8 +15,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt \
-    && playwright install --with-deps chromium
+# Browsers live in the image at /ms-playwright. Pip wheels + Playwright CDN
+# downloads use BuildKit caches so a cold layer rebuild after Docker Desktop
+# restart does not re-download ~300MB chromium when the cache volume survived.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/var/cache/ms-playwright \
+    pip install --no-cache-dir -r requirements.txt \
+    && PLAYWRIGHT_BROWSERS_PATH=/var/cache/ms-playwright playwright install --with-deps chromium \
+    && mkdir -p /ms-playwright \
+    && cp -a /var/cache/ms-playwright/. /ms-playwright/
 
 COPY alembic.ini .
 COPY alembic ./alembic

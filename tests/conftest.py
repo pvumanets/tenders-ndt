@@ -13,6 +13,10 @@ from sqlalchemy.orm import Session, sessionmaker
 _ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(_ROOT / ".env")
 
+# Prod-like .env may set SCOUT_COOKIE_SECURE=1; TestClient is http://testserver and
+# httpx will not send Secure cookies on plain HTTP → every smoke login looks 401.
+os.environ["SCOUT_COOKIE_SECURE"] = "0"
+
 _test_url = os.environ.get("SCOUT_TEST_DATABASE_URL", "").strip()
 if _test_url:
     os.environ["DATABASE_URL"] = _test_url

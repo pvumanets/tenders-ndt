@@ -3,7 +3,6 @@ import {
   Alert,
   AppBar,
   Box,
-  Button,
   Snackbar,
   Tab,
   Tabs,
@@ -11,6 +10,8 @@ import {
   Typography,
 } from "@mui/material";
 import type {
+  AiStateFilter,
+  AiTrigger,
   AppTab,
   BitrixFilter,
   DeadlinePreset,
@@ -123,44 +124,26 @@ const idleOperatorSettings: OperatorSettings = {
 };
 
 function InboxEmpty({
-  tab,
   kind,
 }: {
-  tab: "auto" | "manual";
   kind: "no-data" | "no-match" | "no-unread" | "error";
 }) {
   const title =
-    tab === "auto"
-      ? kind === "error"
-        ? copy.error_auto_load_title
-        : kind === "no-unread"
-          ? copy.empty_auto_no_unread_title
-          : kind === "no-match"
-            ? copy.empty_auto_no_match_title
-            : copy.empty_auto_title
-      : kind === "error"
-        ? copy.error_manual_load_title
-        : kind === "no-unread"
-          ? copy.empty_no_unread_title
-          : kind === "no-match"
-            ? copy.empty_no_match_title
-            : copy.empty_manual_title;
+    kind === "error"
+      ? copy.error_load_title
+      : kind === "no-unread"
+        ? copy.empty_no_unread_title
+        : kind === "no-match"
+          ? copy.empty_no_match_title
+          : copy.empty_manual_title;
   const body =
-    tab === "auto"
-      ? kind === "error"
-        ? copy.error_auto_load_body
-        : kind === "no-unread"
-          ? copy.empty_auto_no_unread_body
-          : kind === "no-match"
-            ? copy.empty_auto_no_match_body
-            : copy.empty_auto_body
-      : kind === "error"
-        ? copy.error_manual_load_body
-        : kind === "no-unread"
-          ? copy.empty_no_unread_body
-          : kind === "no-match"
-            ? copy.empty_no_match_body
-            : copy.empty_manual_body;
+    kind === "error"
+      ? copy.error_load_body
+      : kind === "no-unread"
+        ? copy.empty_no_unread_body
+        : kind === "no-match"
+          ? copy.empty_no_match_body
+          : copy.empty_manual_body;
   return (
     <Box sx={{ textAlign: "center", py: 6, px: 2 }}>
       <Typography variant="h2" sx={{ mb: 0.5 }}>
@@ -173,14 +156,15 @@ function InboxEmpty({
 
 function AppInner() {
   const [gate, setGate] = useState<"loading" | "anon" | "in">("loading");
-  const [tab, setTab] = useState<AppTab>("auto");
+  const [tab, setTab] = useState<AppTab>("lots");
   const [lots, setLots] = useState<InboxLot[]>([]);
   const [lotsState, setLotsState] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [view, setView] = useState<ViewMode>("cards");
   const [sort, setSort] = useState<InboxSort>("relevance");
   const [unreadOnly, setUnreadOnly] = useState(true);
   const [lotsEpoch, setLotsEpoch] = useState(0);
-  const [aiReviewedOnly, setAiReviewedOnly] = useState(false);
+  const [aiState, setAiState] = useState<AiStateFilter>("any");
+  const [aiTriggerFilter, setAiTriggerFilter] = useState<AiTrigger | "any">("any");
   const [aiBusy, setAiBusy] = useState(false);
   const [priority, setPriority] = useState<PriorityFilter>([]);
   const [search, setSearch] = useState("");
@@ -244,8 +228,10 @@ function AppInner() {
     };
     return {
       unread: unreadOnly ? true : undefined,
-      ai_reviewed: tab === "auto" || (tab === "manual" && aiReviewedOnly) ? true : undefined,
-      ai_trigger: tab === "auto" ? ("auto" as const) : undefined,
+      ai_reviewed:
+        aiState === "done" ? true : aiState === "none" ? false : undefined,
+      ai_error: aiState === "failed" ? true : undefined,
+      ai_trigger: aiTriggerFilter === "any" ? undefined : aiTriggerFilter,
       tier: apiTierParam(priority),
       q: debouncedSearch || undefined,
       price_min_rub: priceMinRub ?? undefined,
@@ -263,7 +249,7 @@ function AppInner() {
 
   useEffect(() => {
     if (gate !== "in") return;
-    if (tab !== "auto" && tab !== "manual") return;
+    if (tab !== "lots") return;
     if (!operatorSettingsReady) return;
     let cancelled = false;
     setLotsState((prev) => (prev === "ok" ? prev : "loading"));
@@ -289,7 +275,8 @@ function AppInner() {
     tab,
     unreadOnly,
     lotsEpoch,
-    aiReviewedOnly,
+    aiState,
+    aiTriggerFilter,
     priority,
     debouncedSearch,
     deadlinePreset,
@@ -536,7 +523,8 @@ function AppInner() {
     (priceMinRub != null && priceMinRub > 0) ||
     platformsSelected.length > 0 ||
     bitrixFilter !== "any" ||
-    (tab === "manual" && aiReviewedOnly);
+    aiState !== "any" ||
+    aiTriggerFilter !== "any";
   const emptyKind: "error" | "no-unread" | "no-data" | "no-match" =
     lotsState === "error"
       ? "error"
@@ -566,8 +554,7 @@ function AppInner() {
     }
   }
 
-  function markAllViewedScope(): { ai_reviewed?: boolean; ai_trigger?: "auto" } {
-    if (tab === "auto") return { ai_reviewed: true, ai_trigger: "auto" };
+  function markAllViewedScope(): Record<string, never> {
     return {};
   }
 
@@ -661,7 +648,7 @@ function AppInner() {
 
   useEffect(() => {
     if (gate !== "in") return;
-    if (tab !== "auto" && tab !== "manual") return;
+    if (tab !== "lots") return;
     const wasRunning = prevRunningRef.current;
     prevRunningRef.current = tech.running;
     if (!wasRunning || tech.running) return;
@@ -685,14 +672,7 @@ function AppInner() {
         opts?.retryErrors ? { retryErrors: true } : undefined,
       );
       const moved = result.items.filter((item) => tierMoved(item)).length;
-      if (tab === "manual") {
-        await reloadInbox();
-      } else if (result.items.length) {
-        setLots((prev) => {
-          const byId = new Map(result.items.map((item) => [item.tender_id, item]));
-          return prev.map((lot) => byId.get(lot.tender_id) ?? lot);
-        });
-      }
+      await reloadInbox();
       if (result.failed > 0) {
         setToast(
           copy.ai_review_toast_failed
@@ -778,8 +758,8 @@ function AppInner() {
     <InboxCommandBar
       unreadOnly={unreadOnly}
       onUnreadOnly={setUnreadOnly}
-      onCountUnreadInTab={tab === "auto" || tab === "manual" ? onCountUnreadInTab : undefined}
-      onMarkAllUnreadInTab={tab === "auto" || tab === "manual" ? onMarkAllUnreadInTab : undefined}
+      onCountUnreadInTab={tab === "lots" ? onCountUnreadInTab : undefined}
+      onMarkAllUnreadInTab={tab === "lots" ? onMarkAllUnreadInTab : undefined}
       priority={priority}
       onPriority={setPriority}
       search={search}
@@ -800,9 +780,10 @@ function AppInner() {
       onView={setView}
       sort={sort}
       onSort={setSort}
-      showAiReviewedFilter={tab === "manual"}
-      aiReviewedOnly={aiReviewedOnly}
-      onAiReviewedOnly={setAiReviewedOnly}
+      aiState={aiState}
+      onAiState={setAiState}
+      aiTriggerFilter={aiTriggerFilter}
+      onAiTriggerFilter={setAiTriggerFilter}
       priceMinRub={priceMinRub}
       onPriceMinRub={setPriceMinRub}
       settingsMinPrice={operatorSettings.l1_min_price_rub}
@@ -816,10 +797,10 @@ function AppInner() {
     />
   );
 
-  function renderBoard(mode: "auto" | "manual") {
-    if (lotsState === "error") return <InboxEmpty tab={mode} kind="error" />;
+  function renderBoard() {
+    if (lotsState === "error") return <InboxEmpty kind="error" />;
     if (lotsLoading) return <Box sx={{ flex: 1, bgcolor: stripe.surfaceSubtle }} />;
-    if (filtered.length === 0) return <InboxEmpty tab={mode} kind={emptyKind} />;
+    if (filtered.length === 0) return <InboxEmpty kind={emptyKind} />;
     if (view === "cards") {
       return (
         <LotBoard
@@ -884,15 +865,14 @@ function AppInner() {
           }}
           sx={{ px: 2, minHeight: 32 }}
         >
-          <Tab label={copy.tab_auto} value="auto" />
-          <Tab label={copy.tab_manual} value="manual" />
+          <Tab label={copy.tab_lots} value="lots" />
           <Tab label={copy.tab_settings} value="settings" />
         </Tabs>
       </AppBar>
 
       <Box sx={{ p: 2, flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-        {tab === "auto" ? (
-          <>
+        {tab === "lots" ? (
+          <Suspense fallback={<Box sx={{ flex: 1, bgcolor: stripe.surfaceSubtle }} />}>
             <SessionExpiryBanner
               platforms={platforms}
               onOpenSettings={() => {
@@ -902,47 +882,10 @@ function AppInner() {
             />
             <AutoSlotStatus schedule={schedule} status={tech} />
             {tech.ai_failures > 0 ? (
-              <Alert
-                severity="warning"
-                sx={{ mb: 1.5, py: 0.5 }}
-                action={
-                  <Button
-                    color="inherit"
-                    size="small"
-                    onClick={() => {
-                      setTab("manual");
-                      setSelectedId(null);
-                    }}
-                  >
-                    {copy.tab_manual}
-                  </Button>
-                }
-              >
+              <Alert severity="warning" sx={{ mb: 1.5, py: 0.5 }}>
                 {copy.ai_auto_incomplete.replace("{n}", String(tech.ai_failures))}
               </Alert>
             ) : null}
-            <Typography variant="body2" sx={{ color: stripe.textMuted, mb: 1.5 }}>
-              {copy.auto_lead_hint}
-            </Typography>
-            <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-              {commandBar}
-              {renderBoard("auto")}
-            </Box>
-            {selected ? (
-              <TenderDrawer
-                lot={selected}
-                drawerMode="ai"
-                onClose={() => setSelectedId(null)}
-                onToggleViewed={onToggleViewed}
-                onSetPriority={onSetPriority}
-                onSetBoardHidden={onSetBoardHidden}
-                onAiWrong={(id) => void onAiWrong(id)}
-                onBitrixSend={onBitrixSend}
-              />
-            ) : null}
-          </>
-        ) : tab === "manual" ? (
-          <Suspense fallback={<Box sx={{ flex: 1, bgcolor: stripe.surfaceSubtle }} />}>
             <ManualRunControls
               status={tech}
               queuedGroups={queuedGroups}
@@ -961,11 +904,11 @@ function AppInner() {
               aiFailures={tech.ai_failures}
             />
             <Typography variant="body2" sx={{ color: stripe.textMuted, mb: 1 }}>
-              {copy.manual_lead_hint} {copy.manual_session_muted}
+              {copy.auto_lead_hint}
             </Typography>
             <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
               {commandBar}
-              {renderBoard("manual")}
+              {renderBoard()}
             </Box>
             {selected ? (
               <TenderDrawer
