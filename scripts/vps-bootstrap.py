@@ -222,30 +222,31 @@ def _must(client: Any, cmd: str, *, timeout: int = 120) -> str:
 
 
 def _start_compose_detached(client: Any, *, build: bool) -> None:
-    """Run compose in nohup so a dropped SSH session does not kill the build.
+    """Start ensure-runtime (optional) + compose via a tiny remote script.
 
-    When build=True, ensure tenders-ndt-runtime (Playwright) first, then thin app
-    compose --build — both inside the same detached job so Chromium work survives
-    Windows↔VPS disconnects.
+    Paramiko must return immediately; do not leave SSH blocked on docker
+    (Windows PipeTimeout). The job runs in a background subshell with a pid file.
     """
     flag = "up -d --build" if build else "up -d"
-    job = (
-        f"python3 scripts/ensure-runtime-image.py && "
-        f"docker compose -f docker-compose.prod.yml {flag}"
-        if build
-        else f"docker compose -f docker-compose.prod.yml {flag}"
+    ensure = "python3 scripts/ensure-runtime-image.py\n" if build else ""
+    body = (
+        "#!/bin/bash\n"
+        f"cd {REMOTE_DIR} || exit 1\n"
+        f"rm -f {COMPOSE_DEPLOY_PID} {COMPOSE_DEPLOY_LOG}\n"
+        "(\n"
+        f"{ensure}"
+        f"  docker compose -f docker-compose.prod.yml {flag}\n"
+        f") >{COMPOSE_DEPLOY_LOG} 2>&1 &\n"
+        f"echo $! > {COMPOSE_DEPLOY_PID}\n"
+        "exit 0\n"
     )
-    # Write pid immediately; do not leave SSH blocked on docker (PipeTimeout).
-    remote = (
-        f"cd {REMOTE_DIR} && "
-        f"rm -f {COMPOSE_DEPLOY_PID} {COMPOSE_DEPLOY_LOG} && "
-        f"nohup bash -c {shlex.quote(job)} "
-        f"</dev/null >{COMPOSE_DEPLOY_LOG} 2>&1 & "
-        f"echo $! > {COMPOSE_DEPLOY_PID} && disown && exit 0"
+    remote_sh = "/tmp/scout-compose-deploy.sh"
+    _sftp_write(client, remote_sh, body)
+    _must(client, f"chmod +x {remote_sh} && {remote_sh}", timeout=30)
+    print(
+        f"compose: detached ({'ensure-runtime + ' if build else ''}{flag}); "
+        f"log {COMPOSE_DEPLOY_LOG}"
     )
-    script = "bash -lc " + shlex.quote(remote)
-    _must(client, script, timeout=60)
-    print(f"compose: detached ({'ensure-runtime + ' if build else ''}{flag}); log {COMPOSE_DEPLOY_LOG}")
 
 
 def _compose_pid_running(client: Any) -> bool:
