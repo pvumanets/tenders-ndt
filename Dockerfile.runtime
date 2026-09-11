@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1
+# Rare base image: Python deps + Playwright Chromium.
+# Rebuild only when requirements.txt changes (see scripts/ensure-runtime-image.py).
+# Tag: tenders-ndt-runtime:latest
+FROM python:3.12-slim
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/var/cache/ms-playwright \
+    pip install --no-cache-dir -r requirements.txt \
+    && PLAYWRIGHT_BROWSERS_PATH=/var/cache/ms-playwright playwright install --with-deps chromium \
+    && mkdir -p /ms-playwright \
+    && cp -a /var/cache/ms-playwright/. /ms-playwright/

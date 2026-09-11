@@ -21,7 +21,10 @@ services:
       retries: 10
 
   api:
-    build: .
+    build:
+      context: .
+      args:
+        RUNTIME_IMAGE: tenders-ndt-runtime:latest
     restart: unless-stopped
     ports:
       - "127.0.0.1:8765:8765"

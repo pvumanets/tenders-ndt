@@ -16,7 +16,10 @@ services:
       retries: 10
 
   api:
-    build: .
+    build:
+      context: .
+      args:
+        RUNTIME_IMAGE: tenders-ndt-runtime:latest
     ports:
       - "8765:8765"
     env_file:
