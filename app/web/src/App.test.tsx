@@ -153,6 +153,7 @@ describe("AppTabs", () => {
     render(<App />);
     expect(await screen.findByRole("tab", { name: copy.tab_lots })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: copy.tab_settings })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: copy.tab_help })).toBeInTheDocument();
     expect(screen.queryByText("Авторазбор")).not.toBeInTheDocument();
     expect(screen.queryByText("Ручной")).not.toBeInTheDocument();
     expect(await screen.findByRole("button", { name: copy.run_start })).toBeInTheDocument();
@@ -175,6 +176,19 @@ describe("AppTabs", () => {
     expect(screen.getAllByRole("button", { name: copy.cookies_paste }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: copy.cookies_submit })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: copy.run_start })).not.toBeInTheDocument();
+  });
+
+  it("opens help tab with cookies section", async () => {
+    stubApi();
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole("tab", { name: copy.tab_lots });
+    await user.click(screen.getByRole("tab", { name: copy.tab_help }));
+    expect(await screen.findByText(copy.help_faq_why_q)).toBeInTheDocument();
+    expect(screen.getByText(copy.help_faq_session_q)).toBeInTheDocument();
+    expect(screen.getByText(copy.help_faq_new_q)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: copy.run_start })).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/\bScout\b/);
   });
 
   it("shows AI ETA on Лоты and has no Bitrix chrome", async () => {

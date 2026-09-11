@@ -1,4 +1,4 @@
-import { Alert, Box, Chip, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Stack, Typography } from "@mui/material";
 import type { TechStatus } from "../../types";
 import { copy } from "../../copy";
 import RunControls from "./RunControls";
@@ -104,6 +104,7 @@ export default function ManualRunControls({
   error = null,
   onStart,
   onStop,
+  onOpenHelp,
 }: {
   status: TechStatus;
   queuedGroups: number;
@@ -112,6 +113,7 @@ export default function ManualRunControls({
   error?: string | null;
   onStart: () => void;
   onStop: () => void;
+  onOpenHelp?: () => void;
 }) {
   const locked = busy || status.running;
   const canStart = !locked && queuedGroups > 0 && enabledPlatforms > 0;
@@ -125,6 +127,7 @@ export default function ManualRunControls({
   const showDetails = status.running || showReport;
   const chip = runChipColors(status);
   const queueEmpty = !status.running && (queuedGroups === 0 || enabledPlatforms === 0);
+  const cookiesError = error === copy.run_error_cookies;
 
   return (
     <Box
@@ -207,7 +210,20 @@ export default function ManualRunControls({
           </Box>
         </Stack>
 
-        {error ? <Alert severity="error">{error}</Alert> : null}
+        {error ? (
+          <Alert
+            severity="error"
+            action={
+              cookiesError && onOpenHelp ? (
+                <Button color="inherit" size="small" onClick={onOpenHelp}>
+                  {copy.run_error_cookies_action}
+                </Button>
+              ) : undefined
+            }
+          >
+            {error}
+          </Alert>
+        ) : null}
         {queueEmpty ? (
           <Typography variant="body2" sx={{ color: stripe.textMuted }}>
             {copy.empty_manual_queue}
