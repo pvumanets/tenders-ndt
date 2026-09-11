@@ -38,11 +38,11 @@ export default function AiReviewCommandBar({
         }}
       >
         <Button
-          variant="contained"
+          variant="outlined"
           size="small"
           disabled={aiBusy || inProgress}
           onClick={onAiReview}
-          sx={{ flexShrink: 0, bgcolor: stripe.blurple }}
+          sx={{ flexShrink: 0 }}
         >
           {aiBusy && !inProgress ? copy.action_ai_review_busy : copy.action_ai_review}
         </Button>

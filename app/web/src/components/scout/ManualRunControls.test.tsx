@@ -57,10 +57,11 @@ function renderControls(
 }
 
 describe("ManualRunControls", () => {
-  it("renders controls section and start/stop", async () => {
+  it("renders start/stop controls", async () => {
     const user = userEvent.setup();
     const { onStart, onStop } = renderControls(idle);
-    expect(screen.getByText(copy.run_section_controls)).toBeInTheDocument();
+    expect(screen.queryByText(copy.run_section_controls)).not.toBeInTheDocument();
+    expect(screen.getByText(copy.run_chip_idle)).toBeInTheDocument();
     const start = screen.getByRole("button", { name: copy.run_start });
     const stop = screen.getByRole("button", { name: copy.run_stop });
     expect(start).toBeEnabled();

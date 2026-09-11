@@ -11,7 +11,7 @@ export default function AutoSlotStatus({
   status: TechStatus;
 }) {
   return (
-    <Typography variant="body2" sx={{ color: stripe.textMuted, mb: 0.5 }}>
+    <Typography variant="caption" sx={{ color: stripe.textMuted, display: "block", mb: 1 }}>
       {slotStatusText(schedule, status)}
     </Typography>
   );
