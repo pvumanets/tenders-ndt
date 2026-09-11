@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import fnmatch
 import os
+import shlex
 import time
 from pathlib import Path
 from typing import Any
@@ -222,22 +223,30 @@ def _must(client: Any, cmd: str, *, timeout: int = 120) -> str:
 
 
 def _start_compose_detached(client: Any, *, build: bool) -> None:
-    """Run compose in nohup/setsid so a dropped SSH session does not kill the build."""
+    """Run compose in nohup so a dropped SSH session does not kill the build.
+
+    When build=True, ensure tenders-ndt-runtime (Playwright) first, then thin app
+    compose --build — both inside the same detached job so Chromium work survives
+    Windows↔VPS disconnects.
+    """
     flag = "up -d --build" if build else "up -d"
-    # Explicit bash + subshell + disown: write pid immediately; do not leave the
-    # SSH exec channel blocked on docker-compose (Windows paramiko PipeTimeout).
-    script = (
-        "bash -lc "
-        + repr(
-            f"cd {REMOTE_DIR} && "
-            f"rm -f {COMPOSE_DEPLOY_PID} {COMPOSE_DEPLOY_LOG} && "
-            f"nohup docker compose -f docker-compose.prod.yml {flag} "
-            f"</dev/null >{COMPOSE_DEPLOY_LOG} 2>&1 & "
-            f"echo $! > {COMPOSE_DEPLOY_PID} && disown && exit 0"
-        )
+    job = (
+        f"python3 scripts/ensure-runtime-image.py && "
+        f"docker compose -f docker-compose.prod.yml {flag}"
+        if build
+        else f"docker compose -f docker-compose.prod.yml {flag}"
     )
+    # Write pid immediately; do not leave SSH blocked on docker (PipeTimeout).
+    remote = (
+        f"cd {REMOTE_DIR} && "
+        f"rm -f {COMPOSE_DEPLOY_PID} {COMPOSE_DEPLOY_LOG} && "
+        f"nohup bash -c {shlex.quote(job)} "
+        f"</dev/null >{COMPOSE_DEPLOY_LOG} 2>&1 & "
+        f"echo $! > {COMPOSE_DEPLOY_PID} && disown && exit 0"
+    )
+    script = "bash -lc " + shlex.quote(remote)
     _must(client, script, timeout=60)
-    print(f"compose: detached ({flag}); log {COMPOSE_DEPLOY_LOG}")
+    print(f"compose: detached ({'ensure-runtime + ' if build else ''}{flag}); log {COMPOSE_DEPLOY_LOG}")
 
 
 def _compose_pid_running(client: Any) -> bool:
@@ -533,7 +542,7 @@ def deploy_from_github() -> None:
     finally:
         client.close()
 
-    _wait_detached_compose(host, user, key=PRIVKEY, build=True, max_wait_sec=1200)
+    _wait_detached_compose(host, user, key=PRIVKEY, build=True, max_wait_sec=2400)
     client = _ssh(host, user, key=PRIVKEY)
     try:
         _wait_https(client)
@@ -591,7 +600,7 @@ def main() -> None:
         _start_compose_detached(client, build=True)
     finally:
         client.close()
-    _wait_detached_compose(host, user, key=PRIVKEY, build=True, max_wait_sec=1200)
+    _wait_detached_compose(host, user, key=PRIVKEY, build=True, max_wait_sec=2400)
     client = _ssh(host, user, key=PRIVKEY)
     try:
         pub_8765 = _run(client, "ss -lnt | grep -E ':8765|:5433|:80|:443' || true")[1]

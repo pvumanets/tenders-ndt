@@ -64,9 +64,15 @@ if (-not (Test-Path -LiteralPath $cookies)) {
     Write-Host "created empty cookies.rostender.txt (file bind)"
 }
 
-# BuildKit cache mounts in Dockerfile (pip + Playwright browsers) need BuildKit.
+# BuildKit + rare Playwright runtime, then thin app image.
 $env:DOCKER_BUILDKIT = "1"
 $env:COMPOSE_DOCKER_CLI_BUILD = "1"
+Write-Host "ensure runtime image (Playwright Chromium; skip if requirements unchanged)"
+python "$PSScriptRoot\ensure-runtime-image.py"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "ensure-runtime-image failed (exit $LASTEXITCODE)"
+    exit 1
+}
 Write-Host "docker compose up -d --build (DOCKER_BUILDKIT=1)"
 docker compose up -d --build
 if ($LASTEXITCODE -ne 0) {
