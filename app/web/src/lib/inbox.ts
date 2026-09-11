@@ -11,6 +11,7 @@ import type {
   SalesTier,
   ScheduleSettings,
   SearchGroup,
+  SecretHint,
   TechStatus,
   OperatorSettings,
   InboxSort,
@@ -816,14 +817,35 @@ export async function putSchedule(body: {
   return parseSchedule((await res.json()) as Partial<ScheduleSettings>);
 }
 
+function parseSecretHint(raw: unknown): SecretHint {
+  if (!raw || typeof raw !== "object") {
+    return { configured: false, hint: "" };
+  }
+  const row = raw as Record<string, unknown>;
+  return {
+    configured: Boolean(row.configured),
+    hint: typeof row.hint === "string" ? row.hint : "",
+  };
+}
+
 function parseOperatorSettings(raw: Partial<OperatorSettings> & Record<string, unknown>): OperatorSettings {
   const n = Number(raw.l1_min_price_rub);
   const rub = Number.isFinite(n) ? n : 100_000;
   const prompt = typeof raw.ai_system_prompt === "string" ? raw.ai_system_prompt : "";
+  const text = (v: unknown) => (typeof v === "string" ? v : "");
   return {
     l1_min_price_rub: Math.max(0, Math.min(5_000_000, Math.round(rub))),
     ai_system_prompt: prompt,
     ai_system_prompt_is_default: Boolean(raw.ai_system_prompt_is_default ?? true),
+    provod_api_key: parseSecretHint(raw.provod_api_key),
+    bitrix_webhook_url: parseSecretHint(raw.bitrix_webhook_url),
+    bitrix_assigned_by_id: text(raw.bitrix_assigned_by_id),
+    bitrix_lead_source_id: text(raw.bitrix_lead_source_id),
+    bitrix_chat_dialog_id: text(raw.bitrix_chat_dialog_id),
+    bitrix_ops_dialog_id: text(raw.bitrix_ops_dialog_id),
+    bitrix_send_chat: Boolean(raw.bitrix_send_chat ?? true),
+    bitrix_auto_l1_enabled: Boolean(raw.bitrix_auto_l1_enabled ?? true),
+    bitrix_ops_alerts_enabled: Boolean(raw.bitrix_ops_alerts_enabled ?? true),
   };
 }
 
@@ -833,10 +855,21 @@ export async function fetchOperatorSettings(): Promise<OperatorSettings> {
   return parseOperatorSettings((await res.json()) as Partial<OperatorSettings>);
 }
 
-export async function putOperatorSettings(body: {
+export type OperatorSettingsPutBody = {
   l1_min_price_rub?: number;
   ai_system_prompt?: string | null;
-}): Promise<OperatorSettings> {
+  provod_api_key?: string | null;
+  bitrix_webhook_url?: string | null;
+  bitrix_assigned_by_id?: string | null;
+  bitrix_lead_source_id?: string | null;
+  bitrix_chat_dialog_id?: string | null;
+  bitrix_ops_dialog_id?: string | null;
+  bitrix_send_chat?: boolean | null;
+  bitrix_auto_l1_enabled?: boolean | null;
+  bitrix_ops_alerts_enabled?: boolean | null;
+};
+
+export async function putOperatorSettings(body: OperatorSettingsPutBody): Promise<OperatorSettings> {
   const res = await apiFetch("/api/operator-settings", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

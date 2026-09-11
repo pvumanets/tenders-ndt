@@ -109,10 +109,24 @@ export type ScheduleSettings = {
   next_fire_at: string | null;
 };
 
+export type SecretHint = {
+  configured: boolean;
+  hint: string;
+};
+
 export type OperatorSettings = {
   l1_min_price_rub: number;
   ai_system_prompt: string;
   ai_system_prompt_is_default: boolean;
+  provod_api_key: SecretHint;
+  bitrix_webhook_url: SecretHint;
+  bitrix_assigned_by_id: string;
+  bitrix_lead_source_id: string;
+  bitrix_chat_dialog_id: string;
+  bitrix_ops_dialog_id: string;
+  bitrix_send_chat: boolean;
+  bitrix_auto_l1_enabled: boolean;
+  bitrix_ops_alerts_enabled: boolean;
 };
 
 export type BitrixFilter = "any" | "in" | "out";

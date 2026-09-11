@@ -16,6 +16,8 @@ import SearchGroupList from "./SearchGroupList";
 import SettingsSchedule from "./SettingsSchedule";
 import SettingsMinPrice from "./SettingsMinPrice";
 import SettingsAiPrompt from "./SettingsAiPrompt";
+import SettingsProvodKey from "./SettingsProvodKey";
+import SettingsBitrix from "./SettingsBitrix";
 import TechDiagnostics from "./TechDiagnostics";
 import { formatPlatformSessionLine } from "../../lib/inbox";
 
@@ -138,6 +140,20 @@ export default function SettingsPanel({
         </Section>
         <Section title={copy.settings_section_ai_prompt}>
           <SettingsAiPrompt
+            settings={operatorSettings}
+            locked={configLocked}
+            onSaved={onOperatorSettingsSaved}
+          />
+        </Section>
+        <Section title={copy.settings_section_provod}>
+          <SettingsProvodKey
+            settings={operatorSettings}
+            locked={configLocked}
+            onSaved={onOperatorSettingsSaved}
+          />
+        </Section>
+        <Section title={copy.settings_section_bitrix}>
+          <SettingsBitrix
             settings={operatorSettings}
             locked={configLocked}
             onSaved={onOperatorSettingsSaved}

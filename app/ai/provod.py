@@ -92,8 +92,9 @@ def model_chain() -> tuple[str, ...]:
 
 
 def provod_api_key() -> str | None:
-    key = os.environ.get("PROVOD_API_KEY", "").strip()
-    return key or None
+    from app.api.operator_settings import resolve_provod_api_key
+
+    return resolve_provod_api_key()
 
 
 def _parse_json_content(text: str) -> dict[str, Any]:

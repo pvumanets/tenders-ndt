@@ -39,33 +39,43 @@ class BitrixApiError(RuntimeError):
 
 
 def webhook_base() -> str:
-    raw = (os.getenv("BITRIX_WEBHOOK_URL") or "").strip()
+    from app.api.operator_settings import resolve_bitrix_webhook_url
+
+    raw = (resolve_bitrix_webhook_url() or "").strip()
     if not raw:
         raise BitrixConfigError("bitrix_unconfigured")
     return raw if raw.endswith("/") else raw + "/"
 
 
-def _require_env(name: str) -> str:
-    raw = (os.getenv(name) or "").strip()
+def _require_resolved(value: str | None) -> str:
+    raw = (value or "").strip()
     if not raw:
         raise BitrixConfigError("bitrix_unconfigured")
     return raw
 
 
 def source_id() -> str:
-    return _require_env("BITRIX_LEAD_SOURCE_ID")
+    from app.api.operator_settings import resolve_bitrix_lead_source_id
+
+    return _require_resolved(resolve_bitrix_lead_source_id())
 
 
 def chat_dialog_id() -> str:
-    return _require_env("BITRIX_CHAT_DIALOG_ID")
+    from app.api.operator_settings import resolve_bitrix_chat_dialog_id
+
+    return _require_resolved(resolve_bitrix_chat_dialog_id())
 
 
 def ops_dialog_id() -> str:
-    return _require_env("BITRIX_OPS_DIALOG_ID")
+    from app.api.operator_settings import resolve_bitrix_ops_dialog_id
+
+    return _require_resolved(resolve_bitrix_ops_dialog_id())
 
 
 def assigned_by_id() -> str | None:
-    raw = (os.getenv("BITRIX_ASSIGNED_BY_ID") or "").strip()
+    from app.api.operator_settings import resolve_bitrix_assigned_by_id
+
+    raw = (resolve_bitrix_assigned_by_id() or "").strip()
     return raw or None
 
 

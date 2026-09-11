@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any
 
 from app.bitrix import (
@@ -18,18 +17,15 @@ log = logging.getLogger("uvicorn.error")
 
 
 def chat_send_enabled() -> bool:
-    """Lead ping to «Тендеры». Default on (owner 2026-09-09). Opt-out via 0."""
-    return (os.getenv("BITRIX_SEND_CHAT") or "1").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    """Lead ping to sales chat. Default on. DB override > BITRIX_SEND_CHAT env."""
+    from app.api.operator_settings import resolve_bitrix_send_chat
+
+    return resolve_bitrix_send_chat()
 
 
 def send_lead_and_chat(lot: dict[str, Any]) -> dict[str, Any]:
     """
-    Create CRM lead; chat when BITRIX_SEND_CHAT enabled (default on).
+    Create CRM lead; chat when send-chat toggle enabled (default on).
     Lead success is authoritative: chat failure does not raise (ops DM + null chat id).
     Raises BitrixConfigError / BitrixApiError only if lead add fails.
     Returns { lead_id, chat_message_id | null }.
@@ -81,9 +77,14 @@ def send_im(*, dialog_id: str, message: str) -> Any:
 
 def send_ops_dm(message: str) -> str:
     """
-    Soft ops alert to owner DM (BITRIX_OPS_DIALOG_ID).
-    Returns sent | bitrix_unconfigured | bitrix_failed. Never raises.
+    Soft ops alert to owner DM (ops dialog id).
+    Returns sent | bitrix_unconfigured | bitrix_failed | skipped. Never raises.
     """
+    from app.api.operator_settings import resolve_bitrix_ops_alerts_enabled
+
+    if not resolve_bitrix_ops_alerts_enabled():
+        log.info("bitrix_ops_dm: alerts disabled — skip")
+        return "skipped"
     try:
         send_im(dialog_id=ops_dialog_id(), message=message)
         return "sent"

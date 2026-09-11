@@ -65,6 +65,13 @@ def notify_auto_l1_leads(tender_ids: list[str]) -> dict[str, int]:
     if not tender_ids:
         return counts
 
+    from app.api.operator_settings import resolve_bitrix_auto_l1_enabled
+
+    if not resolve_bitrix_auto_l1_enabled():
+        log.info("notify_auto_l1_leads: auto_l1 disabled — skip")
+        counts["skipped"] = len(tender_ids)
+        return counts
+
     try:
         factory = session_factory()
     except RuntimeError:
