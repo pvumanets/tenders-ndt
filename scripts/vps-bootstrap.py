@@ -224,14 +224,19 @@ def _must(client: Any, cmd: str, *, timeout: int = 120) -> str:
 def _start_compose_detached(client: Any, *, build: bool) -> None:
     """Run compose in nohup/setsid so a dropped SSH session does not kill the build."""
     flag = "up -d --build" if build else "up -d"
-    # Background + pid file. setsid + stdin closed: survives client disconnect on Windows↔VPS.
+    # Explicit bash + subshell + disown: write pid immediately; do not leave the
+    # SSH exec channel blocked on docker-compose (Windows paramiko PipeTimeout).
     script = (
-        f"cd {REMOTE_DIR} && "
-        f"rm -f {COMPOSE_DEPLOY_PID} {COMPOSE_DEPLOY_LOG} && "
-        f"setsid nohup docker compose -f docker-compose.prod.yml {flag} "
-        f"< /dev/null > {COMPOSE_DEPLOY_LOG} 2>&1 & echo $! > {COMPOSE_DEPLOY_PID}"
+        "bash -lc "
+        + repr(
+            f"cd {REMOTE_DIR} && "
+            f"rm -f {COMPOSE_DEPLOY_PID} {COMPOSE_DEPLOY_LOG} && "
+            f"nohup docker compose -f docker-compose.prod.yml {flag} "
+            f"</dev/null >{COMPOSE_DEPLOY_LOG} 2>&1 & "
+            f"echo $! > {COMPOSE_DEPLOY_PID} && disown && exit 0"
+        )
     )
-    _must(client, script, timeout=30)
+    _must(client, script, timeout=60)
     print(f"compose: detached ({flag}); log {COMPOSE_DEPLOY_LOG}")
 
 
