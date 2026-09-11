@@ -48,12 +48,14 @@ def test_parse_export_body_ok_and_errors() -> None:
             "columns": ["tender_id", "title", "tender_id"],
             "tier": "L1",
             "ai_wrong": True,
+            "ai_error": True,
         }
     )
     assert fmt == "csv"
     assert cols == ["tender_id", "title"]
     assert filters["tier"] == "L1"
     assert filters["ai_wrong"] is True
+    assert filters["ai_error"] is True
 
     with pytest.raises(InboxQueryError):
         parse_export_body({"format": "xlsm", "columns": ["tender_id"]})

@@ -36,6 +36,11 @@ describe("buildInboxSearchParams", () => {
     expect(params.get("deadline_from")).toBeNull();
   });
 
+  it("sets ai_error filter", () => {
+    const params = buildInboxSearchParams({ ai_error: true });
+    expect(params.get("ai_error")).toBe("1");
+  });
+
   it("sets unread, q, dates and ai_trigger", () => {
     const params = buildInboxSearchParams({
       unread: true,

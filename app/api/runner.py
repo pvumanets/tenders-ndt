@@ -400,17 +400,25 @@ def _run_queue(*, items: list[dict], run_dir: Path, pipeline: str = "manual") ->
     ai_processed = 0
     ai_failed = 0
     leads_sent = 0
-    if pipeline == "auto" and overall in {"done", "partial"}:
+    if overall in {"done", "partial"}:
         prefer = STATE.affected_ids()
+        ai_trigger = "auto" if pipeline == "auto" else "manual"
         try:
             from app.api.inbox import run_auto_ai_review
 
-            ai_result = run_auto_ai_review(prefer)
+            ai_result = run_auto_ai_review(prefer, trigger=ai_trigger)
             ai_processed = int(ai_result.get("processed") or 0)
             ai_failed = int(ai_result.get("failed") or 0)
             leads_sent = int(ai_result.get("leads_sent") or 0)
+            # Same-run silent retry: failed lots still eligible (no ai_reviewed_at).
+            if ai_failed > 0 and prefer:
+                STATE.log_msg(f"Pipeline AI: in-run retry after {ai_failed} fail(s)")
+                retry = run_auto_ai_review(prefer, trigger=ai_trigger)
+                ai_processed += int(retry.get("processed") or 0)
+                ai_failed = int(retry.get("failed") or 0)
+                leads_sent += int(retry.get("leads_sent") or 0)
         except Exception as exc:  # noqa: BLE001
-            STATE.log_msg(f"Auto AI: {type(exc).__name__}: {exc}", level="error")
+            STATE.log_msg(f"Pipeline AI: {type(exc).__name__}: {exc}", level="error")
             try:
                 from app.api.notify import notify_ops_event
 

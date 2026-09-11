@@ -95,7 +95,7 @@ describe("App inbox gate", () => {
     render(<App />);
 
     expect(await screen.findByLabelText(copy.login_username)).toBeInTheDocument();
-    expect(screen.queryByText(copy.tab_auto)).not.toBeInTheDocument();
+    expect(screen.queryByText(copy.tab_lots)).not.toBeInTheDocument();
     expect(screen.queryByText("УЗК труб")).not.toBeInTheDocument();
   });
 
@@ -143,32 +143,30 @@ describe("App inbox gate", () => {
     render(<App />);
 
     expect(await screen.findByLabelText(copy.login_username)).toBeInTheDocument();
-    expect(screen.queryByText(copy.tab_auto)).not.toBeInTheDocument();
+    expect(screen.queryByText(copy.tab_lots)).not.toBeInTheDocument();
   });
 });
 
 describe("AppTabs", () => {
-  it("defaults to Авторазбор without Start or AI review", async () => {
+  it("defaults to Лоты with Start and AI review", async () => {
     stubApi();
     render(<App />);
-    expect(await screen.findByText(copy.tab_auto)).toBeInTheDocument();
-    expect(screen.getByText(copy.tab_manual)).toBeInTheDocument();
-    expect(screen.getByText(copy.tab_settings)).toBeInTheDocument();
-    expect(screen.queryByText(copy.tab_lots)).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: copy.run_start })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: copy.action_ai_review })).not.toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: copy.tab_lots })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: copy.tab_settings })).toBeInTheDocument();
+    expect(screen.queryByText("Авторазбор")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ручной")).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: copy.run_start })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: copy.action_ai_review })).toBeInTheDocument();
     expect(screen.getByText(copy.auto_lead_hint)).toBeInTheDocument();
   });
 
-  it("shows Start and AI review on Ручной, settings controls on Настройки", async () => {
+  it("keeps Start on Лоты and settings controls on Настройки", async () => {
     stubApi();
     const user = userEvent.setup();
     render(<App />);
-    await screen.findByText(copy.tab_auto);
-    await user.click(screen.getByRole("tab", { name: copy.tab_manual }));
+    await screen.findByRole("tab", { name: copy.tab_lots });
     expect(await screen.findByRole("button", { name: copy.run_start })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: copy.action_ai_review })).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(copy.manual_lead_hint))).toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: copy.tab_settings }));
     expect(await screen.findByText(copy.settings_section_schedule)).toBeInTheDocument();
     expect(screen.getByText(copy.settings_section_platforms)).toBeInTheDocument();
@@ -179,7 +177,7 @@ describe("AppTabs", () => {
     expect(screen.queryByRole("button", { name: copy.run_start })).not.toBeInTheDocument();
   });
 
-  it("shows AI ETA on Ручной and has no Bitrix chrome", async () => {
+  it("shows AI ETA on Лоты and has no Bitrix chrome", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo) => {
@@ -243,12 +241,10 @@ describe("AppTabs", () => {
         return jsonResponse(200, {});
       }),
     );
-    const user = userEvent.setup();
     const { container } = render(<App />);
-    await screen.findByText(copy.tab_auto);
+    await screen.findByRole("tab", { name: copy.tab_lots });
     expect(container.textContent?.toLowerCase() ?? "").not.toMatch(/bitrix/);
     expect(container.textContent?.toLowerCase() ?? "").not.toMatch(/\bcrm\b/);
-    await user.click(screen.getByRole("tab", { name: copy.tab_manual }));
     expect(
       await screen.findByText(copy.ai_eta_progress.replace("{n}", "1").replace("{m}", "4")),
     ).toBeInTheDocument();
@@ -287,7 +283,7 @@ describe("AppTabs", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
-    expect(await screen.findByText(copy.tab_auto)).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: copy.tab_lots })).toBeInTheDocument();
     const statusBefore = fetchMock.mock.calls.filter((call) =>
       String(call[0]).includes("/api/status"),
     ).length;
@@ -437,7 +433,7 @@ describe("App R3 mutations and refetch", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(<App />);
-    expect(await screen.findByText(copy.tab_auto)).toBeInTheDocument();
+    expect(await screen.findByRole("tab", { name: copy.tab_lots })).toBeInTheDocument();
     const inboxUrl = (call: unknown[]) => {
       const url = String(call[0]);
       return url.includes("/api/inbox") && !url.includes("/api/inbox/");
