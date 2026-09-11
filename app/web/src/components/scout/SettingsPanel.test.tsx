@@ -49,6 +49,15 @@ const operatorSettings = {
   l1_min_price_rub: 100_000,
   ai_system_prompt: "default prompt",
   ai_system_prompt_is_default: true,
+  provod_api_key: { configured: false, hint: "" },
+  bitrix_webhook_url: { configured: false, hint: "" },
+  bitrix_assigned_by_id: "",
+  bitrix_lead_source_id: "",
+  bitrix_chat_dialog_id: "",
+  bitrix_ops_dialog_id: "",
+  bitrix_send_chat: true,
+  bitrix_auto_l1_enabled: true,
+  bitrix_ops_alerts_enabled: true,
 };
 
 function renderSettings(extra?: Partial<Parameters<typeof SettingsPanel>[0]>) {

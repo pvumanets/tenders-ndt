@@ -88,7 +88,7 @@ class PlatformSetting(Base):
 
 
 class OperatorSettings(Base):
-    """Singleton id=1 — operator inbox policy (071) + AI prompt (092)."""
+    """Singleton id=1 — inbox policy (071) + AI prompt (092) + integrations (111)."""
 
     __tablename__ = "operator_settings"
 
@@ -97,6 +97,15 @@ class OperatorSettings(Base):
         Integer, nullable=False, default=100_000, server_default="100000"
     )
     ai_system_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provod_api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bitrix_webhook_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bitrix_assigned_by_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bitrix_lead_source_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bitrix_chat_dialog_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bitrix_ops_dialog_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bitrix_send_chat: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    bitrix_auto_l1_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    bitrix_ops_alerts_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

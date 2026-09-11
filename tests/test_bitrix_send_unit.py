@@ -7,8 +7,16 @@ from app.bitrix import BitrixApiError, BitrixConfigError
 from app.bitrix import send as bitrix_send
 
 
+def _no_db(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.api.operator_settings.session_factory",
+        lambda: (_ for _ in ()).throw(RuntimeError("database_unconfigured")),
+    )
+
+
 @pytest.mark.unit
 def test_chat_send_enabled_default_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_db(monkeypatch)
     monkeypatch.delenv("BITRIX_SEND_CHAT", raising=False)
     assert bitrix_send.chat_send_enabled() is True
     monkeypatch.setenv("BITRIX_SEND_CHAT", "0")
@@ -17,6 +25,7 @@ def test_chat_send_enabled_default_on(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.unit
 def test_send_lead_and_chat_calls_lead_and_im(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_db(monkeypatch)
     monkeypatch.setenv("BITRIX_WEBHOOK_URL", "https://example.test/rest/1/x/")
     monkeypatch.setenv("BITRIX_SEND_CHAT", "1")
     monkeypatch.setenv("BITRIX_LEAD_SOURCE_ID", "TEST_SOURCE")
@@ -52,6 +61,7 @@ def test_send_lead_and_chat_calls_lead_and_im(monkeypatch: pytest.MonkeyPatch) -
 
 @pytest.mark.unit
 def test_send_ops_dm_uses_env_dialog(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_db(monkeypatch)
     monkeypatch.setenv("BITRIX_OPS_DIALOG_ID", "951")
     seen: list[dict] = []
 
@@ -68,6 +78,7 @@ def test_send_ops_dm_uses_env_dialog(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.unit
 def test_send_chat_digest_uses_tendery(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_db(monkeypatch)
     monkeypatch.setenv("BITRIX_CHAT_DIALOG_ID", "chat7543")
     seen: list[dict] = []
 
@@ -82,12 +93,14 @@ def test_send_chat_digest_uses_tendery(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.unit
 def test_missing_bitrix_dialog_env_is_unconfigured(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_db(monkeypatch)
     monkeypatch.delenv("BITRIX_OPS_DIALOG_ID", raising=False)
     assert bitrix_send.send_ops_dm("hello") == "bitrix_unconfigured"
 
 
 @pytest.mark.unit
 def test_send_lead_keeps_lead_if_chat_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    _no_db(monkeypatch)
     monkeypatch.setenv("BITRIX_SEND_CHAT", "1")
     monkeypatch.setenv("BITRIX_LEAD_SOURCE_ID", "TEST_SOURCE")
     monkeypatch.setenv("BITRIX_CHAT_DIALOG_ID", "chat7543")

@@ -154,7 +154,40 @@ def test_operator_settings_and_inbox_price_filters(smoke_db: sessionmaker[Sessio
             assert got.status_code == 200
             body = got.json()
             assert body["l1_min_price_rub"] == DEFAULT_L1_MIN_PRICE_RUB
+            assert set(body["provod_api_key"].keys()) == {"configured", "hint"}
+            assert set(body["bitrix_webhook_url"].keys()) == {"configured", "hint"}
+            assert isinstance(body["bitrix_send_chat"], bool)
+            assert isinstance(body["bitrix_auto_l1_enabled"], bool)
+            assert isinstance(body["bitrix_ops_alerts_enabled"], bool)
             saved_price = int(body["l1_min_price_rub"])
+
+            secret = f"qa_smoke_provod_{suffix}_secret99"
+            put_int = client.put(
+                "/api/operator-settings",
+                json={
+                    "provod_api_key": secret,
+                    "bitrix_chat_dialog_id": "chat7543",
+                    "bitrix_auto_l1_enabled": False,
+                },
+            )
+            assert put_int.status_code == 200
+            pint = put_int.json()
+            assert pint["provod_api_key"]["configured"] is True
+            assert secret not in str(pint)
+            assert pint["provod_api_key"]["hint"].endswith("et99")
+            assert pint["bitrix_chat_dialog_id"] == "chat7543"
+            assert pint["bitrix_auto_l1_enabled"] is False
+
+            reset_int = client.put(
+                "/api/operator-settings",
+                json={
+                    "provod_api_key": None,
+                    "bitrix_chat_dialog_id": None,
+                    "bitrix_auto_l1_enabled": None,
+                },
+            )
+            assert reset_int.status_code == 200
+            assert reset_int.json()["bitrix_auto_l1_enabled"] is True
 
             bad = client.put("/api/operator-settings", json={"l1_min_price_rub": -1})
             assert bad.status_code == 400
@@ -219,5 +252,14 @@ def test_operator_settings_and_inbox_price_filters(smoke_db: sessionmaker[Sessio
             row = session.get(OperatorSettings, 1)
             if row is not None:
                 row.l1_min_price_rub = saved_price
+                row.provod_api_key = None
+                row.bitrix_webhook_url = None
+                row.bitrix_assigned_by_id = None
+                row.bitrix_lead_source_id = None
+                row.bitrix_chat_dialog_id = None
+                row.bitrix_ops_dialog_id = None
+                row.bitrix_send_chat = None
+                row.bitrix_auto_l1_enabled = None
+                row.bitrix_ops_alerts_enabled = None
                 session.commit()
         _cleanup(smoke_db, username=username, lot_ids=lot_ids, query=query)
