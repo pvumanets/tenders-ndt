@@ -101,20 +101,25 @@ describe("ManualRunControls", () => {
     expect(screen.queryByText(new RegExp(`${copy.run_report_new}: 1`))).not.toBeInTheDocument();
   });
 
-  it("keeps controls compact without sticky full panel", () => {
-    const { container } = render(
+  it("shows help action on cookies start error", async () => {
+    const onOpenHelp = vi.fn();
+    const user = userEvent.setup();
+    render(
       <ThemeRegistry>
         <ManualRunControls
           status={idle}
           queuedGroups={1}
           enabledPlatforms={1}
+          error={copy.run_error_cookies}
           onStart={vi.fn()}
           onStop={vi.fn()}
+          onOpenHelp={onOpenHelp}
         />
       </ThemeRegistry>,
     );
-    const root = container.firstElementChild as HTMLElement;
-    expect(getComputedStyle(root).position).not.toBe("sticky");
+    expect(screen.getByText(copy.run_error_cookies)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: copy.run_error_cookies_action }));
+    expect(onOpenHelp).toHaveBeenCalledTimes(1);
   });
 });
 

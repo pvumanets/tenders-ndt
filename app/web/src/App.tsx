@@ -79,6 +79,7 @@ import { fetchMe, logout } from "./lib/auth";
 const ManualRunControls = lazy(() => import("./components/scout/ManualRunControls"));
 const AiReviewCommandBar = lazy(() => import("./components/scout/AiReviewCommandBar"));
 const SettingsPanel = lazy(() => import("./components/scout/SettingsPanel"));
+const HelpGuide = lazy(() => import("./components/scout/HelpGuide"));
 
 const SEARCH_DEBOUNCE_MS = 300;
 const STATUS_POLL_MS = 2000;
@@ -193,6 +194,7 @@ function AppInner() {
   const [exportPrefill, setExportPrefill] = useState<ExportPrefill | null>(null);
   const [groupError, setGroupError] = useState<string | null>(null);
   const [highlightSessions, setHighlightSessions] = useState(false);
+  const [helpFocusCookies, setHelpFocusCookies] = useState(false);
   const prevRunningRef = useRef(false);
 
   useEffect(() => {
@@ -862,11 +864,13 @@ function AppInner() {
             setTab(v);
             setSelectedId(null);
             if (v !== "settings") setHighlightSessions(false);
+            if (v !== "help") setHelpFocusCookies(false);
           }}
           sx={{ px: 2, minHeight: 32 }}
         >
           <Tab label={copy.tab_lots} value="lots" />
           <Tab label={copy.tab_settings} value="settings" />
+          <Tab label={copy.tab_help} value="help" />
         </Tabs>
       </AppBar>
 
@@ -878,6 +882,10 @@ function AppInner() {
               onOpenSettings={() => {
                 setHighlightSessions(true);
                 setTab("settings");
+              }}
+              onOpenHelp={() => {
+                setHelpFocusCookies(true);
+                setTab("help");
               }}
             />
             <AutoSlotStatus schedule={schedule} status={tech} />
@@ -894,6 +902,10 @@ function AppInner() {
               error={techError}
               onStart={onStartRun}
               onStop={onStopRun}
+              onOpenHelp={() => {
+                setHelpFocusCookies(true);
+                setTab("help");
+              }}
             />
             <AiReviewCommandBar
               onAiReview={() => void onAiReview()}
@@ -923,7 +935,7 @@ function AppInner() {
               />
             ) : null}
           </Suspense>
-        ) : (
+        ) : tab === "settings" ? (
           <Suspense fallback={<Box sx={{ flex: 1, bgcolor: stripe.surfaceSubtle }} />}>
             <SettingsPanel
               status={tech}
@@ -944,6 +956,20 @@ function AppInner() {
               onSaveGroup={onSaveGroup}
               onDeleteGroup={onDeleteGroup}
               onCookieSession={onCookieSession}
+              onOpenHelp={() => {
+                setHelpFocusCookies(true);
+                setTab("help");
+              }}
+            />
+          </Suspense>
+        ) : (
+          <Suspense fallback={<Box sx={{ flex: 1, bgcolor: stripe.surfaceSubtle }} />}>
+            <HelpGuide
+              focusCookies={helpFocusCookies}
+              onOpenSettings={() => {
+                setHighlightSessions(true);
+                setTab("settings");
+              }}
             />
           </Suspense>
         )}

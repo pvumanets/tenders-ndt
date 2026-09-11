@@ -52,6 +52,7 @@ export default function SettingsPanel({
   onSaveGroup,
   onDeleteGroup,
   onCookieSession,
+  onOpenHelp,
 }: {
   status: TechStatus;
   schedule: ScheduleSettings;
@@ -68,6 +69,7 @@ export default function SettingsPanel({
   onSaveGroup: (id: string | undefined, body: SearchGroupWrite) => Promise<void>;
   onDeleteGroup: (group: SearchGroup) => void;
   onCookieSession: (platformId: string, session: PlatformSession) => void;
+  onOpenHelp?: () => void;
 }) {
   const [draft, setDraft] = useState<GroupDraft | null>(null);
   const [saving, setSaving] = useState(false);
@@ -143,6 +145,28 @@ export default function SettingsPanel({
         </Section>
 
         <Section title={copy.settings_section_platforms}>
+          {onOpenHelp ? (
+            <Typography
+              component="button"
+              type="button"
+              variant="caption"
+              onClick={onOpenHelp}
+              sx={{
+                display: "block",
+                mb: 1,
+                p: 0,
+                border: 0,
+                background: "none",
+                cursor: "pointer",
+                color: stripe.blurple,
+                textAlign: "left",
+                textDecoration: "underline",
+                font: "inherit",
+              }}
+            >
+              {copy.session_hint_docs}
+            </Typography>
+          ) : null}
           {emptyPriority === "platforms" ? (
             <Alert severity="info" sx={{ mb: 1 }}>
               <Typography variant="body2">{copy.platforms_none_enabled}</Typography>
