@@ -24,9 +24,10 @@ _FILE_EXT = re.compile(
     r"\.(pdf|docx?|xlsx?|pptx?|zip|rar|7z|rtf|odt|ods|csv|txt|sig|xml)(\?|$)",
     re.I,
 )
-_HREF_DOWNLOAD = re.compile(r"download|getfile|get-file|/file/|/files/|/docs?/", re.I)
+_HREF_DOWNLOAD = re.compile(r"download|getfile|get-file|/file/|/files/", re.I)
 _ARCHIVE_TEXT = re.compile(r"скачать одним архивом", re.I)
 _SKIP_HREF = re.compile(r"^(javascript:|mailto:|#)", re.I)
+_SITE_DOCS_PATH = re.compile(r"/docs(?:/|$)", re.I)
 # Rostender card header: «№94734024 от 02.09.26» or «от 02.09.2026»
 _PUBLISHED_OT = re.compile(
     r"(?:№\s*\d+\s*)?от\s+(\d{2}\.\d{2}\.\d{2,4})\b",
@@ -185,12 +186,54 @@ def parse_card_html(html: str, title_hint: str = "") -> dict[str, Any]:
 
 def _looks_like_file_href(href: str) -> bool:
     path = urlparse(href).path or href
+    if _SITE_DOCS_PATH.search(path):
+        return False
+    # Tokenized file hosts (files.rostender.info/?t=…) have no path extension.
+    host = (urlparse(href).hostname or "").lower()
+    if host.endswith("files.rostender.info") or host == "files.rostender.info":
+        return True
     return bool(_HREF_DOWNLOAD.search(href) or _FILE_EXT.search(path))
+
+
+def _parse_tender_files_block(soup: BeautifulSoup, page_url: str) -> list[dict[str, str]]:
+    """Current Rostender UI: .tender-files__item + files.rostender.info/?t=…"""
+    files: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for item in soup.select(".tender-files__item"):
+        download = item.select_one("a.tender-files__download[href]")
+        if download is None:
+            continue
+        href = str(download.get("href") or "").strip()
+        if not href or _SKIP_HREF.search(href):
+            continue
+        absolute = urljoin(page_url, href)
+        if absolute in seen:
+            continue
+        title_el = item.select_one("a.tender-files__link .title, a.tender-files__link span.title")
+        title = " ".join(title_el.get_text(" ", strip=True).split()) if title_el else ""
+        if not title:
+            title = " ".join(
+                (item.select_one("a.tender-files__link") or item).get_text(" ", strip=True).split()
+            )
+        ext_attr = ""
+        link_el = item.select_one("a.tender-files__link")
+        if link_el is not None:
+            ext_attr = str(link_el.get("data-extension") or "").strip().lstrip(".")
+        name = sanitize_filename(title) or "document"
+        if ext_attr and not _FILE_EXT.search(name):
+            name = f"{name}.{ext_attr}"
+        seen.add(absolute)
+        files.append({"name": name, "url": absolute})
+    return files
 
 
 def parse_document_links(html: str, page_url: str) -> list[dict[str, str]]:
     """Collect per-file download links; fall back to «Скачать одним архивом»."""
     soup = BeautifulSoup(html, "lxml")
+    block_files = _parse_tender_files_block(soup, page_url)
+    if block_files:
+        return block_files
+
     files: list[dict[str, str]] = []
     archive: dict[str, str] | None = None
     seen: set[str] = set()
@@ -199,6 +242,9 @@ def parse_document_links(html: str, page_url: str) -> list[dict[str, str]]:
         if not href or _SKIP_HREF.search(href):
             continue
         absolute = urljoin(page_url, href)
+        path = urlparse(absolute).path or ""
+        if _SITE_DOCS_PATH.search(path):
+            continue
         if absolute in seen or absolute.rstrip("/") == page_url.rstrip("/"):
             continue
         text = " ".join(anchor.get_text(" ", strip=True).split())

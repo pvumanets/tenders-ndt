@@ -489,6 +489,14 @@ def api_inbox_ai_review(body: dict | None = None):
         _inbox_http(exc)
 
 
+@app.post("/api/inbox/docs-pass")
+def api_inbox_docs_pass(body: dict | None = None):
+    try:
+        return inbox.run_docs_pass_request(body or {})
+    except (inbox.InboxQueryError, inbox.InboxNotFound, RuntimeError) as exc:
+        _inbox_http(exc)
+
+
 @app.post("/api/inbox/mark-all-viewed")
 def api_inbox_mark_all_viewed(body: dict | None = None):
     try:

@@ -320,6 +320,8 @@ def download_lot_zip(
         return DOC_STATUS_EXTERNAL_ONLY
 
     if not download_docs_enabled():
+        if persist_meta:
+            _set_lot_docs_state(tender_id, status=DOC_STATUS_PENDING_DOWNLOAD)
         return DOC_STATUS_PENDING_DOWNLOAD
 
     if dest.is_file():
@@ -406,6 +408,32 @@ def cookies_path_for_platform(platform_id: str | None) -> Path:
     return path if path.is_absolute() else _REPO_ROOT / path
 
 
+def finalize_docs_status_for_ids(
+    tender_ids: list[str] | set[str],
+    *,
+    fallback: str = DOC_STATUS_ERROR,
+) -> int:
+    """Ensure each id has a non-empty docs_status. Returns how many rows were written."""
+    ids = [str(x).strip() for x in tender_ids if str(x).strip()]
+    if not ids or not database_url():
+        return 0
+    written = 0
+    factory = session_factory()
+    with factory() as session:
+        for tid in ids:
+            state = session.get(LotState, tid)
+            if state is None:
+                state = LotState(tender_id=tid)
+                session.add(state)
+            stored = (state.docs_status or "").strip()
+            if stored:
+                continue
+            state.docs_status = fallback
+            written += 1
+        session.commit()
+    return written
+
+
 def run_docs_pass(
     tender_ids: list[str] | set[str],
     *,
@@ -438,7 +466,7 @@ def run_docs_pass(
         if platform_id in UNSUPPORTED_DOC_PLATFORMS:
             for lot in platform_lots:
                 if should_stop and should_stop():
-                    return result
+                    break
                 status = download_lot_zip(
                     tender_id=lot.tender_id,
                     links=[],
@@ -479,9 +507,9 @@ def run_docs_pass(
             follow_redirects=False,
             timeout=60.0,
         ) as client:
-            for lot in platform_lots:
+            for index, lot in enumerate(platform_lots):
                 if should_stop and should_stop():
-                    return result
+                    break
                 links = _links_from_raw(lot.raw)
                 dest = (docs_root or docs_dir()).resolve() / (
                     volume_dir_name(lot.tender_id) or "_"
@@ -501,12 +529,22 @@ def run_docs_pass(
                         should_stop=should_stop,
                     )
                 except AuthError:
-                    raise
+                    remaining = platform_lots[index:]
+                    for rem in remaining:
+                        if persist_meta:
+                            _set_lot_docs_state(rem.tender_id, status=DOC_STATUS_ERROR)
+                        result.errors += 1
+                        result.by_status[DOC_STATUS_ERROR] = (
+                            result.by_status.get(DOC_STATUS_ERROR, 0) + 1
+                        )
+                    break
                 except Exception:  # noqa: BLE001
                     status = DOC_STATUS_ERROR
                     if persist_meta:
                         _set_lot_docs_state(lot.tender_id, status=DOC_STATUS_ERROR)
                     result.errors += 1
+                    result.by_status[status] = result.by_status.get(status, 0) + 1
+                    continue
 
                 result.by_status[status] = result.by_status.get(status, 0) + 1
                 if status == DOC_STATUS_READY:

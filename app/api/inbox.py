@@ -907,30 +907,236 @@ def _apply_ai_review(
 
 
 def _run_docs_pass_after_ai(tender_ids: list[str]) -> dict[str, Any]:
-    """094: zip docs-pass after AI batch (manual or auto)."""
-    from app.api.state import STATE
-    from app.worker.docs import download_docs_enabled, run_docs_pass
+    """094/109: zip docs-pass after AI batch (manual or auto). Never uses queue should_stop."""
+    return execute_docs_pass(tender_ids, refresh_links=False, log_prefix="Docs: after AI")
+
+
+def _refresh_doc_links_for_ids(tender_ids: list[str]) -> dict[str, Any]:
+    """Re-fetch card HTML and rewrite lot.raw.doc_links (rostender + generic parse)."""
+    from app.worker.card_scrape import parse_document_links
+    from app.worker.docs import cookies_path_for_platform
+    from app.worker.fetch_guard import allow_hosts, cookies_jar_from_netscape, request_allowlisted
+    from app.worker.list_scrape import AuthError, UA
+    from app.worker.platform_ids import split_tender_id
+    import httpx
 
     if not tender_ids:
-        return {"saved": 0, "skipped": 0, "errors": 0}
+        return {"refreshed": 0, "errors": 0}
+    factory = session_factory()
+    refreshed = 0
+    errors = 0
+    with factory() as session:
+        lots = list(session.scalars(select(Lot).where(Lot.tender_id.in_(tender_ids))).all())
+    by_platform: dict[str, list[Lot]] = {}
+    for lot in lots:
+        platform, _ = split_tender_id(lot.tender_id)
+        pid = (lot.source_platform_id or platform or "rostender").strip()
+        by_platform.setdefault(pid, []).append(lot)
+
+    hosts = allow_hosts()
+    for platform_id, platform_lots in by_platform.items():
+        cookies = cookies_path_for_platform(platform_id)
+        if not cookies.is_file():
+            errors += len(platform_lots)
+            continue
+        jar = cookies_jar_from_netscape(cookies)
+        if not jar:
+            errors += len(platform_lots)
+            continue
+        with httpx.Client(
+            headers={"User-Agent": UA, "Accept-Language": "ru-RU,ru;q=0.9"},
+            cookies=jar,
+            follow_redirects=False,
+            timeout=60.0,
+        ) as client:
+            for lot in platform_lots:
+                url = (lot.url or "").strip()
+                if not url:
+                    errors += 1
+                    continue
+                try:
+                    response = request_allowlisted(client, "GET", url, allow=hosts)
+                    if response.status_code == 403:
+                        raise AuthError("docs_refresh_http_403")
+                    response.raise_for_status()
+                    links = parse_document_links(response.text, url)
+                except Exception:  # noqa: BLE001
+                    errors += 1
+                    continue
+                with factory() as session:
+                    row = session.get(Lot, lot.tender_id)
+                    if row is None:
+                        errors += 1
+                        continue
+                    raw = dict(row.raw) if isinstance(row.raw, dict) else {}
+                    raw["doc_links"] = links
+                    row.raw = raw
+                    session.commit()
+                refreshed += 1
+    return {"refreshed": refreshed, "errors": errors}
+
+
+def execute_docs_pass(
+    tender_ids: list[str],
+    *,
+    refresh_links: bool = False,
+    log_prefix: str = "Docs",
+) -> dict[str, Any]:
+    """Shared docs-pass (after AI or POST /api/inbox/docs-pass). No sticky queue stop."""
+    from app.api.state import STATE
+    from app.worker.docs import (
+        DOC_STATUS_ERROR,
+        download_docs_enabled,
+        finalize_docs_status_for_ids,
+        run_docs_pass,
+    )
+
+    ids = [str(x).strip() for x in tender_ids if str(x).strip()]
+    if not ids:
+        return {"saved": 0, "skipped": 0, "errors": 0, "ids": 0}
+
+    refresh_report: dict[str, Any] | None = None
+    if refresh_links:
+        STATE.log_msg(f"{log_prefix}: refresh links — {len(ids)} lot(s)…")
+        refresh_report = _refresh_doc_links_for_ids(ids)
+
     if not download_docs_enabled():
-        STATE.log_msg("Docs: skip (DOWNLOAD_DOCS=0)")
-        return {"saved": 0, "skipped": 0, "errors": 0, "skipped_flag": True}
-    STATE.log_msg(f"Docs: after AI — {len(tender_ids)} lot(s)…")
-    try:
-        result = run_docs_pass(tender_ids, should_stop=STATE.should_stop)
-        STATE.log_msg(
-            f"Docs: saved={result.saved} skipped={result.skipped} errors={result.errors}"
-        )
-        return {
+        STATE.log_msg(f"{log_prefix}: DOWNLOAD_DOCS=0 — classify/pending only")
+        # Still run pass: download_lot_zip persists missing/external/pending without HTTP fetch
+        # when links empty / external; when allowed links exist it persists pending_download.
+        try:
+            result = run_docs_pass(ids, should_stop=None)
+        except Exception as exc:  # noqa: BLE001
+            STATE.log_msg(f"{log_prefix} error: {type(exc).__name__}: {exc}", level="error")
+            finalize_docs_status_for_ids(ids, fallback=DOC_STATUS_ERROR)
+            out = {
+                "saved": 0,
+                "skipped": 0,
+                "errors": 1,
+                "error": type(exc).__name__,
+                "skipped_flag": True,
+                "ids": len(ids),
+            }
+            if refresh_report is not None:
+                out["refresh"] = refresh_report
+            return out
+        finalized = finalize_docs_status_for_ids(ids, fallback="pending_download")
+        out = {
             "saved": result.saved,
             "skipped": result.skipped,
             "errors": result.errors,
             "by_status": dict(result.by_status),
+            "finalized": finalized,
+            "skipped_flag": True,
+            "ids": len(ids),
         }
+        if refresh_report is not None:
+            out["refresh"] = refresh_report
+        return out
+
+    STATE.log_msg(f"{log_prefix}: {len(ids)} lot(s)…")
+    try:
+        result = run_docs_pass(ids, should_stop=None)
+        finalized = finalize_docs_status_for_ids(ids, fallback=DOC_STATUS_ERROR)
+        STATE.log_msg(
+            f"{log_prefix}: saved={result.saved} skipped={result.skipped} "
+            f"errors={result.errors} finalized={finalized}"
+        )
+        out = {
+            "saved": result.saved,
+            "skipped": result.skipped,
+            "errors": result.errors,
+            "by_status": dict(result.by_status),
+            "finalized": finalized,
+            "ids": len(ids),
+        }
+        if refresh_report is not None:
+            out["refresh"] = refresh_report
+        return out
     except Exception as exc:  # noqa: BLE001
-        STATE.log_msg(f"Docs error: {type(exc).__name__}: {exc}", level="error")
-        return {"saved": 0, "skipped": 0, "errors": 1, "error": type(exc).__name__}
+        STATE.log_msg(f"{log_prefix} error: {type(exc).__name__}: {exc}", level="error")
+        finalized = finalize_docs_status_for_ids(ids, fallback=DOC_STATUS_ERROR)
+        out = {
+            "saved": 0,
+            "skipped": 0,
+            "errors": 1,
+            "error": type(exc).__name__,
+            "finalized": finalized,
+            "ids": len(ids),
+        }
+        if refresh_report is not None:
+            out["refresh"] = refresh_report
+        return out
+
+
+def _default_docs_pass_tender_ids(*, prefer_hot: bool = True) -> list[str]:
+    """AI-reviewed lots with empty docs_status; prefer effective L1 (Горячие)."""
+    factory = session_factory()
+    with factory() as session:
+        min_price = read_l1_min_price_rub(session)
+        rows = list(
+            session.execute(
+                select(Lot, LotState)
+                .join(LotState, LotState.tender_id == Lot.tender_id)
+                .where(Lot.tier.in_(tuple(INBOX_TIERS)))
+                .where(LotState.ai_reviewed_at.is_not(None))
+                .where(
+                    or_(
+                        LotState.docs_status.is_(None),
+                        LotState.docs_status == "",
+                    )
+                )
+            ).all()
+        )
+        hot: list[str] = []
+        other: list[str] = []
+        for lot, state in rows:
+            if state.board_hidden:
+                continue
+            if is_deadline_expired(lot.deadline_msk):
+                # Still backfill expired with empty status, but after hot
+                other.append(lot.tender_id)
+                continue
+            eff = _effective_tier(lot, state, min_price=min_price)
+            if prefer_hot and eff == "L1":
+                hot.append(lot.tender_id)
+            else:
+                other.append(lot.tender_id)
+        return hot + other
+
+
+def run_docs_pass_request(body: Any) -> dict[str, Any]:
+    """POST /api/inbox/docs-pass — backfill without re-AI."""
+    ids: list[str] | None = None
+    refresh_links = False
+    if body is None or body == {}:
+        ids = None
+    elif isinstance(body, dict):
+        refresh_links = bool(body.get("refresh_links"))
+        raw_ids = body.get("tender_ids")
+        if raw_ids is None:
+            ids = None
+        elif isinstance(raw_ids, list) and all(isinstance(x, str) for x in raw_ids):
+            ids = [x.strip() for x in raw_ids if str(x).strip()]
+        else:
+            raise InboxQueryError("invalid_body")
+    else:
+        raise InboxQueryError("invalid_body")
+
+    if ids is None:
+        ids = _default_docs_pass_tender_ids(prefer_hot=True)
+    elif not ids:
+        raise InboxQueryError("invalid_body")
+
+    # Cap one request to avoid multi-hour ops hangs; caller can re-post.
+    ids = ids[:AI_REVIEW_CAP]
+    report = execute_docs_pass(
+        ids,
+        refresh_links=refresh_links,
+        log_prefix="Docs: pass",
+    )
+    report["tender_ids"] = ids
+    return report
 
 
 def run_ai_review(body: Any) -> dict[str, Any]:
