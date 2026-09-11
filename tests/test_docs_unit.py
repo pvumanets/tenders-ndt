@@ -43,6 +43,31 @@ _ARCHIVE_ONLY_HTML = """
 </body></html>
 """
 
+_TENDER_FILES_HTML = """
+<html><body>
+  <footer><a href="/docs/api">Документация API</a></footer>
+  <div class="tender-files">
+    <div class="tender-files__item">
+      <a class="tender-files__link" data-extension="rar" href="#"><span class="title">Документация.rar</span></a>
+      <a class="tender-files__download" href="https://files.rostender.info/?t=abc123"></a>
+    </div>
+    <div class="tender-files__item">
+      <a class="tender-files__link" href="#"><span class="title">ТЗ_УЗК.pdf</span></a>
+      <a class="tender-files__download" href="https://files.rostender.info/?t=def456"></a>
+    </div>
+  </div>
+  <a href="/docs/api">API</a>
+</body></html>
+"""
+
+_DOCS_API_ONLY_HTML = """
+<html><body>
+  <a href="/nav">Описание</a>
+  <a href="/docs/api">Документация API</a>
+  <a href="https://rostender.info/docs/api">API</a>
+</body></html>
+"""
+
 
 @pytest.mark.unit
 def test_sanitize_filename_strips_traversal() -> None:
@@ -87,6 +112,27 @@ def test_parse_document_links_archive_fallback() -> None:
     assert len(links) == 1
     assert links[0]["name"] == "docs.zip"
     assert links[0]["url"].endswith("/tender/45289101/zip")
+
+
+@pytest.mark.unit
+def test_parse_document_links_tender_files_block() -> None:
+    links = parse_document_links(
+        _TENDER_FILES_HTML, "https://rostender.info/tender/45289101"
+    )
+    assert len(links) == 2
+    assert links[0]["name"] == "Документация.rar"
+    assert links[0]["url"] == "https://files.rostender.info/?t=abc123"
+    assert links[1]["name"] == "ТЗ_УЗК.pdf"
+    assert links[1]["url"] == "https://files.rostender.info/?t=def456"
+    assert not any("/docs/api" in row["url"] for row in links)
+
+
+@pytest.mark.unit
+def test_parse_document_links_ignores_site_docs_api() -> None:
+    links = parse_document_links(
+        _DOCS_API_ONLY_HTML, "https://rostender.info/tender/45289101"
+    )
+    assert links == []
 
 
 @pytest.mark.unit
@@ -248,3 +294,68 @@ def test_download_docs_saves_zip_for_l1(
     )
     assert again.saved == 1  # status ready; counted as saved in legacy helper
     assert DOC_STATUS_READY in again.by_status
+
+
+@pytest.mark.unit
+def test_execute_docs_pass_ignores_sticky_queue_stop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.api.inbox import execute_docs_pass
+    from app.api.state import STATE
+    from app.worker.docs import DocsPassResult
+
+    STATE.request_stop()
+    assert STATE.should_stop() is True
+    captured: dict = {}
+
+    def fake_run(ids, **kwargs):  # noqa: ANN001
+        captured["ids"] = list(ids)
+        captured["kwargs"] = kwargs
+        return DocsPassResult()
+
+    monkeypatch.setenv("DOWNLOAD_DOCS", "1")
+    monkeypatch.setattr("app.worker.docs.download_docs_enabled", lambda: True)
+    monkeypatch.setattr("app.worker.docs.run_docs_pass", fake_run)
+    monkeypatch.setattr("app.worker.docs.finalize_docs_status_for_ids", lambda *a, **k: 0)
+
+    out = execute_docs_pass(["rostender:1", "rostender:2"])
+    assert captured["ids"] == ["rostender:1", "rostender:2"]
+    assert captured["kwargs"].get("should_stop") is None
+    assert out["ids"] == 2
+    STATE.stop_requested = False
+
+
+@pytest.mark.unit
+def test_run_docs_pass_request_rejects_bad_body() -> None:
+    from app.api.inbox import InboxQueryError, run_docs_pass_request
+
+    with pytest.raises(InboxQueryError, match="invalid_body"):
+        run_docs_pass_request({"tender_ids": "nope"})
+    with pytest.raises(InboxQueryError, match="invalid_body"):
+        run_docs_pass_request({"tender_ids": []})
+
+
+@pytest.mark.unit
+def test_download_lot_zip_disabled_persists_pending(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DOWNLOAD_DOCS", "0")
+    called: list[str] = []
+
+    def fake_set(tender_id: str, *, status: str, external_url: str | None = None) -> None:
+        called.append(status)
+
+    monkeypatch.setattr("app.worker.docs._set_lot_docs_state", fake_set)
+    status = download_lot_zip(
+        tender_id="rostender:1",
+        links=[{"name": "a.pdf", "url": "https://rostender.info/a.pdf"}],
+        platform_id="rostender",
+        lot_url="https://rostender.info/tender/1",
+        cookies_path=tmp_path / "c.txt",
+        docs_root=tmp_path / "docs",
+        persist_meta=True,
+    )
+    from app.worker.docs import DOC_STATUS_PENDING_DOWNLOAD
+
+    assert status == DOC_STATUS_PENDING_DOWNLOAD
+    assert called == [DOC_STATUS_PENDING_DOWNLOAD]
