@@ -1,4 +1,7 @@
-# Prod: Let's Encrypt for tenders.ndtexam.ru. HTTP→HTTPS is automatic.
+# Prod: Let's Encrypt. Extra sites from /etc/caddy/conf.d (host mount /opt/caddy-conf.d).
+# Other apps (e.g. color-for-nikole) drop *.caddy there — outside this git tree.
+import /etc/caddy/conf.d/*.caddy
+
 tenders.ndtexam.ru {
 	reverse_proxy api:8765
 }
