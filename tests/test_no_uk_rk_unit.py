@@ -42,6 +42,19 @@ def test_radiograph_still_scores() -> None:
 
 
 @pytest.mark.unit
+def test_gidrokreking_rk_is_l1() -> None:
+    """113: гидрокрекинг = наш сектор → sector:+1 поднимает RK+объект до L1."""
+    title = (
+        "Проведение рентгенографического контроля сварных соединений по объекту: "
+        "Комплекс гидрокрекинга. Секция производства водорода"
+    )
+    tier, score, reason, _uzk = assign_tier(title)
+    assert "sector:+1" in reason
+    assert score >= 6
+    assert tier == "L1"
+
+
+@pytest.mark.unit
 def test_plate_rk_not_radiography_signal() -> None:
     assert RE_RK.search("поставка для физической защиты РК НИЦ Курчатовский") is None
 

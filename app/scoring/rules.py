@@ -24,7 +24,10 @@ RE_OBJECT = re.compile(
     r"строитель|объект|секци|комплекс)",
     re.I,
 )
-RE_SECTOR = re.compile(rf"(нефте|газ|{_RE_ENERGY}|строитель|\bвпк\b|атом|промплощад)", re.I)
+RE_SECTOR = re.compile(
+    rf"(нефте|газ|гидрокрекинг|{_RE_ENERGY}|строитель|\bвпк\b|атом|промплощад)",
+    re.I,
+)
 
 # Supply / equipment → L3 (on board), not noise
 RE_BUY_DEVICE = re.compile(
