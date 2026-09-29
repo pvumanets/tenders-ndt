@@ -1,4 +1,4 @@
-"""Unit: AI parse isolation + cap 100 (083). No network / DB."""
+"""Unit: AI parse isolation + cap 300 (112). No network / DB."""
 from __future__ import annotations
 
 import json
@@ -48,7 +48,7 @@ def test_review_batch_continues_after_parse_error(monkeypatch: pytest.MonkeyPatc
 
 
 @pytest.mark.unit
-def test_ai_review_cap_is_100() -> None:
-    assert AI_REVIEW_CAP == 100
-    pairs = list(range(250))
-    assert len(pairs[:AI_REVIEW_CAP]) == 100
+def test_ai_review_cap_is_300() -> None:
+    assert AI_REVIEW_CAP == 300
+    pairs = list(range(450))
+    assert len(pairs[:AI_REVIEW_CAP]) == 300
